@@ -38,7 +38,7 @@ class JobViewSet(viewsets.ViewSet):
         data['status'] = 'draft'
         data['is_referral_job'] = True
         data['created_by_id'] = request.user.id
-        data['created_by'] = request.user.id
+        data['created_by'] = request.user.pk
 
         # Correct on_site_remote field
         if data['on_site_remote'] == 'contract':
@@ -219,7 +219,7 @@ class JobViewSet(viewsets.ViewSet):
         """
         Retrieve all job postings.
         """
-        all_active_jobs = Job.objects.filter(status='active')
+        all_active_jobs = Job.objects.filter(status='active').order_by('-created_at')
         posted_job = Job.objects.filter(created_by=request.user.id)
 
         all_active_jobs_serializer = JobSerializer(all_active_jobs, many=True)
