@@ -39,8 +39,6 @@ class CompanySignUpSerializer(serializers.ModelSerializer):
         return user
 
 
-
-
 class JobReferralSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
@@ -50,7 +48,7 @@ class JobReferralSerializer(serializers.ModelSerializer):
             'job_type', 'department', 'skills', 'on_site_remote',
             'min_compensation', 'max_compensation', 'parent_company',
             'role', 'experience', 'years_of_experience', 'location',
-            'created_by', 'created_by_id'
+            'created_by', 'created_by_id', 'referral_note'
         ]
 
     def create(self, validated_data):
