@@ -420,6 +420,7 @@ class Job(models.Model):
     sourced_talent_from_us = models.BooleanField(default=False)
     featured_job = models.BooleanField(default=False)
     is_referral_job = models.BooleanField(default=False)
+    referral_note = models.TextField(max_length=1000, blank=True, null=True)
 
     team_size = models.IntegerField(null=True, blank=True)
     female_team_size_total = models.IntegerField(null=True, blank=True)
