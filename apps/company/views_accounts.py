@@ -3,8 +3,8 @@ from django.db.models import Q, Count
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
-from .models import CompanyProfile, Industries, Department, Skill, Roles, Job
-from .serializers import CompanySignUpSerializer, CompanyOpenRolesSerializer, JobReferralSerializer, JobSerializer
+from .models import CompanyProfile, Department, Skill, Job
+from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
 
 from ..talent.models import TalentProfile

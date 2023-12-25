@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from apps.company.models import CompanyProfile, InitialHiringNeeds, Job, Department, Skill, Roles, SalaryRange
+from apps.company.models import CompanyProfile, Job, Department, Skill, Roles, SalaryRange
 from apps.core.models import CustomUser, UserProfile
 
 
@@ -39,14 +39,6 @@ class CompanySignUpSerializer(serializers.ModelSerializer):
         return user
 
 
-class CompanyOpenRolesSerializer(serializers.ModelSerializer):
-    job_roles = serializers.ListField(child=serializers.CharField())
-    job_location = serializers.CharField()
-    job_site = serializers.ListField(child=serializers.CharField())
-
-    class Meta:
-        model = InitialHiringNeeds
-        fields = ['company', 'job_roles', 'job_location', 'job_site']
 
 
 class JobReferralSerializer(serializers.ModelSerializer):
