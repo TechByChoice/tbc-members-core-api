@@ -3,6 +3,7 @@ from django.db.models import Q, Count
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
+from utils.emails import send_dynamic_email
 from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
@@ -37,7 +38,7 @@ class JobViewSet(viewsets.ViewSet):
         data['status'] = 'draft'
         data['is_referral_job'] = True
         data['created_by_id'] = request.user.id
-        data['created_by'] = request.user.id
+        data['created_by'] = request.user.pk
 
         # Correct on_site_remote field
         if data['on_site_remote'] == 'contract':
@@ -63,48 +64,81 @@ class JobViewSet(viewsets.ViewSet):
                 company = CompanyProfile.objects.get(id=company_id)
                 job.parent_company = company
                 job.save()
-
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                # Prepare email data
+                email_data = {
+                    'recipient_emails': [job.created_by.email],
+                    'subject': 'Your Job Referral is Now Published',
+                    'template_id': 'd-36a42b380265419f9263355d6eef9028',
+                    'dynamic_template_data': {
+                        'job_post_title': job.job_title,
+                        'job_url': f'http://localhost:3000/job/{job.id}',
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response(serializer.data, status=status.HTTP_200_CREATED)
+            except BaseException as e:
+                print(e)
+                print('email not sent')
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    @action(detail=True, methods=['get'], url_path='get-job')
-    def get_job(self, request, pk=None):
-        """
-        Retrieve a job by its ID.
-        """
-        try:
-            job = Job.objects.get(pk=pk)
-            serializer = JobSerializer(job)
-            return Response(serializer.data)
-        except Job.DoesNotExist:
-            return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=True, methods=['get'], url_path='referral/publish')
     def publish_referral_job(self, request, pk=None):
         """
-        Mark job as pending by its ID.
+        Mark job as published by its ID.
         """
         try:
             job = Job.objects.get(pk=pk)
             job.status = 'pending'
             job.save()
             serializer = JobSerializer(job)
-            return Response(serializer.data)
+            try:
+                # Prepare email data
+                email_data = {
+                    'recipient_emails': [job.created_by.email],
+                    'template_id': 'd-4bf83b1cd93e4b5da4191c00982cf36e',
+                    'dynamic_template_data': {
+                        'job_post_title': job.job_title,
+                        'job_url': f'http://localhost:3000/job/{job.id}',
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response(serializer.data, status=status.HTTP_200_CREATED)
+            except BaseException as e:
+                print(e)
+                print('email not sent')
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=True, methods=['get'], url_path='referral/active')
     def activate_referral_job(self, request, pk=None):
         """
-        Mark job as pending by its ID.
+        Mark job as active by its ID.
         """
         try:
             job = Job.objects.get(pk=pk)
             job.status = 'active'
             job.save()
             serializer = JobSerializer(job)
-            return Response(serializer.data)
+            try:
+                # Prepare email data
+                email_data = {
+                    'recipient_emails': [job.created_by.email],
+                    'template_id': 'd-4bf83b1cd93e4b5da4191c00982cf36e',
+                    'dynamic_template_data': {
+                        'job_post_title': job.job_title,
+                        'job_url': f'http://localhost:3000/job/{job.id}',
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response(serializer.data, status=status.HTTP_200_CREATED)
+            except BaseException as e:
+                print(e)
+                print('email not sent')
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -119,7 +153,22 @@ class JobViewSet(viewsets.ViewSet):
             job.status = 'pause'
             job.save()
             serializer = JobSerializer(job)
-            return Response(serializer.data)
+            try:
+                # Prepare email data
+                email_data = {
+                    'recipient_emails': [job.created_by.email],
+                    'template_id': 'd-41ffeaa4c41248bd95d36d769687f261',
+                    'dynamic_template_data': {
+                        'job_post_title': job.job_title,
+                        'job_url': f'http://localhost:3000/job/{job.id}',
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response(serializer.data, status=status.HTTP_200_CREATED)
+            except BaseException as e:
+                print(e)
+                print('email not sent')
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -134,6 +183,33 @@ class JobViewSet(viewsets.ViewSet):
             job.status = 'closed'
             job.save()
             serializer = JobSerializer(job)
+            try:
+                # Prepare email data
+                email_data = {
+                    'recipient_emails': [job.created_by.email],
+                    'template_id': 'd-4bf83b1cd93e4b5da4191c00982cf36e',
+                    'dynamic_template_data': {
+                        'job_post_title': job.job_title,
+                        'job_url': f'http://localhost:3000/job/{job.id}',
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response(serializer.data, status=status.HTTP_200_CREATED)
+            except BaseException as e:
+                print(e)
+                print('email not sent')
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Job.DoesNotExist:
+            return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['get'], url_path='get-job')
+    def get_job(self, request, pk=None):
+        """
+        Retrieve a job by its ID.
+        """
+        try:
+            job = Job.objects.get(pk=pk)
+            serializer = JobSerializer(job)
             return Response(serializer.data)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -143,7 +219,7 @@ class JobViewSet(viewsets.ViewSet):
         """
         Retrieve all job postings.
         """
-        all_active_jobs = Job.objects.filter(status='active')
+        all_active_jobs = Job.objects.filter(status='active').order_by('-created_at')
         posted_job = Job.objects.filter(created_by=request.user.id)
 
         all_active_jobs_serializer = JobSerializer(all_active_jobs, many=True)
