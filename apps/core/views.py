@@ -25,7 +25,7 @@ from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializ
 from apps.mentorship.models import MentorshipProgramProfile
 from apps.talent.models import TalentProfile
 from apps.talent.serializers import UpdateTalentProfileSerializer
-from utils.slack import fetch_new_posts
+from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,7 @@ def get_user_data(request):
     userprofile_serializer = UserProfileSerializer(userprofile)
     userprofile_json_data = userprofile_serializer.data
 
+    slack_msg = fetch_new_posts('CELK4L5FW', 1)
     # Fetch and Serialize TalentProfile Data
     try:
         talentprofile = TalentProfile.objects.get(user=user.id)  # Fetch TalentProfile related to the user
@@ -108,6 +109,7 @@ def get_user_data(request):
 
     return Response({
         'status': True,
+        'announcement': slack_msg,
         'user_info': {
             'id': user.id,
             'first_name': user.first_name,
@@ -443,15 +445,6 @@ def create_new_member(request):
                     user=user
                 )
 
-<<<<<<< Updated upstream
-        return Response({'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
-                        status=status.HTTP_201_CREATED)
-    except ValidationError as e:
-        return Response({'status': 'Error', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-    # except Exception as e:
-    #     return Response({'status': 'Error', 'error': 'An unexpected error occurred.'},
-    #                     status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-=======
             try:
                 send_invite(request.user.email)
 
@@ -465,7 +458,6 @@ def create_new_member(request):
         print(e)
         return Response({'status': 'Error', 'error': 'An unexpected error occurred.'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
->>>>>>> Stashed changes
 
 
 @api_view(['GET'])
