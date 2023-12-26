@@ -1,9 +1,12 @@
+import os
+
 from django.db.models import Q, Count
 
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 
 from utils.emails import send_dynamic_email
+from utils.slack import post_message
 from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
@@ -72,13 +75,13 @@ class JobViewSet(viewsets.ViewSet):
                     'template_id': 'd-36a42b380265419f9263355d6eef9028',
                     'dynamic_template_data': {
                         'job_post_title': job.job_title,
-                        'job_url': f'http://localhost:3000/job/{job.id}',
+                        'job_url': f'{os.environ["FRONTEND_URL"]}job/{job.id}',
                     }
                 }
                 send_dynamic_email(email_data)
                 return Response(serializer.data, status=status.HTTP_200_CREATED)
             except BaseException as e:
-                print(e)
+                print(str(e))
                 print('email not sent')
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
@@ -87,7 +90,7 @@ class JobViewSet(viewsets.ViewSet):
     @action(detail=True, methods=['get'], url_path='referral/publish')
     def publish_referral_job(self, request, pk=None):
         """
-        Mark job as published by its ID.
+        Mark job as pending by its ID.
         """
         try:
             job = Job.objects.get(pk=pk)
@@ -101,15 +104,26 @@ class JobViewSet(viewsets.ViewSet):
                     'template_id': 'd-4bf83b1cd93e4b5da4191c00982cf36e',
                     'dynamic_template_data': {
                         'job_post_title': job.job_title,
-                        'job_url': f'http://localhost:3000/job/{job.id}',
+                        'job_url': f'{os.environ["FRONTEND_URL"]}job/{job.id}',
                     }
                 }
                 send_dynamic_email(email_data)
-                return Response(serializer.data, status=status.HTTP_200_CREATED)
+
             except BaseException as e:
-                print(e)
+                print(str(e))
                 print('email not sent')
+            try:
+                msg = (f':rotating_light: *New Job Posted* :rotating_light:\n\n'
+                       f'You have 3 business days to approve or reject {job.parent_company.company_name} post.\n\n'
+                       f'Use this link to view the job post: [Job Link]({os.environ["FRONTEND_URL"] + "job/" + str(job.id)})')
+
+                post_message('C06BPP4BXFW', msg)
+            except BaseException as e:
+                print(str(e))
+                print('Slack message (New job alert) not sent')
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Job.DoesNotExist:
             return Response({"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -130,13 +144,13 @@ class JobViewSet(viewsets.ViewSet):
                     'template_id': 'd-4bf83b1cd93e4b5da4191c00982cf36e',
                     'dynamic_template_data': {
                         'job_post_title': job.job_title,
-                        'job_url': f'http://localhost:3000/job/{job.id}',
+                        'job_url': f'{os.environ["FRONTEND_URL"]}job/{job.id}',
                     }
                 }
                 send_dynamic_email(email_data)
                 return Response(serializer.data, status=status.HTTP_200_CREATED)
             except BaseException as e:
-                print(e)
+                print(str(e))
                 print('email not sent')
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Job.DoesNotExist:
@@ -160,13 +174,13 @@ class JobViewSet(viewsets.ViewSet):
                     'template_id': 'd-41ffeaa4c41248bd95d36d769687f261',
                     'dynamic_template_data': {
                         'job_post_title': job.job_title,
-                        'job_url': f'http://localhost:3000/job/{job.id}',
+                        'job_url': f'{os.environ["FRONTEND_URL"]}job/{job.id}',
                     }
                 }
                 send_dynamic_email(email_data)
                 return Response(serializer.data, status=status.HTTP_200_CREATED)
             except BaseException as e:
-                print(e)
+                print(str(e))
                 print('email not sent')
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Job.DoesNotExist:
@@ -190,13 +204,13 @@ class JobViewSet(viewsets.ViewSet):
                     'template_id': 'd-4bf83b1cd93e4b5da4191c00982cf36e',
                     'dynamic_template_data': {
                         'job_post_title': job.job_title,
-                        'job_url': f'http://localhost:3000/job/{job.id}',
+                        'job_url': f'{os.environ["FRONTEND_URL"]}job/{job.id}',
                     }
                 }
                 send_dynamic_email(email_data)
                 return Response(serializer.data, status=status.HTTP_200_CREATED)
             except BaseException as e:
-                print(e)
+                print(str(e))
                 print('email not sent')
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Job.DoesNotExist:
