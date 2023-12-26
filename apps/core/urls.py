@@ -8,6 +8,7 @@ urlpatterns = [
     path('new/', views.create_new_user),
     path('details/', views.get_user_data),
     path('details/new-member', views.get_new_member_data),
+    path('details/announcement', views.get_announcement),
     path('new-member/profile/create', views.create_new_member),
     path('details/new-company', views.get_new_company_data),
     path('profile/update/account-details', views.update_profile_account_details),
