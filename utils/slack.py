@@ -42,6 +42,7 @@ def post_message(channel_id, text):
         return None
 
 
+
 def send_invite(email, channels=[]):
     """
     Send an invite to a user to join the workspace.

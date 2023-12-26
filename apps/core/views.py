@@ -89,7 +89,7 @@ def login_api(request):
 @api_view(['GET'])
 def get_user_data(request):
     user = request.user
-    userprofile = UserProfile.objects.get(user=user.id)
+    userprofile = UserProfile.objects.get(user_id=user.id)
     userprofile_serializer = UserProfileSerializer(userprofile)
     userprofile_json_data = userprofile_serializer.data
 
@@ -136,6 +136,20 @@ def get_user_data(request):
             'is_partnership': user.is_partnership,
         },
     })
+
+
+@api_view(['GET'])
+def get_announcement(request):
+    try:
+        slack_msg = fetch_new_posts('CELK4L5FW', 1)
+        if slack_msg:
+            return Response({'announcement': slack_msg}, status=status.HTTP_200_OK)
+        else:
+            print(f'Did not get a new slack message')
+            return Response({"message": "No new messages."}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        print(f'Error pulling slack message: {str(e)}')
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])
@@ -434,8 +448,9 @@ def create_new_member(request):
             try:
                 send_invite(request.user.email)
 
-                return Response({'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
-                                status=status.HTTP_201_CREATED)
+                return Response(
+                    {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
+                    status=status.HTTP_201_CREATED)
             except Exception as e:
                 print(e)
                 return Response({'status': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -755,4 +770,3 @@ def create_new_user(request):
 
     else:
         return JsonResponse({'status': False, 'error': 'Invalid request method'}, status=405)
-
