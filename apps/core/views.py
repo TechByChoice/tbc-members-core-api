@@ -25,6 +25,7 @@ from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializ
 from apps.mentorship.models import MentorshipProgramProfile
 from apps.talent.models import TalentProfile
 from apps.talent.serializers import UpdateTalentProfileSerializer
+from utils.slack import fetch_new_posts
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ def get_user_data(request):
     userprofile_serializer = UserProfileSerializer(userprofile)
     userprofile_json_data = userprofile_serializer.data
 
+    slack_msg = fetch_new_posts('CELK4L5FW', 1)
     # Fetch and Serialize TalentProfile Data
     try:
         talentprofile = TalentProfile.objects.get(user=user.id)  # Fetch TalentProfile related to the user
@@ -107,6 +109,7 @@ def get_user_data(request):
 
     return Response({
         'status': True,
+        'announcement': slack_msg,
         'user_info': {
             'id': user.id,
             'first_name': user.first_name,
