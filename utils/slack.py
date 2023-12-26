@@ -42,7 +42,7 @@ def post_message(channel_id, text):
         return None
 
 
-def send_invite(email, channels):
+def send_invite(email, channels=[]):
     """
     Send an invite to a user to join the workspace.
     :param email: Email address of the user to invite.
@@ -52,7 +52,11 @@ def send_invite(email, channels):
     try:
         response = slack_client.admin_inviteRequests_approve(
             email=email,
-            channel_ids=channels
+            # channel_ids=channels,
+            resend=True,
+            team_id='TEM0JJSBX',
+            channel_ids='CF4FMFMFC,CELM2RTRR,C0439DMHXFE,C044FUKPV24,C03HFL33ZEG,CFJM9RU7K',
+            custom_message="Welcome to Tech by Choice slack!",
         )
         return response
     except SlackApiError as e:
