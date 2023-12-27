@@ -240,12 +240,18 @@ def create_new_member(request):
         'youtube': prepend_https_if_not_empty(data.get('youtube', '')),
         'personal': prepend_https_if_not_empty(data.get('personal', '')),
         'identity_sexuality': data.get('identity_sexuality', '').split(','),
+        'is_identity_sexuality_displayed': True if data.get('is_identity_sexuality_displayed', '') else False,
         'identity_gender': data.get('gender_identities', '').split(','),
+        'is_identity_gender_displayed': True if data.get('is_identity_gender_displayed', '') else False,
         'identity_ethic': data.get('identity_ethic', '').split(','),
+        'is_identity_ethic_displayed': True if data.get('is_identity_ethic_displayed', '') else False,
         'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get('pronouns_identities') else None,
         'disability': True if data.get('disability', '') else False,
+        'is_disability_displayed': True if data.get('is_disability_displayed', '') else False,
         'care_giver': True if data.get('care_giver', '') else False,
+        'is_care_giver_displayed': True if data.get('is_care_giver_displayed', '') else False,
         'veteran_status': data.get('veteran_status', ''),
+        'is_veteran_status_displayed': True if data.get('is_veteran_status_displayed', '') else False,
         'how_connection_made': data.get('how_connection_made', '').lower(),
         'is_pronouns_displayed': True if data.get('is_pronouns_displayed', '') else False,
         'marketing_monthly_newsletter': True if data.get('marketing_monthly_newsletter', '') else False,
@@ -463,10 +469,12 @@ def create_new_member(request):
 
                 return Response(
                     {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
-                    status=status.HTTP_201_CREATED)
+                    status=status.HTTP_200_OK)
             except Exception as e:
                 print(e)
-                return Response({'status': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'status': True, 'User, TalentProfile, and UserProfile created successfully: But '
+                                                 'issue sending Slack Invite: error': str(e)},
+                                status=status.HTTP_201_CREATED)
     except Exception as e:
         print(e)
         return Response({'status': 'Error', 'error': 'An unexpected error occurred.'},
@@ -657,6 +665,7 @@ def update_profile_social_accounts(request):
 
 @api_view(['POST'])
 def update_profile_identity(request):
+    # TODO | [CODE CLEAN UP] MOVE TO SERIALIZER
     userprofile = request.user
 
     identity_sexuality = request.data.get('identity_sexuality')
@@ -670,7 +679,7 @@ def update_profile_identity(request):
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = SexualIdentities.objects.get(identity=role_name)
+            role = SexualIdentities.objects.get(identity=role_name['identity'])
             sexuality_to_set.append(role)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -682,7 +691,7 @@ def update_profile_identity(request):
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = GenderIdentities.objects.get(gender=role_name)
+            role = GenderIdentities.objects.get(gender=role_name['gender'])
             gender_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -694,7 +703,7 @@ def update_profile_identity(request):
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = EthicIdentities.objects.get(ethnicity=role_name)
+            role = EthicIdentities.objects.get(ethnicity=role_name['ethnicity'])
             ethic_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -713,7 +722,17 @@ def update_profile_identity(request):
         userprofile.userprofile.care_giver = bool(care_giver)
     if veteran_status_str:
         userprofile.userprofile.veteran_status = veteran_status_str
+
+    userprofile.userprofile.is_identity_sexuality_displayed = request.data.get('is_identity_sexuality_displayed')
+    userprofile.userprofile.is_identity_gender_displayed = request.data.get('is_identity_gender_displayed')
+    userprofile.userprofile.is_identity_ethic_displayed = request.data.get('is_identity_ethic_displayed')
+    userprofile.userprofile.is_disability_displayed = request.data.get('is_disability_displayed')
+    userprofile.userprofile.is_care_giver_displayed = request.data.get('is_care_giver_displayed')
+    userprofile.userprofile.is_veteran_status_displayed = request.data.get('is_veteran_status_displayed')
+
     userprofile.save()
+    userprofile.userprofile.save()
+
 
     return Response({'status': True, 'detail': 'Account Details Updated.'}, status=status.HTTP_200_OK)
 
