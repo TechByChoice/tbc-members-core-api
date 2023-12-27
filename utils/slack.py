@@ -4,6 +4,7 @@ from slack_sdk.errors import SlackApiError
 
 # Initialize a Web client
 slack_client = WebClient(token=os.environ['SLACK_API_TOKEN'])
+slack_admin_client = WebClient(token=os.environ['SLACK_API_ADMIN_TOKEN'])
 
 
 def fetch_new_posts(channel_id, limit=10):
@@ -42,7 +43,6 @@ def post_message(channel_id, text):
         return None
 
 
-
 def send_invite(email, channels=[]):
     """
     Send an invite to a user to join the workspace.
@@ -51,16 +51,15 @@ def send_invite(email, channels=[]):
     :return: The response from the API.
     """
     try:
-        response = slack_client.admin_inviteRequests_approve(
+        response = slack_admin_client.admin_users_invite(
             email=email,
             # channel_ids=channels,
             resend=True,
             team_id='TEM0JJSBX',
             channel_ids='CF4FMFMFC,CELM2RTRR,C0439DMHXFE,C044FUKPV24,C03HFL33ZEG,CFJM9RU7K',
-            custom_message="Welcome to Tech by Choice slack!",
+            custom_message="Welcome to Tech by Choice Slack!",
         )
         return response
     except SlackApiError as e:
         print(f"Error sending invite: {e}")
         return None
-

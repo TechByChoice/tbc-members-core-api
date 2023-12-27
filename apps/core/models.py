@@ -201,10 +201,10 @@ class UserProfile(models.Model):
     personal = models.URLField(null=True, blank=True, max_length=200)
 
     # DEI Stuff
-    identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True)
-    identity_gender = models.ManyToManyField(GenderIdentities, blank=True)
-    identity_ethic = models.ManyToManyField(EthicIdentities, blank=True)
-    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=False)
+    identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True, null=True)
+    identity_gender = models.ManyToManyField(GenderIdentities, blank=True, null=True)
+    identity_ethic = models.ManyToManyField(EthicIdentities, blank=True, null=True)
+    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=True, null=True)
     is_pronouns_displayed = models.BooleanField(default=False)
     disability = models.BooleanField(blank=True, null=True, choices=CHOICES)
     care_giver = models.BooleanField(blank=True, null=True, choices=CHOICES)
