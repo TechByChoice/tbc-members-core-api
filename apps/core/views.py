@@ -240,12 +240,18 @@ def create_new_member(request):
         'youtube': prepend_https_if_not_empty(data.get('youtube', '')),
         'personal': prepend_https_if_not_empty(data.get('personal', '')),
         'identity_sexuality': data.get('identity_sexuality', '').split(','),
+        'is_identity_sexuality_displayed': True if data.get('is_identity_sexuality_displayed', '') else False,
         'identity_gender': data.get('gender_identities', '').split(','),
+        'is_identity_gender_displayed': True if data.get('is_identity_gender_displayed', '') else False,
         'identity_ethic': data.get('identity_ethic', '').split(','),
+        'is_identity_ethic_displayed': True if data.get('is_identity_ethic_displayed', '') else False,
         'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get('pronouns_identities') else None,
         'disability': True if data.get('disability', '') else False,
+        'is_disability_displayed': True if data.get('is_disability_displayed', '') else False,
         'care_giver': True if data.get('care_giver', '') else False,
+        'is_care_giver_displayed': True if data.get('is_care_giver_displayed', '') else False,
         'veteran_status': data.get('veteran_status', ''),
+        'is_veteran_status_displayed': True if data.get('is_veteran_status_displayed', '') else False,
         'how_connection_made': data.get('how_connection_made', '').lower(),
         'is_pronouns_displayed': True if data.get('is_pronouns_displayed', '') else False,
         'marketing_monthly_newsletter': True if data.get('marketing_monthly_newsletter', '') else False,
@@ -463,10 +469,12 @@ def create_new_member(request):
 
                 return Response(
                     {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
-                    status=status.HTTP_201_CREATED)
+                    status=status.HTTP_200_OK)
             except Exception as e:
                 print(e)
-                return Response({'status': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'status': True, 'User, TalentProfile, and UserProfile created successfully: But '
+                                                 'issue sending Slack Invite: error': str(e)},
+                                status=status.HTTP_201_CREATED)
     except Exception as e:
         print(e)
         return Response({'status': 'Error', 'error': 'An unexpected error occurred.'},
