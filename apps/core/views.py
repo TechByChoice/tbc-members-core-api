@@ -25,6 +25,7 @@ from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializ
 from apps.mentorship.models import MentorshipProgramProfile
 from apps.talent.models import TalentProfile
 from apps.talent.serializers import UpdateTalentProfileSerializer
+from utils.helper import prepend_https_if_not_empty
 from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
@@ -232,16 +233,16 @@ def create_new_member(request):
     }
 
     profile_data = {
-        'linkedin': "https://" + data.get('linkedin', ''),
+        'linkedin': prepend_https_if_not_empty(data.get('linkedin', '')),
         'instagram': data.get('instagram', ''),
-        'github': "https://" + data.get('github', ''),
+        'github': prepend_https_if_not_empty(data.get('github', '')),
         'twitter': data.get('twitter', ''),
-        'youtube': "https://" + data.get('youtube', ''),
-        'personal': "https://" + data.get('personal', ''),
+        'youtube': prepend_https_if_not_empty(data.get('youtube', '')),
+        'personal': prepend_https_if_not_empty(data.get('personal', '')),
         'identity_sexuality': data.get('identity_sexuality', '').split(','),
         'identity_gender': data.get('gender_identities', '').split(','),
         'identity_ethic': data.get('identity_ethic', '').split(','),
-        'identity_pronouns': data.get('pronouns_identities', '').split(','),
+        'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get('pronouns_identities') else None,
         'disability': True if data.get('disability', '') else False,
         'care_giver': True if data.get('care_giver', '') else False,
         'veteran_status': data.get('veteran_status', ''),
@@ -432,10 +433,22 @@ def create_new_member(request):
                         return Response({'detail': f'Invalid pronouns: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
 
             profile_data['user'] = user.id  # set the user field in UserProfile
-            profile_data['identity_sexuality'] = identity_sexuality_to_set  # set the user field in UserProfile
-            profile_data['identity_gender'] = identity_gender_to_set
-            profile_data['identity_ethic'] = identity_ethic_to_set
-            profile_data['identity_pronouns'] = identity_pronouns_to_set
+            if identity_sexuality_to_set:
+                profile_data['identity_sexuality'] = identity_sexuality_to_set
+            else:
+                del profile_data['identity_sexuality']
+            if identity_gender_to_set:
+                profile_data['identity_gender'] = identity_gender_to_set if identity_gender_to_set else None
+            else:
+                del profile_data['identity_gender']
+            if identity_ethic_to_set:
+                profile_data['identity_ethic'] = identity_ethic_to_set if identity_ethic_to_set else None
+            else:
+                del profile_data['identity_ethic']
+            if identity_pronouns_to_set:
+                profile_data['identity_pronouns'] = identity_pronouns_to_set if identity_pronouns_to_set else None
+            else:
+                del profile_data['identity_pronouns']
             profile_serializer = UserProfileSerializer(data=profile_data)
             profile_serializer.is_valid(raise_exception=True)
             profile = profile_serializer.save()
