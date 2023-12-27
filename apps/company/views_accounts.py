@@ -28,8 +28,11 @@ class JobViewSet(viewsets.ViewSet):
         role_id = data.pop('role', [{}])[0].get('id')  # Assuming single role
 
         # Extract IDs for Foreign Key relationships
-        min_compensation_id = data.pop('min_compensation', [{}])[0].get('id')
-        max_compensation_id = data.pop('max_compensation', [{}])[0].get('id')
+        min_compensation = data.pop('min_compensation', [{}])
+        min_compensation_id = min_compensation[0].get('id') if min_compensation is not None else None
+
+        max_compensation = data.pop('max_compensation', [{}])
+        max_compensation_id = max_compensation[0].get('id') if max_compensation is not None else None
 
         # Update the data dictionary
         data['min_compensation'] = min_compensation_id
