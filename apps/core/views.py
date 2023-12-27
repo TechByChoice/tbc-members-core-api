@@ -665,6 +665,7 @@ def update_profile_social_accounts(request):
 
 @api_view(['POST'])
 def update_profile_identity(request):
+    # TODO | [CODE CLEAN UP] MOVE TO SERIALIZER
     userprofile = request.user
 
     identity_sexuality = request.data.get('identity_sexuality')
@@ -678,7 +679,7 @@ def update_profile_identity(request):
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = SexualIdentities.objects.get(identity=role_name)
+            role = SexualIdentities.objects.get(identity=role_name['identity'])
             sexuality_to_set.append(role)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -690,7 +691,7 @@ def update_profile_identity(request):
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = GenderIdentities.objects.get(gender=role_name)
+            role = GenderIdentities.objects.get(gender=role_name['gender'])
             gender_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -702,7 +703,7 @@ def update_profile_identity(request):
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = EthicIdentities.objects.get(ethnicity=role_name)
+            role = EthicIdentities.objects.get(ethnicity=role_name['ethnicity'])
             ethic_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -721,7 +722,17 @@ def update_profile_identity(request):
         userprofile.userprofile.care_giver = bool(care_giver)
     if veteran_status_str:
         userprofile.userprofile.veteran_status = veteran_status_str
+
+    userprofile.userprofile.is_identity_sexuality_displayed = request.data.get('is_identity_sexuality_displayed')
+    userprofile.userprofile.is_identity_gender_displayed = request.data.get('is_identity_gender_displayed')
+    userprofile.userprofile.is_identity_ethic_displayed = request.data.get('is_identity_ethic_displayed')
+    userprofile.userprofile.is_disability_displayed = request.data.get('is_disability_displayed')
+    userprofile.userprofile.is_care_giver_displayed = request.data.get('is_care_giver_displayed')
+    userprofile.userprofile.is_veteran_status_displayed = request.data.get('is_veteran_status_displayed')
+
     userprofile.save()
+    userprofile.userprofile.save()
+
 
     return Response({'status': True, 'detail': 'Account Details Updated.'}, status=status.HTTP_200_OK)
 
