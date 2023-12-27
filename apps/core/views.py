@@ -94,7 +94,7 @@ def get_user_data(request):
     userprofile_serializer = UserProfileSerializer(userprofile)
     userprofile_json_data = userprofile_serializer.data
 
-    slack_msg = fetch_new_posts('CELK4L5FW', 1)
+    # slack_msg = fetch_new_posts('CELK4L5FW', 1)
     # Fetch and Serialize TalentProfile Data
     try:
         talentprofile = TalentProfile.objects.get(user=user.id)  # Fetch TalentProfile related to the user
@@ -104,13 +104,12 @@ def get_user_data(request):
         talentprofile_json_data = None
 
     try:
-        current_company = CompanyProfile.objects.get(current_employees=request.user)
+        current_company = CompanyProfile.objects.filter(current_employees=user).first()
     except CompanyProfile.DoesNotExist:
         current_company = None
 
     return Response({
         'status': True,
-        'announcement': slack_msg,
         'user_info': {
             'id': user.id,
             'first_name': user.first_name,
@@ -569,12 +568,23 @@ def update_profile_account_details(request):
 
 @api_view(['POST'])
 def update_profile_work_place(request):
-    # Handling existing company.
-    company_details = next(iter(request.data.get('company_id', [])), False)
+    user = request.user
 
-    if company_details:
+    # Add user to the old company past employers list
+    old_company = user.company_current_employees.get()
+    print(old_company.id)
+    if old_company:
+        old_company_profile = CompanyProfile.objects.get(id=old_company.id)
+        old_company.past_employees.add(user)
+        old_company.current_employees.remove(user)
+        old_company.save()
+
+    # Handling new company.
+    new_company_details = request.data.get('company_id')
+
+    if new_company_details:
         try:
-            company = CompanyProfile.objects.get(id=company_details['id'])
+            company = CompanyProfile.objects.get(id=new_company_details)
         except CompanyProfile.DoesNotExist:
             return Response({'status': False, 'detail': 'Company does not exist.'}, status=status.HTTP_400_BAD_REQUEST)
     else:  # Handling new company.
@@ -585,7 +595,6 @@ def update_profile_work_place(request):
             return Response({'status': False, 'message': company_serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     # Updating the current employee for the company.
-    user = request.user
     company.current_employees.add(user)
     company.save()
 
