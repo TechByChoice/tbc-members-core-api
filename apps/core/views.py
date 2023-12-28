@@ -93,8 +93,24 @@ def get_user_data(request):
     userprofile = UserProfile.objects.get(user_id=user.id)
     userprofile_serializer = UserProfileSerializer(userprofile)
     userprofile_json_data = userprofile_serializer.data
+    mentor_data = {}
+    mentee_data = {}
 
-    slack_msg = fetch_new_posts('CELK4L5FW', 1)
+    # Get mentor data
+    if user.is_mentor and user.is_mentor_application_submitted:
+        mentor_application = MentorshipProgramProfile.objects.get(user=user)
+        mentor_data = {
+            'commitment_level': mentor_application.commitment_level,
+            'mentor_support_areas': mentor_application.mentor_profile.mentor_support_areas,
+            'mentor_how_to_help': mentor_application.mentor_profile.mentor_how_to_help,
+            'mentorship_goals': mentor_application.mentor_profile.mentorship_goals,
+        }
+    if user.is_mentee and user.is_mentor_application_submitted:
+        mentor_application = MentorshipProgramProfile.objects.get(user=user)
+        mentee_data = {
+            'mentee_support_areas': mentor_application.mentee_profile.mentee_support_areas
+        }
+
     # Fetch and Serialize TalentProfile Data
     try:
         talentprofile = TalentProfile.objects.get(user=user.id)  # Fetch TalentProfile related to the user
@@ -110,7 +126,6 @@ def get_user_data(request):
 
     return Response({
         'status': True,
-        'announcement': slack_msg,
         'user_info': {
             'id': user.id,
             'first_name': user.first_name,
@@ -129,6 +144,13 @@ def get_user_data(request):
             'is_member': user.is_member,
             'is_mentor': user.is_mentor,
             'is_mentee': user.is_mentee,
+            'is_mentor_profile_active': user.is_mentor_profile_active,
+            'is_mentor_profile_removed': user.is_mentor_profile_removed,
+            'is_mentor_training_complete': user.is_mentor_training_complete,
+            'is_mentor_interviewing': user.is_mentor_interviewing,
+            'is_mentor_profile_paused': user.is_mentor_profile_paused,
+            'is_mentor_profile_approved': user.is_mentor_profile_approved,
+            'is_mentor_application_submitted': user.is_mentor_application_submitted,
             'is_speaker': user.is_speaker,
             'is_volunteer': user.is_volunteer,
             'is_team': user.is_team,
@@ -136,6 +158,8 @@ def get_user_data(request):
             'is_company_account': user.is_company_account,
             'is_partnership': user.is_partnership,
         },
+        'mentor_details': mentor_data,
+        'mentee_details': mentee_data,
     })
 
 
