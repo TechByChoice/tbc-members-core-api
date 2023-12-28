@@ -245,7 +245,8 @@ def create_new_member(request):
         'is_identity_gender_displayed': True if data.get('is_identity_gender_displayed', '') else False,
         'identity_ethic': data.get('identity_ethic', '').split(','),
         'is_identity_ethic_displayed': True if data.get('is_identity_ethic_displayed', '') else False,
-        'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get('pronouns_identities') else None,
+        'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get(
+            'pronouns_identities') else None,
         'disability': True if data.get('disability', '') else False,
         'is_disability_displayed': True if data.get('is_disability_displayed', '') else False,
         'care_giver': True if data.get('care_giver', '') else False,
@@ -632,7 +633,7 @@ def update_profile_skills_roles(request):
     for skill in skills:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            name = Skill.objects.get(name=skill['name'])
+            name = Skill.objects.get(name=skill)
             skills_to_set.append(name.pk)
         except (Skill.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -732,7 +733,6 @@ def update_profile_identity(request):
 
     userprofile.save()
     userprofile.userprofile.save()
-
 
     return Response({'status': True, 'detail': 'Account Details Updated.'}, status=status.HTTP_200_OK)
 
