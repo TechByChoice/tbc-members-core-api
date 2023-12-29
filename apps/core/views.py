@@ -22,7 +22,8 @@ from apps.core.models import UserProfile, PronounsIdentities, EthicIdentities, G
 from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializer, \
     UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, UpdateCustomUserSerializer, \
     TalentProfileRoleSerializer, TalentProfileSerializer
-from apps.mentorship.models import MentorshipProgramProfile
+from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
+from apps.mentorship.serializer import MentorRosterSerializer
 from apps.talent.models import TalentProfile
 from apps.talent.serializers import UpdateTalentProfileSerializer
 from utils.helper import prepend_https_if_not_empty
@@ -95,6 +96,7 @@ def get_user_data(request):
     userprofile_json_data = userprofile_serializer.data
     mentor_data = {}
     mentee_data = {}
+    mentor_roster_data = {}
 
     # Get mentor data
     if user.is_mentor and user.is_mentor_application_submitted:
@@ -105,11 +107,21 @@ def get_user_data(request):
             'mentor_how_to_help': mentor_application.mentor_profile.mentor_how_to_help,
             'mentorship_goals': mentor_application.mentor_profile.mentorship_goals,
         }
-    if user.is_mentee and user.is_mentor_application_submitted:
+    if user.is_mentee:
         mentor_application = MentorshipProgramProfile.objects.get(user=user)
+        mentee_profile = MenteeProfile.objects.get(user_id=user.id)
         mentee_data = {
-            'mentee_support_areas': mentor_application.mentee_profile.mentee_support_areas
+            'id': mentee_profile.id,
+            # 'mentee_support_areas': mentor_application.mentee_profile.mentee_support_areas,
         }
+
+        # Check to see if the user is connected with any mentors
+        mentee_profiles = MenteeProfile.objects.get(user=request.user)
+        mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profiles.id)
+
+        if mentorship_roster:
+            serializer = MentorRosterSerializer(mentorship_roster, many=True)
+            mentor_roster_data = serializer.data
 
     # Fetch and Serialize TalentProfile Data
     try:
@@ -160,6 +172,7 @@ def get_user_data(request):
         },
         'mentor_details': mentor_data,
         'mentee_details': mentee_data,
+        'mentor_roster_data': mentor_roster_data
     })
 
 
@@ -595,7 +608,7 @@ def update_profile_account_details(request):
 @api_view(['POST'])
 def update_profile_work_place(request):
     # Handling existing company.
-    company_details = next(iter(request.data.get('company_id', [])), False)
+    company_details = request.data.get('select_company', None)
 
     if company_details:
         try:
