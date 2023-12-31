@@ -13,6 +13,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = '__all__'
+
     def to_representation(self, instance):
         ret = super(UserProfileSerializer, self).to_representation(instance)
 
@@ -41,7 +42,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class TalentProfileSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = TalentProfile
         fields = '__all__'
