@@ -68,6 +68,8 @@ class MentorshipProgramProfileSerializer(serializers.ModelSerializer):
     mentor_profile = serializers.SerializerMethodField(read_only=True)
     mentee_profile = serializers.SerializerMethodField(read_only=True)
     mentor_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
+    commitment_level = CommitmentLevelSerializer(many=True, read_only=True)
+    mentee_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
     class Meta:
         model = MentorshipProgramProfile
         fields = '__all__'

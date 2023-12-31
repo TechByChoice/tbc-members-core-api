@@ -124,8 +124,6 @@ def create_or_update_mentorship_profile(request):
     program_profile, created = MentorshipProgramProfile.objects.update_or_create(
         user=user,
         defaults={
-            'calendar_link': data.get('calendar_link'),
-            'tbc_email': data.get('tbc_email'),
             'biggest_strengths': data.get('biggest_strengths'),
             'career_success': data.get('career_success'),
             'career_milestones': data.get('career_milestones'),
@@ -143,6 +141,11 @@ def create_or_update_mentorship_profile(request):
             # Include other fields as necessary
         }
     )
+    if created:
+        user.is_mentor_application_submitted = True
+        user.save()
+
+        program_profile.mentor_profile = mentor_profile
 
     # Update or create MenteeProfile
     mentee_profile, created = MenteeProfile.objects.update_or_create(
@@ -168,26 +171,36 @@ def update_support_type(request):
     data = request.data
 
     # Retrieve or create MentorshipProgramProfile instance
-    program_profile, _ = MentorshipProgramProfile.objects.get_or_create(user=user)
+    program_profile, create = MentorshipProgramProfile.objects.get_or_create(user=user)
+    if program_profile:
+        user.is_mentor_application_submitted = True
+        user.is_mentor = True
+        user.save()
 
     # Update CommitmentLevel - ManyToManyField
-    commitment_level_ids = [level['id'] for level in data.get('commitment_level', [])]
-    program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_level_ids))
+    commitment_data = data.get('commitment_level')
+    # commitment_level_ids = commitment_data.get('commitment_level', [])
+    program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
+    program_profile.save()
 
     if user.is_mentor:
         mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
-        support_area_ids = [area['id'] for area in data.get('mentor_support_areas', [])]
-        print("mentor_support_areas type:", type(mentor_profile.mentor_support_areas))
-        print(mentor_profile.user)
-        print(mentor_profile.mentor_support_areas.all())
-        if mentor_profile:
-            mentor_profile.mentor_support_areas.set(support_area_ids)
+        support_area_ids = data.get('mentor_support_areas', [])
+        mentor_profile.mentor_support_areas.set(support_area_ids)
+        mentor_profile.save()
 
     if user.is_mentee:
         mentee_profile, _ = MenteeProfile.objects.get_or_create(user=user)
         if mentee_profile:
-            mentee_support_area_ids = [area['id'] for area in data.get('mentee_support_areas', [])]
+            mentee_support_area_ids = data.get('mentee_support_areas', [])
             mentee_profile.mentee_support_areas.set(mentee_support_area_ids)
+            program_profile.mentee_support_areas.set(mentee_support_area_ids)
+            mentee_profile.save()
+            program_profile.save()
+            print(mentee_profile.mentee_support_areas.all())
+            if not program_profile.mentee_profile:
+                program_profile.mentee_profile = mentee_profile
+                program_profile.save()
 
     return Response({'status': True, 'message': 'Mentorship profile updated successfully'},
                     status=status.HTTP_200_OK)

@@ -23,7 +23,7 @@ from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializ
     UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, UpdateCustomUserSerializer, \
     TalentProfileRoleSerializer, TalentProfileSerializer
 from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
-from apps.mentorship.serializer import MentorRosterSerializer
+from apps.mentorship.serializer import MentorRosterSerializer, MentorshipProgramProfileSerializer
 from apps.talent.models import TalentProfile
 from apps.talent.serializers import UpdateTalentProfileSerializer
 from utils.helper import prepend_https_if_not_empty
@@ -101,12 +101,8 @@ def get_user_data(request):
     # Get mentor data
     if user.is_mentor and user.is_mentor_application_submitted:
         mentor_application = MentorshipProgramProfile.objects.get(user=user)
-        mentor_data = {
-            'commitment_level': mentor_application.commitment_level,
-            'mentor_support_areas': mentor_application.mentor_profile.mentor_support_areas,
-            'mentor_how_to_help': mentor_application.mentor_profile.mentor_how_to_help,
-            'mentorship_goals': mentor_application.mentor_profile.mentorship_goals,
-        }
+        mentor_serializer = MentorshipProgramProfileSerializer(mentor_application)
+        mentor_data = mentor_serializer.data
     if user.is_mentee:
         mentor_application = MentorshipProgramProfile.objects.get(user=user)
         mentee_profile = MenteeProfile.objects.get(user_id=user.id)

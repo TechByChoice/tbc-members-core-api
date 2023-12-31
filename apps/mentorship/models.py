@@ -134,7 +134,7 @@ class MenteeProfile(models.Model):
     removed_coc_date = models.DateTimeField(blank=True, null=True)
     removed_inactive_date = models.DateTimeField(blank=True, null=True)
     interview_reminder_date = models.DateTimeField(blank=True, null=True)
-    mentee_support_areas = models.ManyToManyField(CommitmentLevel, blank=True)
+    mentee_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True)
 
 
 class MentorReview(models.Model):
@@ -172,6 +172,7 @@ class MentorshipProgramProfile(models.Model):
     # Roster profile data
     roster = models.ForeignKey(MentorRoster, on_delete=models.CASCADE, blank=True, null=True)
     commitment_level = models.ManyToManyField(CommitmentLevel, related_name='commitment_level')
+    mentee_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True, related_name='mentee_support_areas')
     # details
     biggest_strengths = models.CharField(max_length=3000, blank=True, null=True)
     career_success = models.CharField(max_length=3000, blank=True, null=True)
