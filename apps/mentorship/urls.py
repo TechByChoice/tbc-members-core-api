@@ -2,13 +2,11 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from . import views
-from . import views_relationship_managment
 from .views import MentorListView, MentorDetailView
-from .views_relationship_managment import MentorshipRelationshipView
+from .views_relationship_managment import MentorshipRelationshipView, MentorshipReviewsView
 
 router = DefaultRouter()
 router.register(r'mentors', views.MentorListView)
-# router.register(r'connect', views_relationship_managment.MentorshipRelationshipView, basename='relation')
 
 urlpatterns = [
     path('questions/', views.ApplicationQuestionList.as_view(), name='question-list'),
@@ -22,4 +20,5 @@ urlpatterns = [
     path('connect', MentorshipRelationshipView.as_view(), name='mentor-connect'),
     path('mentor/<int:mentor_id>/connect/roster/add', MentorshipRelationshipView.as_view(), name='mentor-connect'),
     path('<int:pk>/', MentorDetailView.as_view(), name='mentor-detail'),
+    path('reviews/<int:mentor_id>/', MentorshipReviewsView.as_view(), name='review-mentor'),
 ]

@@ -5,7 +5,7 @@ from apps.core.models import UserProfile
 from apps.core.serializers import TalentProfileSerializer
 from apps.core.serializers_member import CustomUserSerializer, UserProfileSerializer
 from apps.mentorship.models import MentorSupportAreas, CommitmentLevel, ApplicationQuestion, MentorProfile, \
-    MenteeProfile, ApplicationAnswers, MentorshipProgramProfile, MentorRoster
+    MenteeProfile, ApplicationAnswers, MentorshipProgramProfile, MentorRoster, MentorReview
 from apps.talent.models import TalentProfile
 
 
@@ -68,6 +68,8 @@ class MentorshipProgramProfileSerializer(serializers.ModelSerializer):
     mentor_profile = serializers.SerializerMethodField(read_only=True)
     mentee_profile = serializers.SerializerMethodField(read_only=True)
     mentor_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
+    commitment_level = CommitmentLevelSerializer(many=True, read_only=True)
+    mentee_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
     class Meta:
         model = MentorshipProgramProfile
         fields = '__all__'
@@ -89,3 +91,9 @@ class MentorRosterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Additional logic (if needed) before saving the instance
         return MentorRoster.objects.create(**validated_data)
+
+
+class MentorReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MentorReview
+        fields = ['mentor', 'mentee', 'rating', 'review_content']
