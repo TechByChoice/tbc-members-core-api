@@ -237,47 +237,49 @@ class JobViewSet(viewsets.ViewSet):
         Retrieve all job postings.
         """
         all_active_jobs = Job.objects.filter(status='active').order_by('-created_at')
-        posted_job = Job.objects.filter(created_by=request.user.id)
+        posted_job = Job.objects.filter(created_by=request.user.id).exclude(status="active")
 
         all_active_jobs_serializer = JobSerializer(all_active_jobs, many=True)
         posted_job_serializer = JobSerializer(posted_job, many=True)
+
         data = {
             'all_jobs': all_active_jobs_serializer.data,
-            'posted_job': posted_job_serializer.data
+            'posted_job': posted_job_serializer.data,
         }
         return Response(data)
 
-    @action(detail=False, methods=['get'], url_path='job-match')
-    def get_top_job_match(self, request):
-        """
-        Retrieve top job postings.
-        """
-        talent_profile = TalentProfile.objects.get(user=request.user.id)
 
-        # Extract skills, roles, and departments
-        talent_skills = talent_profile.skills.all()
-        talent_roles = talent_profile.role.all()
-        talent_departments = talent_profile.department.all()
+@action(detail=False, methods=['get'], url_path='job-match')
+def get_top_job_match(self, request):
+    """
+    Retrieve top job postings.
+    """
+    talent_profile = TalentProfile.objects.get(user=request.user.id)
 
-        # Create separate Q objects for each criteria
-        skills_query = Q(skills__in=talent_skills)
-        roles_query = Q(role__in=talent_roles)
-        departments_query = Q(department__in=talent_departments)
+    # Extract skills, roles, and departments
+    talent_skills = talent_profile.skills.all()
+    talent_roles = talent_profile.role.all()
+    talent_departments = talent_profile.department.all()
 
-        # Combine queries using OR logic
-        combined_query = skills_query | roles_query | departments_query
+    # Create separate Q objects for each criteria
+    skills_query = Q(skills__in=talent_skills)
+    roles_query = Q(role__in=talent_roles)
+    departments_query = Q(department__in=talent_departments)
 
-        # Filter Job instances based on the combined query
-        matching_jobs = Job.objects.filter(combined_query).distinct()
+    # Combine queries using OR logic
+    combined_query = skills_query | roles_query | departments_query
 
-        # Annotate each job with a score based on the number of matching criteria
-        matching_jobs = matching_jobs.annotate(
-            score=Count('skills', filter=Q(skills__in=talent_skills.values_list('id', flat=True))) +
-                  Count('role', filter=Q(role__in=talent_profile.role.values_list('id', flat=True))) +
-                  Count('department', filter=Q(department__in=talent_departments.values_list('id', flat=True)))
-        ).order_by('-score')
+    # Filter Job instances based on the combined query
+    matching_jobs = Job.objects.filter(combined_query).distinct()
 
-        matching_jobs_serialized = JobSerializer(matching_jobs, many=True).data
+    # Annotate each job with a score based on the number of matching criteria
+    matching_jobs = matching_jobs.annotate(
+        score=Count('skills', filter=Q(skills__in=talent_skills.values_list('id', flat=True))) +
+              Count('role', filter=Q(role__in=talent_profile.role.values_list('id', flat=True))) +
+              Count('department', filter=Q(department__in=talent_departments.values_list('id', flat=True)))
+    ).order_by('-score')
 
-        # Render the results in a template
-        return Response({'status': True, 'matching_jobs': matching_jobs_serialized}, status=status.HTTP_200_OK)
+    matching_jobs_serialized = JobSerializer(matching_jobs, many=True).data
+
+    # Render the results in a template
+    return Response({'status': True, 'matching_jobs': matching_jobs_serialized}, status=status.HTTP_200_OK)
