@@ -820,11 +820,16 @@ def create_new_user(request):
             user.is_member = True
             user.save()
 
-            # Set secure cookie
-            # print(token)
-            # response.set_cookie('auth_token', token)  # httponly=True to prevent access by JavaScript
-            # response.set_cookie('auth_token', token, secure=False,
-            #                     httponly=False)  # httponly=True to prevent access by JavaScript
+            # Prepare email data
+            email_data = {
+                'subject': 'Welcome to Our Platform',
+                'recipient_emails': [user.email],
+                'template_id': 'd-342822c240ed43778ba9e94a04fb10cf',
+                'dynamic_template_data': {
+                    'first_name': user.first_name,
+                }
+            }
+
             response = JsonResponse({'status': True, 'message': 'User created successfully', 'token': token},
                                     status=201)
             return response
