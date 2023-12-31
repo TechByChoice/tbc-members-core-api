@@ -830,6 +830,7 @@ def create_new_user(request):
                     'first_name': user.first_name,
                 }
             }
+
             send_dynamic_email(email_data)
 
             response = JsonResponse({'status': True, 'message': 'User created successfully', 'token': token},
