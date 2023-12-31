@@ -26,6 +26,7 @@ from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, Mente
 from apps.mentorship.serializer import MentorRosterSerializer, MentorshipProgramProfileSerializer
 from apps.talent.models import TalentProfile
 from apps.talent.serializers import UpdateTalentProfileSerializer
+from utils.emails import send_dynamic_email
 from utils.helper import prepend_https_if_not_empty
 from utils.slack import fetch_new_posts, send_invite
 
@@ -829,6 +830,8 @@ def create_new_user(request):
                     'first_name': user.first_name,
                 }
             }
+
+            send_dynamic_email(email_data)
 
             response = JsonResponse({'status': True, 'message': 'User created successfully', 'token': token},
                                     status=201)
