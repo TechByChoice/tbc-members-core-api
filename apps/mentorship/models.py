@@ -111,6 +111,20 @@ class ValuesMatch(models.Model):
 
 class MentorProfile(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    MENTORSHIP_STATUS = (
+        ('submitted', 'Submitted'),
+        ('active', 'Active'),
+        ('interviewing', 'Interviewing'),
+        ('paused', 'Paused'),
+        ('removed', 'Removed'),
+        ('removed_coc_issues', 'Removed COC Issues'),
+        ('removed_inactive', 'Removed Inactive'),
+        ('incomplete_application', 'Incomplete Application'),
+        ('lacking_experience', 'Lacking Skill or Experience'),
+        ('rejected_other', 'Other'),
+        ('passed_interview', 'Passed Interview')
+    )
+    mentor_status = models.CharField(max_length=22, choices=MENTORSHIP_STATUS, default=1)
     activated_at_date = models.DateTimeField(blank=True, null=True)
     interview_requested_at_date = models.DateTimeField(blank=True, null=True)
     paused_date = models.DateTimeField(blank=True, null=True)

@@ -19,6 +19,7 @@ urlpatterns = [
     path('', MentorListView.as_view(), name='mentor-list'),
     path('connect', MentorshipRelationshipView.as_view(), name='mentor-connect'),
     path('mentor/<int:mentor_id>/connect/roster/add', MentorshipRelationshipView.as_view(), name='mentor-connect'),
+    path('mentor/<int:mentor_id>/update-status/', views.update_mentor_application_status, name='update_mentor_application_status'),
     path('<int:pk>/', MentorDetailView.as_view(), name='mentor-detail'),
     path('reviews/<int:mentor_id>/', MentorshipReviewsView.as_view(), name='review-mentor'),
 ]

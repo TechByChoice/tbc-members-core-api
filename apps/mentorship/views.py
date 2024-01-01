@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Q, Count
 from rest_framework import generics, viewsets, status
 from rest_framework.decorators import action, api_view
@@ -280,6 +282,32 @@ def update_values_questions(request):
 
     # Save the updates
     program_profile.save()
+
+    return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def update_mentor_application_status(request, mentor_id):
+    user = request.user
+    data = request.data
+    if not user.is_staff:
+        return Response({'status': False, 'message': 'Values updated successfully.'}, status=status.HTTP_401_UNAUTHORIZED)
+    # Retrieve the MentorshipProgramProfile for the current user
+    try:
+        program_profile = MentorshipProgramProfile.objects.get(user=mentor_id)
+        mentor_profile = MentorProfile.objects.get(user=mentor_id)
+    except MentorshipProgramProfile.DoesNotExist:
+        return Response({'status': 'error', 'message': 'Mentorship program profile not found.'},
+                        status=status.HTTP_404_NOT_FOUND)
+
+    # Update the values based on states
+    if data.get('mentor-rejection-reason'):
+        program_profile.user.is_mentor_profile_active = False
+        program_profile.user.is_mentor_profile_removed = False
+        mentor_profile.removed_date = datetime.utcnow()
+        mentor_profile.mentor_status = request.data.get('mentor-rejection-reason')
+        mentor_profile.save()
+        program_profile.save()
 
     return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
 
