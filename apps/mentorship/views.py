@@ -12,6 +12,8 @@ from apps.mentorship.serializer import ApplicationQuestionSerializer, Applicatio
     MentorProfileSerializer
 from apps.talent.models import TalentProfile
 from utils.emails import send_dynamic_email
+from utils.google_admin import create_user
+from utils.helper import generate_random_password
 
 
 class ApplicationQuestionList(generics.ListAPIView):
@@ -330,17 +332,74 @@ def update_mentor_application_status(request, mentor_id):
                     'interview_link': 'https://calendly.com/d/ys9-f5w-mvt/tbc-mentor-screening',
                 }
             }
+            send_dynamic_email(email_data)
+        except Exception as e:
+            print(e)
+
+    if data.get('mentor-update-status') == 'interview-reminder':
+        mentor_profile.interview_reminder_date = datetime.utcnow()
+
+        mentor_profile.save()
+
+        try:
+            # Prepare email data
+            email_data = {
+                'recipient_emails': program_profile.user.email,
+                'template_id': 'd-c3bf3a0d070847d9b3ef9daeac579692',
+                'dynamic_template_data': {
+                    'first_name': program_profile.user.first_name,
+                    'interview_link': 'https://calendly.com/d/ys9-f5w-mvt/tbc-mentor-screening',
+                }
+            }
             email_response = send_dynamic_email(email_data)
             if email_response:
                 print('email sent')
             else:
-                print
+                print(f'did not send mentor approval email: {mentor_profile.id}')
         except BaseException as e:
             print(str(e))
             print('email not sent')
 
+    if data.get('mentor-update-status') == 'approve-mentor':
+        program_profile.user.is_mentor_interviewing = False
+        mentor_profile.mentor_status = 'need_cal_info'
 
-    return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
+        random_pas = generate_random_password()
+        tbc_email = program_profile.user.first_name + '.' + program_profile.user.last_name[0] + '@techbychoice.org'
+        program_profile.tbc_email = tbc_email
+
+        mentor_profile.save()
+        program_profile.save()
+
+        new_user_info = {
+            'name': {'familyName': program_profile.user.last_name, 'givenName': program_profile.user.first_name},
+            'password': random_pas,
+            'primaryEmail': tbc_email,
+            'changePasswordAtNextLogin': True
+        }
+        try:
+            create_user(new_user_info)
+            try:
+                # # Prepare email data
+                email_data = {
+                    'recipient_emails': program_profile.user.email,
+                    'template_id': 'd-73116acccef0417aacd54c6c57c6cedf',
+                    'dynamic_template_data': {
+                        'first_name': program_profile.user.first_name,
+                        'temp_password': random_pas,
+                        'tbc_email': tbc_email
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
+            except Exception as e:
+                print(e)
+                print(f'did not send mentor approval email: {mentor_profile.id}')
+        except BaseException as e:
+            print(f'Did not create gmail account mentor for mentor: {mentor_profile.id}')
+            print(e)
+            return Response({'status': False, 'message': 'We ran into issues creating the gmail account.'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 @api_view(['GET'])

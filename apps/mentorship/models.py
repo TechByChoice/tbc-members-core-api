@@ -116,6 +116,7 @@ class MentorProfile(models.Model):
         ('active', 'Active'),
         ('interviewing', 'Interviewing'),
         ('paused', 'Paused'),
+        ('need_cal_info', 'Need Booking Info'),
         ('removed', 'Removed'),
         ('removed_coc_issues', 'Removed COC Issues'),
         ('removed_inactive', 'Removed Inactive'),
