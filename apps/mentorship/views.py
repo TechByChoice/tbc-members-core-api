@@ -11,6 +11,7 @@ from apps.mentorship.models import ApplicationQuestion, ApplicationAnswers, Ment
 from apps.mentorship.serializer import ApplicationQuestionSerializer, ApplicationAnswersSerializer, \
     MentorProfileSerializer
 from apps.talent.models import TalentProfile
+from utils.emails import send_dynamic_email
 
 
 class ApplicationQuestionList(generics.ListAPIView):
@@ -95,7 +96,6 @@ class MentorDetailView(APIView):
         mentor = self.get_object(pk)
         mentor.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 
 @api_view(['GET'])
@@ -233,6 +233,7 @@ def update_career_questions(request):
     return Response({'status': 'success', 'message': 'Career questions updated successfully'},
                     status=status.HTTP_200_OK)
 
+
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
 def update_profile_questions(request):
@@ -291,7 +292,8 @@ def update_mentor_application_status(request, mentor_id):
     user = request.user
     data = request.data
     if not user.is_staff:
-        return Response({'status': False, 'message': 'Values updated successfully.'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'status': False, 'message': 'Values updated successfully.'},
+                        status=status.HTTP_401_UNAUTHORIZED)
     # Retrieve the MentorshipProgramProfile for the current user
     try:
         program_profile = MentorshipProgramProfile.objects.get(user=mentor_id)
@@ -308,6 +310,35 @@ def update_mentor_application_status(request, mentor_id):
         mentor_profile.mentor_status = request.data.get('mentor-rejection-reason')
         mentor_profile.save()
         program_profile.save()
+
+    if data.get('mentor-update-status') == 'send-invite':
+        mentor_profile.interview_requested_at_date = datetime.utcnow()
+        program_profile.user.is_mentor_interviewing = True
+        mentor_profile.mentor_status = 'interviewing'
+
+        mentor_profile.save()
+        program_profile.save()
+        program_profile.user.save()
+
+        try:
+            # Prepare email data
+            email_data = {
+                'recipient_emails': program_profile.user.email,
+                'template_id': 'd-97697a1cd7564f9ea58f388c573e40c4',
+                'dynamic_template_data': {
+                    'first_name': program_profile.user.first_name,
+                    'interview_link': 'https://calendly.com/d/ys9-f5w-mvt/tbc-mentor-screening',
+                }
+            }
+            email_response = send_dynamic_email(email_data)
+            if email_response:
+                print('email sent')
+            else:
+                print
+        except BaseException as e:
+            print(str(e))
+            print('email not sent')
+
 
     return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
 
