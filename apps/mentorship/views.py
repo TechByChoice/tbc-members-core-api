@@ -151,6 +151,16 @@ def create_or_update_mentorship_profile(request):
 
         program_profile.mentor_profile = mentor_profile
 
+        try:
+            email_data = {
+                'recipient_emails': user.email,
+                'template_id': 'd-4e2837ac2bbe4127b889938e47d54f47',
+            }
+            send_dynamic_email(email_data)
+        except Exception as e:
+            print(e)
+            print(f'Did not send mentor application submitted for user id: {user.id}')
+
     # Update or create MenteeProfile
     mentee_profile, created = MenteeProfile.objects.update_or_create(
         user=user,
@@ -314,7 +324,8 @@ def update_calendar_link(request):
     except Exception as e:
         print(e)
         print(f'did not send mentor approval email: {mentor_profile.id}')
-        return Response({'status': False, 'message': 'We ran into an issue updating your profile.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'status': False, 'message': 'We ran into an issue updating your profile.'},
+                        status=status.HTTP_404_NOT_FOUND)
 
 
 @api_view(['POST'])
@@ -333,36 +344,71 @@ def update_mentor_application_status(request, mentor_id):
                         status=status.HTTP_404_NOT_FOUND)
 
     # Update the values based on states
+
+    # Need to create an email for rejected mentor
     if data.get('mentor-rejection-reason'):
         program_profile.user.is_mentor_profile_active = False
         program_profile.user.is_mentor_profile_removed = False
         mentor_profile.removed_date = datetime.utcnow()
         mentor_profile.mentor_status = request.data.get('mentor-rejection-reason')
-        mentor_profile.save()
-        program_profile.save()
 
-    if data.get('mentor-update-status') == 'send-invite':
-        mentor_profile.interview_requested_at_date = datetime.utcnow()
-        program_profile.user.is_mentor_interviewing = True
-        mentor_profile.mentor_status = 'interviewing'
+        try:
+            mentor_profile.save()
+            program_profile.save()
+            return Response({'status': True,
+                             'message': 'Status updated successfully.'},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'status': False,
+                             'message': 'We ran into trouble updating your account. Please contact us at '
+                                        'support@techbychoice.org if the issue continues.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('mentor-rejection-reason'):
+        program_profile.user.is_mentor_profile_active = False
+        program_profile.user.is_mentor_profile_removed = False
+        mentor_profile.removed_date = datetime.utcnow()
+        mentor_profile.mentor_status = request.data.get('mentor-rejection-reason')
+        try:
+            mentor_profile.save()
+            program_profile.save()
+            mentor_profile.user.save()
+            return Response({'status': True,
+                             'message': 'Status updated successfully.'},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'status': False,
+                             'message': 'We ran into trouble updating your account. Please contact us at '
+                                        'support@techbychoice.org if the issue continues.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('mentor-update-status') == 'paused':
+        program_profile.user.is_mentor_active = False
+        mentor_profile.mentor_status = 'paused'
 
         mentor_profile.save()
-        program_profile.save()
         program_profile.user.save()
 
         try:
-            # Prepare email data
             email_data = {
                 'recipient_emails': program_profile.user.email,
-                'template_id': 'd-97697a1cd7564f9ea58f388c573e40c4',
+                'template_id': 'd-56e85c5ec90f4f149e2b8662a3d4bf64',
                 'dynamic_template_data': {
                     'first_name': program_profile.user.first_name,
-                    'interview_link': 'https://calendly.com/d/ys9-f5w-mvt/tbc-mentor-screening',
                 }
             }
             send_dynamic_email(email_data)
+            return Response({'status': True,
+                             'message': 'Status updated successfully.'},
+                            status=status.HTTP_200_OK)
         except Exception as e:
             print(e)
+            return Response({'status': False,
+                             'message': 'We ran into trouble updating your account. Please contact us at '
+                                        'support@techbychoice.org if the issue continues.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
     if data.get('mentor-update-status') == 'interview-reminder':
         mentor_profile.interview_reminder_date = datetime.utcnow()
@@ -429,8 +475,8 @@ def update_mentor_application_status(request, mentor_id):
         except BaseException as e:
             print(f'Did not create gmail account mentor for mentor: {mentor_profile.id}')
             print(e)
-            return Response({'status': False, 'message': 'We ran into issues creating the gmail account.'}, status=status.HTTP_400_BAD_REQUEST)
-
+            return Response({'status': False, 'message': 'We ran into issues creating the gmail account.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
