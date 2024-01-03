@@ -15,6 +15,7 @@ urlpatterns = [
     path('update/career/', views.update_career_questions, name='update-career-questions'),
     path('update/value/', views.update_values_questions, name='update-value-questions'),
     path('update/profile/', views.update_profile_questions, name='update_profile_questions'),
+    path('update/calendar-link/', views.update_calendar_link, name='update_calendar_link'),
     path('mentor-match/', views.get_top_mentor_match, name='mentor-match'),
     path('', MentorListView.as_view(), name='mentor-list'),
     path('connect', MentorshipRelationshipView.as_view(), name='mentor-connect'),

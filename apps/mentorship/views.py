@@ -290,6 +290,34 @@ def update_values_questions(request):
 
 
 @api_view(['POST'])
+def update_calendar_link(request):
+    user = request.user
+    data = request.data
+
+    try:
+        program_profile = MentorshipProgramProfile.objects.get(user=user.id)
+        mentor_profile = MentorProfile.objects.get(user=user.id)
+    except MentorshipProgramProfile.DoesNotExist:
+        return Response({'status': False, 'message': 'Mentorship program profile not found.'},
+                        status=status.HTTP_404_NOT_FOUND)
+
+    program_profile.user.is_mentor_profile_active = True
+    program_profile.calendar_link = data.get('calendar_link')
+    mentor_profile.activated_at_date = datetime.utcnow()
+    mentor_profile.mentor_status = 'active'
+    try:
+        mentor_profile.save()
+        mentor_profile.user.save()
+        program_profile.save()
+
+        return Response({'status': True, 'message': 'Calendar link updated successfully.'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(e)
+        print(f'did not send mentor approval email: {mentor_profile.id}')
+        return Response({'status': False, 'message': 'We ran into an issue updating your profile.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
 def update_mentor_application_status(request, mentor_id):
     user = request.user
     data = request.data
@@ -362,6 +390,8 @@ def update_mentor_application_status(request, mentor_id):
 
     if data.get('mentor-update-status') == 'approve-mentor':
         program_profile.user.is_mentor_interviewing = False
+        # approved is before the cal link is live
+        program_profile.user.is_mentor_profile_approved = True
         mentor_profile.mentor_status = 'need_cal_info'
 
         random_pas = generate_random_password()
@@ -370,6 +400,7 @@ def update_mentor_application_status(request, mentor_id):
 
         mentor_profile.save()
         program_profile.save()
+        program_profile.user.save()
 
         new_user_info = {
             'name': {'familyName': program_profile.user.last_name, 'givenName': program_profile.user.first_name},
