@@ -225,23 +225,6 @@ SESSION_COOKIE_DOMAIN = "localhost:3000"
 SESSION_COOKIE_SAMESITE = None
 SESSION_COOKIE_SECURE = False  # Set this to True in production with HTTPS
 
-# CORS_ORIGIN_WHITELIST = [
-#     'http://localhost:3000',
-#     'http://127.0.0.1:3000',
-#     'https://dev.onsolosocial.com',
-#     'https://app.onsolosocial.com',
-#     'https://onsolosocial.com',
-#     'https://containers-us-west-57.railway.app',
-#     # other origins...
-# ]
-# CORS_ALLOW_HEADERS = [
-#     'http://localhost:3000',
-#     'http://127.0.0.1:3000',
-# ]
-#
-# SESSION_COOKIE_SECURE = False
-# SESSION_COOKIE_SAMESITE = 'None'
-
 
 LOGGING = {
     'version': 1,
