@@ -3,6 +3,7 @@ celery==5.3.4
 tweepy==4.14.0
 django-storages==1.14
 django-cors-headers==4.2.0
+eventbrite==3.3.5
 stripe==6.4.0
 asgiref==3.7.2
 attrs==23.1.0
