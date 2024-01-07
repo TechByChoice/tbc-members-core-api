@@ -16,6 +16,9 @@ django-rest-knox==4.2.0
 django-quill-editor==0.1.40
 djangorestframework==3.14.0
 filelock
+google-api-python-client==2.111.0
+google-auth==2.25.2
+google-auth-httplib2==0.2.0
 gunicorn==21.2.0
 importlib-metadata==6.8.0
 iniconfig==2.0.0
