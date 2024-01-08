@@ -39,7 +39,8 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '127.0.0.1:3000',
     'localhost',
-    'localhost:3000'
+    'localhost:3000',
+    'beta.api.techbychoice.org'
 ]
 
 # Application definition
@@ -212,6 +213,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://localhost:7001',
     'http://127.0.0.1:7001',
+    'https://www.beta.techbychoice.org',
+    'https://www.gamma.techbychoice.org'
 ]
 CSRF_COOKIE_SECURE = False  # Set to True in production
 CSRF_COOKIE_DOMAIN = "localhost:3000"
