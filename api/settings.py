@@ -290,3 +290,6 @@ SESSION_ENGINE = 'django.contrib.sessions.backends.db'
 JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 JWT_ALGORITHM = 'HS256'
 TOKEN_EXPIRATION = timedelta(days=7)
+
+# disabled for deployment testing
+DISABLE_COLLECTSTATIC=1
