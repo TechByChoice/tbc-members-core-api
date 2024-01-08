@@ -108,8 +108,8 @@ def get_mentorship_data(request):
     if not requested_fields or 'commitment_level' in requested_fields:
         data['commitment_level'] = list(CommitmentLevel.objects.values('name', 'id'))
 
-    if not requested_fields or 'mentor_support_areas' in requested_fields:
-        data['mentor_support_areas'] = list(MentorSupportAreas.objects.values('name', 'id'))
+    if not requested_fields or 'support_areas' in requested_fields:
+        data['support_areas'] = list(MentorSupportAreas.objects.values('name', 'id'))
 
     if not requested_fields or 'application_questions' in requested_fields:
         data['application_questions'] = list(ApplicationQuestion.objects.values('name', 'id'))
@@ -141,7 +141,7 @@ def create_or_update_mentorship_profile(request):
     mentor_profile, created = MentorProfile.objects.update_or_create(
         user=user,
         defaults={
-            'mentor_support_areas': data.get('mentor_support_areas'),
+            'commitment_level': data.get('commitment_level'),
             # Include other fields as necessary
         }
     )
@@ -199,8 +199,10 @@ def update_support_type(request):
 
     if user.is_mentor:
         mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
-        support_area_ids = data.get('mentor_support_areas', [])
-        mentor_profile.mentor_support_areas.set(support_area_ids)
+        support_area_ids = data.get('commitment_level', [])
+        # TODO | remove_support_areas and just use commitment_level
+        mentor_profile.commitment_level.set(support_area_ids)
+        mentor_profile.commitment_level.set(support_area_ids)
         mentor_profile.save()
 
     if user.is_mentee:
@@ -211,7 +213,7 @@ def update_support_type(request):
             program_profile.mentee_support_areas.set(mentee_support_area_ids)
             mentee_profile.save()
             program_profile.save()
-            print(mentee_profile.mentee_support_areas.all())
+
             if not program_profile.mentee_profile:
                 program_profile.mentee_profile = mentee_profile
                 program_profile.save()

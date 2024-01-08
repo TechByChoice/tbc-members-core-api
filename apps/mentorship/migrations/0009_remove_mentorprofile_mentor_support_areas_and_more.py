@@ -8,10 +8,10 @@ class Migration(migrations.Migration):
     dependencies = [("mentorship", "0008_alter_menteeprofile_mentee_support_areas")]
 
     operations = [
-        migrations.RemoveField(model_name="mentorprofile", name="mentor_support_areas"),
+        migrations.RemoveField(model_name="mentorprofile", name="commitment_level"),
         migrations.AddField(
             model_name="mentorprofile",
-            name="mentor_support_areas",
+            name="commitment_level",
             field=models.ManyToManyField(blank=True, to="mentorship.commitmentlevel"),
         ),
     ]

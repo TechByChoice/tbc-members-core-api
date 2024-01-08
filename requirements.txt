@@ -46,3 +46,5 @@ virtualenv==20.24.5
 virtualenv-clone==0.5.7
 whitenoise==6.5.0
 zipp==3.16.2
+slack_sdk==3.26.1
+eventbrite==3.3.5

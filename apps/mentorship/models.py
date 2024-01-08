@@ -25,6 +25,7 @@ class CommitmentLevel(models.Model):
         return self.name
 
 
+# TODO | Remove not using
 class ApplicationQuestion(models.Model):
     # Define choices for the 'question_type' field
     QUESTION_TYPE_CHOICES = [
@@ -56,6 +57,7 @@ class ApplicationQuestion(models.Model):
         return self.question_text
 
 
+# TODO | Remove not using
 class ApplicationAnswers(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
     question = models.ForeignKey(ApplicationQuestion, on_delete=models.CASCADE)
@@ -133,7 +135,7 @@ class MentorProfile(models.Model):
     removed_coc_date = models.DateTimeField(blank=True, null=True)
     removed_inactive_date = models.DateTimeField(blank=True, null=True)
     interview_reminder_date = models.DateTimeField(blank=True, null=True)
-    mentor_support_areas = models.ManyToManyField(CommitmentLevel, blank=True)
+    mentor_commitment_level = models.ManyToManyField(CommitmentLevel, blank=True, name="mentor_commitment_level")
     mentor_how_to_help = models.CharField(max_length=3000, blank=True, null=True)
     mentorship_goals = models.CharField(max_length=3000, blank=True, null=True)
 
@@ -149,6 +151,7 @@ class MenteeProfile(models.Model):
     removed_coc_date = models.DateTimeField(blank=True, null=True)
     removed_inactive_date = models.DateTimeField(blank=True, null=True)
     interview_reminder_date = models.DateTimeField(blank=True, null=True)
+    commitment_level = models.ManyToManyField(CommitmentLevel, blank=True)
     mentee_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True)
 
 
@@ -168,10 +171,19 @@ class MentorReview(models.Model):
 class MentorRoster(models.Model):
     mentor = models.ForeignKey(MentorProfile, on_delete=models.CASCADE)
     mentee = models.ForeignKey(MenteeProfile, on_delete=models.CASCADE)
-    mentee_review_of_mentor = models.ManyToManyField(MentorReview, related_name='mentee_reviews')
-    mentor_review_of_mentee = models.ManyToManyField(MentorReview, related_name='mentor_reviews')
+    mentee_review_of_mentor = models.ManyToManyField(MentorReview, related_name='mentee_reviews', blank=True)
+    mentor_review_of_mentee = models.ManyToManyField(MentorReview, related_name='mentor_reviews', blank=True)
+    sessions = models.ManyToManyField('Session', related_name='mentor_roster_sessions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+class Session(models.Model):
+    mentor_mentee_connection = models.ForeignKey(MentorRoster, related_name='MenteeMentorConnections', on_delete=models.CASCADE)
+    note = models.TextField(blank=True, null=True)
+    reason = models.ManyToManyField(MentorSupportAreas, blank=False)
+    created_by = models.ForeignKey(CustomUser, related_name='MenteeMentorConnections', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class MentorshipProgramProfile(models.Model):
@@ -188,6 +200,7 @@ class MentorshipProgramProfile(models.Model):
     roster = models.ForeignKey(MentorRoster, on_delete=models.CASCADE, blank=True, null=True)
     commitment_level = models.ManyToManyField(CommitmentLevel, related_name='commitment_level')
     mentee_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True, related_name='mentee_support_areas')
+    mentor_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True, related_name='mentor_support_areas')
     # details
     biggest_strengths = models.CharField(max_length=3000, blank=True, null=True)
     career_success = models.CharField(max_length=3000, blank=True, null=True)
