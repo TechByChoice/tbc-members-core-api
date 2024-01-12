@@ -193,16 +193,15 @@ def update_support_type(request):
 
     # Update CommitmentLevel - ManyToManyField
     commitment_data = data.get('commitment_level')
-    # commitment_level_ids = commitment_data.get('commitment_level', [])
     program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
     program_profile.save()
 
     if user.is_mentor:
         mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
-        support_area_ids = data.get('commitment_level', [])
-        # TODO | remove_support_areas and just use commitment_level
-        mentor_profile.commitment_level.set(support_area_ids)
-        mentor_profile.commitment_level.set(support_area_ids)
+        support_area_ids = data.get('mentor_support_areas', [])
+
+        mentor_profile.mentor_commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
+        program_profile.mentor_support_areas.set(support_area_ids)
         mentor_profile.save()
 
     if user.is_mentee:
