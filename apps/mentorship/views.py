@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Q, Count
 from rest_framework import generics, viewsets, status
 from rest_framework.decorators import action, api_view
@@ -9,6 +11,9 @@ from apps.mentorship.models import ApplicationQuestion, ApplicationAnswers, Ment
 from apps.mentorship.serializer import ApplicationQuestionSerializer, ApplicationAnswersSerializer, \
     MentorProfileSerializer
 from apps.talent.models import TalentProfile
+from utils.emails import send_dynamic_email
+from utils.google_admin import create_user
+from utils.helper import generate_random_password
 
 
 class ApplicationQuestionList(generics.ListAPIView):
@@ -53,7 +58,7 @@ class MentorListView(APIView):
     serializer_class = MentorProfileSerializer
 
     def get(self, request, format=None):
-        mentors = MentorProfile.objects.all()
+        mentors = MentorProfile.objects.filter(user__is_mentor_profile_active=True)
         serializer = MentorProfileSerializer(mentors, many=True)
         return Response(serializer.data)
 
@@ -95,7 +100,6 @@ class MentorDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-
 @api_view(['GET'])
 def get_mentorship_data(request):
     data = {}
@@ -104,8 +108,8 @@ def get_mentorship_data(request):
     if not requested_fields or 'commitment_level' in requested_fields:
         data['commitment_level'] = list(CommitmentLevel.objects.values('name', 'id'))
 
-    if not requested_fields or 'mentor_support_areas' in requested_fields:
-        data['mentor_support_areas'] = list(MentorSupportAreas.objects.values('name', 'id'))
+    if not requested_fields or 'support_areas' in requested_fields:
+        data['support_areas'] = list(MentorSupportAreas.objects.values('name', 'id'))
 
     if not requested_fields or 'application_questions' in requested_fields:
         data['application_questions'] = list(ApplicationQuestion.objects.values('name', 'id'))
@@ -137,7 +141,7 @@ def create_or_update_mentorship_profile(request):
     mentor_profile, created = MentorProfile.objects.update_or_create(
         user=user,
         defaults={
-            'mentor_support_areas': data.get('mentor_support_areas'),
+            'commitment_level': data.get('commitment_level'),
             # Include other fields as necessary
         }
     )
@@ -146,6 +150,16 @@ def create_or_update_mentorship_profile(request):
         user.save()
 
         program_profile.mentor_profile = mentor_profile
+
+        try:
+            email_data = {
+                'recipient_emails': user.email,
+                'template_id': 'd-4e2837ac2bbe4127b889938e47d54f47',
+            }
+            send_dynamic_email(email_data)
+        except Exception as e:
+            print(e)
+            print(f'Did not send mentor application submitted for user id: {user.id}')
 
     # Update or create MenteeProfile
     mentee_profile, created = MenteeProfile.objects.update_or_create(
@@ -178,26 +192,31 @@ def update_support_type(request):
         user.save()
 
     # Update CommitmentLevel - ManyToManyField
-    commitment_data = data.get('commitment_level')
-    # commitment_level_ids = commitment_data.get('commitment_level', [])
-    program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
-    program_profile.save()
+    commitment_data = data.get('commitment_level_id')
+    if commitment_data is not None:
+        program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
+        program_profile.save()
 
     if user.is_mentor:
         mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
-        support_area_ids = data.get('mentor_support_areas', [])
-        mentor_profile.mentor_support_areas.set(support_area_ids)
+        support_area_ids = data.get('mentor_support_areas_id', [])
+
+        if commitment_data is not None:
+            mentor_profile.mentor_commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
+        if support_area_ids is not None:
+            program_profile.mentor_support_areas.set(support_area_ids)
         mentor_profile.save()
 
     if user.is_mentee:
         mentee_profile, _ = MenteeProfile.objects.get_or_create(user=user)
         if mentee_profile:
-            mentee_support_area_ids = data.get('mentee_support_areas', [])
-            mentee_profile.mentee_support_areas.set(mentee_support_area_ids)
-            program_profile.mentee_support_areas.set(mentee_support_area_ids)
+            mentee_support_area_ids = data.get('mentee_support_areas_id', [])
+            if mentee_support_area_ids is not None:
+                mentee_profile.mentee_support_areas.set(mentee_support_area_ids)
+                program_profile.mentee_support_areas.set(mentee_support_area_ids)
             mentee_profile.save()
             program_profile.save()
-            print(mentee_profile.mentee_support_areas.all())
+
             if not program_profile.mentee_profile:
                 program_profile.mentee_profile = mentee_profile
                 program_profile.save()
@@ -230,6 +249,7 @@ def update_career_questions(request):
 
     return Response({'status': 'success', 'message': 'Career questions updated successfully'},
                     status=status.HTTP_200_OK)
+
 
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
@@ -282,6 +302,201 @@ def update_values_questions(request):
     program_profile.save()
 
     return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+def update_calendar_link(request):
+    user = request.user
+    data = request.data
+
+    try:
+        program_profile = MentorshipProgramProfile.objects.get(user=user.id)
+        mentor_profile = MentorProfile.objects.get(user=user.id)
+    except MentorshipProgramProfile.DoesNotExist:
+        return Response({'status': False, 'message': 'Mentorship program profile not found.'},
+                        status=status.HTTP_404_NOT_FOUND)
+
+    user.is_mentor_profile_active = True
+    program_profile.calendar_link = data.get('calendar_link')
+    mentor_profile.activated_at_date = datetime.utcnow()
+    mentor_profile.mentor_status = 'active'
+    try:
+        mentor_profile.save()
+        user.save()
+        program_profile.save()
+
+        return Response({'status': True, 'message': 'Calendar link updated successfully.'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(e)
+        print(f'did not send mentor approval email: {mentor_profile.id}')
+        return Response({'status': False, 'message': 'We ran into an issue updating your profile.'},
+                        status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+def update_mentor_application_status(request, mentor_id):
+    user = request.user
+    data = request.data
+
+    # Retrieve the MentorshipProgramProfile for the current user
+    try:
+        program_profile = MentorshipProgramProfile.objects.get(user=mentor_id)
+        mentor_profile = MentorProfile.objects.get(user=mentor_id)
+    except MentorshipProgramProfile.DoesNotExist:
+        return Response({'status': 'error', 'message': 'Mentorship program profile not found.'},
+                        status=status.HTTP_404_NOT_FOUND)
+    try:
+        current_user_mentor_profile = MentorProfile.objects.get(user__id=mentor_id)
+    except Exception as e:
+        current_user_mentor_profile = None
+    is_user_owner_of_profile = current_user_mentor_profile.user.id == mentor_id
+    if not user.is_staff and not is_user_owner_of_profile:
+        return Response({'status': False, 'message': 'Values updated successfully.'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+
+
+    # Update the values based on states
+
+    # Need to create an email for rejected mentor
+    if data.get('mentor-rejection-reason'):
+        program_profile.user.is_mentor_profile_active = False
+        program_profile.user.is_mentor_profile_removed = False
+        mentor_profile.removed_date = datetime.utcnow()
+        mentor_profile.mentor_status = request.data.get('mentor-rejection-reason')
+        try:
+            mentor_profile.save()
+            program_profile.save()
+            mentor_profile.user.save()
+            return Response({'status': True,
+                             'message': 'Status updated successfully.'},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'status': False,
+                             'message': 'We ran into trouble updating your account. Please contact us at '
+                                        'support@techbychoice.org if the issue continues.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('mentor-update-status') == 'paused':
+        program_profile.user.is_mentor_active = False
+        mentor_profile.mentor_status = 'paused'
+        mentor_profile.paused_date = datetime.utcnow()
+
+        mentor_profile.save()
+        program_profile.user.save()
+        program_profile.save()
+
+        try:
+            email_data = {
+                'recipient_emails': program_profile.user.email,
+                'template_id': 'd-56e85c5ec90f4f149e2b8662a3d4bf64',
+                'dynamic_template_data': {
+                    'first_name': program_profile.user.first_name,
+                }
+            }
+            send_dynamic_email(email_data)
+            return Response({'status': True,
+                             'message': 'Status updated successfully.'},
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response({'status': False,
+                             'message': 'We ran into trouble updating your account. Please contact us at '
+                                        'support@techbychoice.org if the issue continues.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('mentor-update-status') == 'interview-reminder':
+        mentor_profile.interview_reminder_date = datetime.utcnow()
+
+        mentor_profile.save()
+
+        try:
+            # Prepare email data
+            email_data = {
+                'recipient_emails': program_profile.user.email,
+                'template_id': 'd-c3bf3a0d070847d9b3ef9daeac579692',
+                'dynamic_template_data': {
+                    'first_name': program_profile.user.first_name,
+                    'interview_link': 'https://calendly.com/d/ys9-f5w-mvt/tbc-mentor-screening',
+                }
+            }
+            email_response = send_dynamic_email(email_data)
+            if email_response:
+                print('email sent')
+            else:
+                print(f'did not send mentor approval email: {mentor_profile.id}')
+        except BaseException as e:
+            print(str(e))
+            print('email not sent')
+
+    if data.get('mentor-update-status') == 'approve-mentor':
+        program_profile.user.is_mentor_interviewing = False
+        # approved is before the cal link is live
+        program_profile.user.is_mentor_profile_approved = True
+        mentor_profile.mentor_status = 'need_cal_info'
+
+        random_pas = generate_random_password()
+        tbc_email = program_profile.user.first_name + '.' + program_profile.user.last_name[0] + '@techbychoice.org'
+        program_profile.tbc_email = tbc_email
+
+        mentor_profile.save()
+        program_profile.save()
+        program_profile.user.save()
+
+        new_user_info = {
+            'name': {'familyName': program_profile.user.last_name, 'givenName': program_profile.user.first_name},
+            'password': random_pas,
+            'primaryEmail': tbc_email,
+            'changePasswordAtNextLogin': True
+        }
+        try:
+            create_user(new_user_info)
+            try:
+                # # Prepare email data
+                email_data = {
+                    'recipient_emails': program_profile.user.email,
+                    'template_id': 'd-73116acccef0417aacd54c6c57c6cedf',
+                    'dynamic_template_data': {
+                        'first_name': program_profile.user.first_name,
+                        'temp_password': random_pas,
+                        'tbc_email': tbc_email
+                    }
+                }
+                send_dynamic_email(email_data)
+                return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
+            except Exception as e:
+                print(e)
+                print(f'did not send mentor approval email: {mentor_profile.id}')
+        except BaseException as e:
+            print(f'Did not create gmail account mentor for mentor: {mentor_profile.id}')
+            print(e)
+            return Response({'status': False, 'message': 'We ran into issues creating the gmail account.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+    if data.get('mentor-update-status') == 'active':
+        program_profile.user.is_mentor_profile_active = True
+        mentor_profile.mentor_status = 'active'
+
+        mentor_profile.save()
+        program_profile.save()
+        program_profile.user.save()
+
+        try:
+            # # Prepare email data
+            email_data = {
+                'recipient_emails': program_profile.user.email,
+                'template_id': 'd-e803641e82084847ad2fbcbb855d7be0',
+                'dynamic_template_data': {
+                    'first_name': program_profile.user.first_name,
+                }
+            }
+            send_dynamic_email(email_data)
+            return Response({'status': True, 'message': 'Values updated successfully.'}, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            print(f'did not send mentor approval email: {mentor_profile.id}')
+            return Response({'status': False, 'message': 'We ran into issues creating the gmail account.'},
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET'])
