@@ -192,24 +192,28 @@ def update_support_type(request):
         user.save()
 
     # Update CommitmentLevel - ManyToManyField
-    commitment_data = data.get('commitment_level')
-    program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
-    program_profile.save()
+    commitment_data = data.get('commitment_level_id')
+    if commitment_data is not None:
+        program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
+        program_profile.save()
 
     if user.is_mentor:
         mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
-        support_area_ids = data.get('mentor_support_areas', [])
+        support_area_ids = data.get('mentor_support_areas_id', [])
 
-        mentor_profile.mentor_commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
-        program_profile.mentor_support_areas.set(support_area_ids)
+        if commitment_data is not None:
+            mentor_profile.mentor_commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
+        if support_area_ids is not None:
+            program_profile.mentor_support_areas.set(support_area_ids)
         mentor_profile.save()
 
     if user.is_mentee:
         mentee_profile, _ = MenteeProfile.objects.get_or_create(user=user)
         if mentee_profile:
-            mentee_support_area_ids = data.get('mentee_support_areas', [])
-            mentee_profile.mentee_support_areas.set(mentee_support_area_ids)
-            program_profile.mentee_support_areas.set(mentee_support_area_ids)
+            mentee_support_area_ids = data.get('mentee_support_areas_id', [])
+            if mentee_support_area_ids is not None:
+                mentee_profile.mentee_support_areas.set(mentee_support_area_ids)
+                program_profile.mentee_support_areas.set(mentee_support_area_ids)
             mentee_profile.save()
             program_profile.save()
 
@@ -333,9 +337,7 @@ def update_calendar_link(request):
 def update_mentor_application_status(request, mentor_id):
     user = request.user
     data = request.data
-    if not user.is_staff:
-        return Response({'status': False, 'message': 'Values updated successfully.'},
-                        status=status.HTTP_401_UNAUTHORIZED)
+
     # Retrieve the MentorshipProgramProfile for the current user
     try:
         program_profile = MentorshipProgramProfile.objects.get(user=mentor_id)
@@ -343,6 +345,15 @@ def update_mentor_application_status(request, mentor_id):
     except MentorshipProgramProfile.DoesNotExist:
         return Response({'status': 'error', 'message': 'Mentorship program profile not found.'},
                         status=status.HTTP_404_NOT_FOUND)
+    try:
+        current_user_mentor_profile = MentorProfile.objects.get(user__id=mentor_id)
+    except Exception as e:
+        current_user_mentor_profile = None
+    is_user_owner_of_profile = current_user_mentor_profile.user.id == mentor_id
+    if not user.is_staff and not is_user_owner_of_profile:
+        return Response({'status': False, 'message': 'Values updated successfully.'},
+                        status=status.HTTP_401_UNAUTHORIZED)
+
 
     # Update the values based on states
 
