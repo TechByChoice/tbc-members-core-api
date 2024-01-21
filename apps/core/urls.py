@@ -5,6 +5,7 @@ from . import views
 
 urlpatterns = [
     path('login/', views.login_api),
+    path('logout/', knox_views.LogoutView.as_view()),
     path('new/', views.create_new_user),
     path('details/', views.get_user_data),
     path('details/new-member', views.get_new_member_data),
