@@ -1,19 +1,22 @@
 import json
 import logging
 
+from django.contrib.auth import user_logged_out
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from knox.auth import AuthToken
+from knox.auth import AuthToken, TokenAuthentication
 from rest_framework import status
 from rest_framework.decorators import api_view, throttle_classes, parser_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
+from rest_framework.views import APIView
 
 from apps.company.models import Roles, JobLevel, CompanyProfile, Skill, Department, CompanyTypes, Industries, \
     SalaryRange, COMPANY_SIZE, ON_SITE_REMOTE
@@ -843,3 +846,14 @@ def create_new_user(request):
 
     else:
         return JsonResponse({'status': False, 'error': 'Invalid request method'}, status=405)
+
+
+class LogoutView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    def post(self, request, format=None):
+        request._auth.delete()
+        user_logged_out.send(sender=request.user.__class__,
+                             request=request, user=request.user)
+        return Response(None, status=status.HTTP_204_NO_CONTENT)
