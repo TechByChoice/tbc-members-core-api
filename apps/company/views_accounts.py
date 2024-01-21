@@ -20,7 +20,20 @@ class JobViewSet(viewsets.ViewSet):
         data = request.data
 
         # find the company
-        company_id = data['company_id']
+        if 'company_id' in data:
+            company_id = data['company_id']
+        else:
+            new_unclaimed_company = CompanyProfile.objects.create(
+                company_name=data['company_name'],
+                company_url=data['company_url'],
+                unclaimed_account_creator=request.user,
+                is_unclaimed_account=True,
+                account_creator=request.user,
+            )
+            new_unclaimed_company.current_employees.add(request.user)
+            new_unclaimed_company.referral_employees.add(request.user)
+            new_unclaimed_company.save()
+            company_id = new_unclaimed_company.id
 
         # Extract IDs for Many-to-Many relationships
         department_ids = [dept['id'] for dept in data.pop('department', [])]
@@ -249,37 +262,37 @@ class JobViewSet(viewsets.ViewSet):
         return Response(data)
 
 
-@action(detail=False, methods=['get'], url_path='job-match')
-def get_top_job_match(self, request):
-    """
-    Retrieve top job postings.
-    """
-    talent_profile = TalentProfile.objects.get(user=request.user.id)
+    @action(detail=False, methods=['get'], url_path='job-match')
+    def get_top_job_match(self, request):
+        """
+        Retrieve top job postings.
+        """
+        talent_profile = TalentProfile.objects.get(user=request.user.id)
 
-    # Extract skills, roles, and departments
-    talent_skills = talent_profile.skills.all()
-    talent_roles = talent_profile.role.all()
-    talent_departments = talent_profile.department.all()
+        # Extract skills, roles, and departments
+        talent_skills = talent_profile.skills.all()
+        talent_roles = talent_profile.role.all()
+        talent_departments = talent_profile.department.all()
 
-    # Create separate Q objects for each criteria
-    skills_query = Q(skills__in=talent_skills)
-    roles_query = Q(role__in=talent_roles)
-    departments_query = Q(department__in=talent_departments)
+        # Create separate Q objects for each criteria
+        skills_query = Q(skills__in=talent_skills)
+        roles_query = Q(role__in=talent_roles)
+        departments_query = Q(department__in=talent_departments)
 
-    # Combine queries using OR logic
-    combined_query = skills_query | roles_query | departments_query
+        # Combine queries using OR logic
+        combined_query = skills_query | roles_query | departments_query
 
-    # Filter Job instances based on the combined query
-    matching_jobs = Job.objects.filter(combined_query).distinct()
+        # Filter Job instances based on the combined query
+        matching_jobs = Job.objects.filter(combined_query).distinct()
 
-    # Annotate each job with a score based on the number of matching criteria
-    matching_jobs = matching_jobs.annotate(
-        score=Count('skills', filter=Q(skills__in=talent_skills.values_list('id', flat=True))) +
-              Count('role', filter=Q(role__in=talent_profile.role.values_list('id', flat=True))) +
-              Count('department', filter=Q(department__in=talent_departments.values_list('id', flat=True)))
-    ).order_by('-score')
+        # Annotate each job with a score based on the number of matching criteria
+        matching_jobs = matching_jobs.annotate(
+            score=Count('skills', filter=Q(skills__in=talent_skills.values_list('id', flat=True))) +
+                  Count('role', filter=Q(role__in=talent_profile.role.values_list('id', flat=True))) +
+                  Count('department', filter=Q(department__in=talent_departments.values_list('id', flat=True)))
+        ).order_by('-score')
 
-    matching_jobs_serialized = JobSerializer(matching_jobs, many=True).data
+        matching_jobs_serialized = JobSerializer(matching_jobs, many=True).data
 
-    # Render the results in a template
-    return Response({'status': True, 'matching_jobs': matching_jobs_serialized}, status=status.HTTP_200_OK)
+        # Render the results in a template
+        return Response({'status': True, 'matching_jobs': matching_jobs_serialized}, status=status.HTTP_200_OK)
