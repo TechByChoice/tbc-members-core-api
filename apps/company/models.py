@@ -23,6 +23,15 @@ COMPANY_SIZE = (
     ('5001', '5001'),
 )
 
+CAREER_JOURNEY = (
+    ('1', '0 years'),
+    ('2', '1 - 2 years'),
+    ('3', '3 - 5 years'),
+    ('4', '6 - 10 years'),
+    ('5', '11 - 15  years'),
+    ('6', '16 - 20 years'),
+    ('7', '21+ years'),
+)
 
 class Skill(models.Model):
     name = models.CharField(max_length=300)
@@ -406,15 +415,7 @@ class Job(models.Model):
     #
     role = models.ForeignKey(Roles, related_name='job_role_types', on_delete=models.CASCADE, null=True, blank=True)
     experience = models.BooleanField(default=False, null=True, blank=True)
-    CAREER_JOURNEY = (
-        ('1', '0 years'),
-        ('2', '1 - 2 years'),
-        ('3', '3 - 5 years'),
-        ('4', '6 - 10 years'),
-        ('5', '11 - 15  years'),
-        ('6', '16 - 20 years'),
-        ('7', '21+ years'),
-    )
+
     years_of_experience = models.CharField(max_length=10, choices=CAREER_JOURNEY, null=True, blank=True)
     pub_date = models.DateTimeField('date published', auto_now=True)
     sourced_talent_from_us = models.BooleanField(default=False)
