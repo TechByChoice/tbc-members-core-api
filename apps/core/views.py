@@ -636,7 +636,7 @@ def update_profile_work_place(request):
     for role_name in role_names:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role, created = Roles.objects.get_or_create(name=role_name)
+            role, created = Roles.objects.get_or_create(name=role_name['name'])
             roles_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -659,7 +659,7 @@ def update_profile_skills_roles(request):
     for role_name in roles:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = Department.objects.get(name=role_name)
+            role = Department.objects.get(name=role_name['name'])
             roles_to_set.append(role)
         except (Department.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -671,7 +671,7 @@ def update_profile_skills_roles(request):
     for skill in skills:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            name = Skill.objects.get(name=skill)
+            name = Skill.objects.get(name=skill['name'])
             skills_to_set.append(name.pk)
         except (Skill.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
