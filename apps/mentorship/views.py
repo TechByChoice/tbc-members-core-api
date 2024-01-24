@@ -108,8 +108,8 @@ def get_mentorship_data(request):
     if not requested_fields or 'commitment_level' in requested_fields:
         data['commitment_level'] = list(CommitmentLevel.objects.values('name', 'id'))
 
-    if not requested_fields or 'support_areas' in requested_fields:
-        data['support_areas'] = list(MentorSupportAreas.objects.values('name', 'id'))
+    if not requested_fields or 'mentor_support_areas' in requested_fields:
+        data['mentor_support_areas'] = list(MentorSupportAreas.objects.values('name', 'id'))
 
     if not requested_fields or 'application_questions' in requested_fields:
         data['application_questions'] = list(ApplicationQuestion.objects.values('name', 'id'))
