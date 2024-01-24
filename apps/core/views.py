@@ -103,7 +103,8 @@ def get_user_data(request):
     mentor_roster_data = {}
 
     # Get mentor data
-    if user.is_mentor and user.is_mentor_application_submitted:
+    # if user.is_mentor and user.is_mentor_application_submitted:
+    if user.is_mentor_application_submitted:
         mentor_application = MentorshipProgramProfile.objects.get(user=user)
         mentor_serializer = MentorshipProgramProfileSerializer(mentor_application)
         mentor_data = mentor_serializer.data
