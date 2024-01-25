@@ -214,6 +214,7 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:7001',
     'http://127.0.0.1:7001',
     'https://www.beta.techbychoice.org',
+    'https://beta.techbychoice.org',
     'https://www.gamma.techbychoice.org'
 ]
 CSRF_COOKIE_SECURE = False  # Set to True in production
