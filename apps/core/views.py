@@ -304,7 +304,7 @@ def create_new_member(request):
     }
 
     talent_data = {
-        'tech_journey': data.get('tech_journey', []),
+        'tech_journey': data.get('years_of_experience', []),
         'talent_status': data.get('talent_status', False),
         'company_types': data.get('company_types', []).split(',') if data.get('company_types') else '',
         'department': data.get('job_department', []).split(','),
