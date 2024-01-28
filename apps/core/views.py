@@ -12,6 +12,7 @@ from knox.auth import AuthToken, TokenAuthentication
 from rest_framework import status
 from rest_framework.decorators import api_view, throttle_classes, parser_classes
 from rest_framework.exceptions import ValidationError
+from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -326,6 +327,11 @@ def create_new_member(request):
             # user_details = CustomUser.objects.get(id=request.user.id)
 
             # Handle TalentProfile related fields and create object
+            try:
+                talent_profile = TalentProfile.objects.get(user=user)
+            except TalentProfile.DoesNotExist:
+                talent_profile = None
+
             roles_to_set = []  # This list will hold the role objects to be set to the TalentProfile
             for role_name in talent_data['role']:
                 try:
@@ -414,11 +420,16 @@ def create_new_member(request):
             talent_data['department'] = department_to_set
             talent_data['company_types'] = company_types_to_set
             talent_data['role'] = roles_to_set
-            talent_serializer = UpdateTalentProfileSerializer(data=talent_data)
+            talent_serializer = UpdateTalentProfileSerializer(talent_profile, data=talent_data, partial=True)
             talent_serializer.is_valid(raise_exception=True)
             talent = talent_serializer.save()
 
             # Handle UserProfile related fields and create object
+            try:
+                user_profile = UserProfile.objects.get(user=user)
+            except TalentProfile.DoesNotExist:
+                user_profile = None
+
             identity_sexuality_to_set = []  # This list will hold the role objects to be set to the TalentProfile
             if profile_data['identity_sexuality'] and not (isinstance(profile_data['identity_sexuality'], list) and len(
                     profile_data['identity_sexuality']) == 1 and profile_data['identity_sexuality'][0] == ''):
@@ -494,7 +505,7 @@ def create_new_member(request):
                 profile_data['identity_pronouns'] = identity_pronouns_to_set if identity_pronouns_to_set else None
             else:
                 del profile_data['identity_pronouns']
-            profile_serializer = UserProfileSerializer(data=profile_data)
+            profile_serializer = UserProfileSerializer(user_profile, data=profile_data, partial=True)
             profile_serializer.is_valid(raise_exception=True)
             profile = profile_serializer.save()
 
@@ -629,7 +640,7 @@ def update_profile_work_place(request):
     company.save()
 
     # Updating talent profile.
-    talent_profile = user.user
+    talent_profile = get_object_or_404(TalentProfile, user=request.user)
     role_names = request.data.get('job_roles')
 
     roles_to_set = []  # This list will hold the role objects to be set to the TalentProfile
