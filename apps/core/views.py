@@ -26,6 +26,8 @@ from apps.core.models import UserProfile, PronounsIdentities, EthicIdentities, G
 from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializer, \
     UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, UpdateCustomUserSerializer, \
     TalentProfileRoleSerializer, TalentProfileSerializer
+from apps.core.util import extract_user_data, extract_company_data, extract_profile_data, extract_talent_data, \
+    create_or_update_user, create_or_update_talent_profile, create_or_update_user_profile
 from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
 from apps.mentorship.serializer import MentorRosterSerializer, MentorshipProgramProfileSerializer
 from apps.talent.models import TalentProfile
@@ -260,272 +262,32 @@ def get_new_member_data(request):
 @parser_classes([MultiPartParser])
 @api_view(['PATCH'])
 def create_new_member(request):
-    data = request.data
-    user_data = {
-        'is_mentee': True if data.get('is_mentee', '') else False,
-        'is_mentor': True if data.get('is_mentor', '') else False,
-    }
-
-    company_data = {
-        'company_name': data.get('company_name', ''),
-        'company_url': data.get('company_url', ''),
-    }
-
-    profile_data = {
-        'linkedin': prepend_https_if_not_empty(data.get('linkedin', '')),
-        'instagram': data.get('instagram', ''),
-        'github': prepend_https_if_not_empty(data.get('github', '')),
-        'twitter': data.get('twitter', ''),
-        'youtube': prepend_https_if_not_empty(data.get('youtube', '')),
-        'personal': prepend_https_if_not_empty(data.get('personal', '')),
-        'identity_sexuality': data.get('identity_sexuality', '').split(','),
-        'is_identity_sexuality_displayed': True if data.get('is_identity_sexuality_displayed', '') else False,
-        'identity_gender': data.get('gender_identities', '').split(','),
-        'is_identity_gender_displayed': True if data.get('is_identity_gender_displayed', '') else False,
-        'identity_ethic': data.get('identity_ethic', '').split(','),
-        'is_identity_ethic_displayed': True if data.get('is_identity_ethic_displayed', '') else False,
-        'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get(
-            'pronouns_identities') else None,
-        'disability': True if data.get('disability', '') else False,
-        'is_disability_displayed': True if data.get('is_disability_displayed', '') else False,
-        'care_giver': True if data.get('care_giver', '') else False,
-        'is_care_giver_displayed': True if data.get('is_care_giver_displayed', '') else False,
-        'veteran_status': data.get('veteran_status', ''),
-        'is_veteran_status_displayed': True if data.get('is_veteran_status_displayed', '') else False,
-        'how_connection_made': data.get('how_connection_made', '').lower(),
-        'is_pronouns_displayed': True if data.get('is_pronouns_displayed', '') else False,
-        'marketing_monthly_newsletter': True if data.get('marketing_monthly_newsletter', '') else False,
-        'marketing_events': True if data.get('marketing_events', '') else False,
-        'marketing_identity_based_programing': True if data.get('marketing_identity_based_programing', '') else False,
-        'marketing_jobs': True if data.get('marketing_jobs', '') else False,
-        'marketing_org_updates': True if data.get('marketing_org_updates', '') else False,
-        'postal_code': data.get('postal_code', ''),
-        'tbc_program_interest': data.get('tbc_program_interest', ''),
-        'photo': request.FILES['photo'] if 'photo' in request.FILES else None,
-    }
-
-    talent_data = {
-        'tech_journey': data.get('years_of_experience', []),
-        'talent_status': data.get('talent_status', False),
-        'company_types': data.get('company_types', []).split(',') if data.get('company_types') else '',
-        'department': data.get('job_department', []).split(','),
-        'role': data.get('job_roles', []).split(','),
-        'skills': data.get('job_skills', []).split(','),
-        'max_compensation': data.get('max_compensation', []),
-        'min_compensation': data.get('min_compensation', []),
-        'resume': request.FILES['resume'] if 'resume' in request.FILES else None
-    }
-
     try:
+        data = request.data
+        user_data = extract_user_data(data)
+        company_data = extract_company_data(data)
+        profile_data = extract_profile_data(data, request.FILES)
+        talent_data = extract_talent_data(data, request.FILES)
+
         with transaction.atomic():
-            # Create CustomUser object
+            user = create_or_update_user(request.user, user_data)
+            talent_profile = create_or_update_talent_profile(user, talent_data)
+            user_profile = create_or_update_user_profile(user, profile_data)
 
-            user_serializer = UpdateCustomUserSerializer(instance=request.user, data=user_data, partial=True)
-            user_serializer.is_valid(raise_exception=True)
-            user = user_serializer.save()
-            # user = request.user.id
-            # user_details = CustomUser.objects.get(id=request.user.id)
+            if user_data['is_mentee'] or user_data['is_mentor']:
+                MentorshipProgramProfile.objects.create(user=user)
+            # send slack invite
+            send_invite(user.email)
+            return Response(
+                {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
+                status=status.HTTP_200_OK
+            )
 
-            # Handle TalentProfile related fields and create object
-            try:
-                talent_profile = TalentProfile.objects.get(user=user)
-            except TalentProfile.DoesNotExist:
-                talent_profile = None
-
-            roles_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            for role_name in talent_data['role']:
-                try:
-                    # Try to get the role by name, and if it doesn't exist, create it.
-                    role, created = Roles.objects.get_or_create(name=role_name)
-                    roles_to_set.append(role.pk)
-                except (Roles.MultipleObjectsReturned, ValueError):
-                    # Handle the case where multiple roles are found with the same name or
-                    # where the name is invalid (for instance, if name is a required field
-                    # and it's None or an empty string).
-                    return Response({'detail': f'Invalid role: {role_name}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            company_types_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            if isinstance(talent_data['company_types'], list) and talent_data['company_types']:
-                for company_type in talent_data['company_types']:
-                    if company_type:  # Check if company_type is not an empty string
-                        try:
-                            name, created = CompanyTypes.objects.get_or_create(name=company_type)
-                            company_types_to_set.append(name.pk)
-                        except (CompanyTypes.MultipleObjectsReturned, ValueError):
-                            return Response({'detail': f'Invalid company type: {company_type}'},
-                                            status=status.HTTP_400_BAD_REQUEST)
-
-            department_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            for department in talent_data['department']:
-                try:
-                    # Try to get the role by name, and if it doesn't exist, create it.
-                    name, created = Department.objects.get_or_create(name=department)
-                    department_to_set.append(name.pk)
-                except (Department.MultipleObjectsReturned, ValueError):
-                    # Handle the case where multiple roles are found with the same name or
-                    # where the name is invalid (for instance, if name is a required field
-                    # and it's None or an empty string).
-                    return Response({'detail': f'Invalid department: {department}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            skills_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            for skill in talent_data['skills']:
-                try:
-                    # Try to get the role by name, and if it doesn't exist, create it.
-                    name, created = Skill.objects.get_or_create(name=skill)
-                    skills_to_set.append(name.pk)
-                except (Skill.MultipleObjectsReturned, ValueError):
-                    # Handle the case where multiple roles are found with the same name or
-                    # where the name is invalid (for instance, if name is a required field
-                    # and it's None or an empty string).
-                    return Response({'detail': f'Invalid role: {skill}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            min_compensation_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            # Check if 'min_compensation' is a list, not empty, and its first element isn't an empty string
-            if (isinstance(talent_data['min_compensation'], list) and
-                    len(talent_data['min_compensation']) > 0 and
-                    talent_data['min_compensation'][0] != ''):
-
-                for comp in talent_data['min_compensation']:
-                    try:
-                        # Try to get the role by name, and if it doesn't exist, create it.
-                        name, created = SalaryRange.objects.get_or_create(id=comp)
-                        min_compensation_to_set.append(name.pk)
-                    except (SalaryRange.MultipleObjectsReturned, ValueError):
-                        # Handle the case where multiple roles are found with the same name or
-                        # where the name is invalid (for instance, if name is a required field
-                        # and it's None or an empty string).
-                        return Response({'detail': f'Invalid salary range: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            max_compensation_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            # Check if 'min_compensation' is a list, not empty, and its first element isn't an empty string
-            if (isinstance(talent_data['max_compensation'], list) and
-                    len(talent_data['max_compensation']) > 0 and
-                    talent_data['max_compensation'][0] != ''):
-
-                for comp in talent_data['max_compensation']:
-                    try:
-                        # Try to get the role by name, and if it doesn't exist, create it.
-                        name, created = SalaryRange.objects.get_or_create(id=comp)
-                        max_compensation_to_set.append(name.pk)
-                    except (SalaryRange.MultipleObjectsReturned, ValueError):
-                        # Handle the case where multiple roles are found with the same name or
-                        # where the name is invalid (for instance, if name is a required field
-                        # and it's None or an empty string).
-                        return Response({'detail': f'Invalid salary range: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            talent_data['user'] = user.id  # set the user field in TalentProfile
-            talent_data['min_compensation'] = min_compensation_to_set[0] if min_compensation_to_set else 1
-            talent_data['max_compensation'] = max_compensation_to_set[0] if max_compensation_to_set else 1
-            talent_data['skills'] = skills_to_set
-            talent_data['department'] = department_to_set
-            talent_data['company_types'] = company_types_to_set
-            talent_data['role'] = roles_to_set
-            talent_serializer = UpdateTalentProfileSerializer(talent_profile, data=talent_data, partial=True)
-            talent_serializer.is_valid(raise_exception=True)
-            talent = talent_serializer.save()
-
-            # Handle UserProfile related fields and create object
-            try:
-                user_profile = UserProfile.objects.get(user=user)
-            except TalentProfile.DoesNotExist:
-                user_profile = None
-
-            identity_sexuality_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            if profile_data['identity_sexuality'] and not (isinstance(profile_data['identity_sexuality'], list) and len(
-                    profile_data['identity_sexuality']) == 1 and profile_data['identity_sexuality'][0] == ''):
-                for comp in profile_data['identity_sexuality']:
-                    try:
-                        # Try to get the role by name, and if it doesn't exist, create it.
-                        identity = SexualIdentities.objects.get(identity=comp)
-                        identity_sexuality_to_set.append(identity.pk)
-                    except (SexualIdentities.MultipleObjectsReturned, ValueError):
-                        # Handle the case where multiple roles are found with the same name or
-                        # where the name is invalid (for instance, if name is a required field
-                        # and it's None or an empty string).
-                        return Response({'detail': f'Invalid sexuality: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            identity_gender_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            if profile_data['identity_gender'] and not (
-                    isinstance(profile_data['identity_gender'], list) and len(profile_data['identity_gender']) == 1 and
-                    profile_data['identity_gender'][0] == ''):
-                for comp in profile_data['identity_gender']:
-                    try:
-                        # Try to get the role by name, and if it doesn't exist, create it.
-                        gender = GenderIdentities.objects.get(gender=comp)
-                        identity_gender_to_set.append(gender.pk)
-                    except (GenderIdentities.MultipleObjectsReturned, ValueError):
-                        # Handle the case where multiple roles are found with the same name or
-                        # where the name is invalid (for instance, if name is a required field
-                        # and it's None or an empty string).
-                        return Response({'detail': f'Invalid gender: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            identity_ethic_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            if profile_data['identity_ethic'] and not (
-                    isinstance(profile_data['identity_ethic'], list) and len(profile_data['identity_ethic']) == 1 and
-                    profile_data['identity_ethic'][0] == ''):
-                for item in profile_data['identity_ethic']:
-                    try:
-                        # Try to get the role by name, and if it doesn't exist, create it.
-                        ethnicity = EthicIdentities.objects.get(ethnicity=item)
-                        identity_ethic_to_set.append(ethnicity.pk)
-                    except (EthicIdentities.MultipleObjectsReturned, ValueError):
-                        # Handle the case where multiple roles are found with the same name or
-                        # where the name is invalid (for instance, if name is a required field
-                        # and it's None or an empty string).
-                        return Response({'detail': f'Invalid ethnicity: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            identity_pronouns_to_set = []  # This list will hold the role objects to be set to the TalentProfile
-            if profile_data['identity_pronouns'] and not (isinstance(profile_data['identity_pronouns'], list) and len(
-                    profile_data['identity_pronouns']) == 1 and profile_data['identity_pronouns'][0] == ''):
-                for item in profile_data['identity_pronouns']:
-                    try:
-                        # Try to get the role by name, and if it doesn't exist, create it.
-                        pronouns = PronounsIdentities.objects.get(pronouns=item)
-                        identity_pronouns_to_set.append(pronouns.pk)
-                    except (PronounsIdentities.MultipleObjectsReturned, ValueError):
-                        # Handle the case where multiple roles are found with the same name or
-                        # where the name is invalid (for instance, if name is a required field
-                        # and it's None or an empty string).
-                        return Response({'detail': f'Invalid pronouns: {comp}'}, status=status.HTTP_400_BAD_REQUEST)
-
-            profile_data['user'] = user.id  # set the user field in UserProfile
-            if identity_sexuality_to_set:
-                profile_data['identity_sexuality'] = identity_sexuality_to_set
-            else:
-                del profile_data['identity_sexuality']
-            if identity_gender_to_set:
-                profile_data['identity_gender'] = identity_gender_to_set if identity_gender_to_set else None
-            else:
-                del profile_data['identity_gender']
-            if identity_ethic_to_set:
-                profile_data['identity_ethic'] = identity_ethic_to_set if identity_ethic_to_set else None
-            else:
-                del profile_data['identity_ethic']
-            if identity_pronouns_to_set:
-                profile_data['identity_pronouns'] = identity_pronouns_to_set if identity_pronouns_to_set else None
-            else:
-                del profile_data['identity_pronouns']
-            profile_serializer = UserProfileSerializer(user_profile, data=profile_data, partial=True)
-            profile_serializer.is_valid(raise_exception=True)
-            profile = profile_serializer.save()
-
-            if user_data['is_mentee'] or user_data['is_mentee']:
-                MentorshipProgramProfile.objects.create(
-                    user=user
-                )
-
-            try:
-                send_invite(request.user.email)
-
-                return Response(
-                    {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
-                    status=status.HTTP_200_OK)
-            except Exception as e:
-                print(e)
-                return Response({'status': True, 'User, TalentProfile, and UserProfile created successfully: But '
-                                                 'issue sending Slack Invite: error': str(e)},
-                                status=status.HTTP_201_CREATED)
     except Exception as e:
+        # Handle specific known exceptions
+        return Response({'status': 'Error', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        # Handle unexpected exceptions
         print(e)
         return Response({'status': 'Error', 'error': 'An unexpected error occurred.'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
