@@ -27,7 +27,8 @@ from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializ
     UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, UpdateCustomUserSerializer, \
     TalentProfileRoleSerializer, TalentProfileSerializer
 from apps.core.util import extract_user_data, extract_company_data, extract_profile_data, extract_talent_data, \
-    create_or_update_user, create_or_update_talent_profile, create_or_update_user_profile
+    create_or_update_user, create_or_update_talent_profile, create_or_update_user_profile, \
+    create_or_update_company_connection
 from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
 from apps.mentorship.serializer import MentorRosterSerializer, MentorshipProgramProfileSerializer
 from apps.talent.models import TalentProfile
@@ -194,70 +195,6 @@ def get_announcement(request):
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@api_view(['GET'])
-def get_new_member_data(request):
-    sexual_identities = list(SexualIdentities.objects.values('identity', 'id'))
-    gender_identities = list(GenderIdentities.objects.values('gender', 'id'))
-    ethic_identities = list(EthicIdentities.objects.values('ethnicity', 'id'))
-    pronouns_identities = list(PronounsIdentities.objects.values('pronouns', 'id'))
-    job_skills = list(Skill.objects.values('name', 'skill_type', 'id'))
-    community_needs = list(CommunityNeeds.objects.values('name', 'id'))
-    job_department = list(Department.objects.values('name', 'id'))
-    job_roles = Roles.objects.prefetch_related(Prefetch('job_skill_list')).all()
-    job_salary_range = list(SalaryRange.objects.values('range'))
-    job_site = [{'name': site[0], 'value': site[1]} for site in ON_SITE_REMOTE]
-    company_list = list(CompanyProfile.objects.values('company_name', 'id', 'company_url'))
-    company_sizes = [{'name': size[0], 'value': size[1]} for size in COMPANY_SIZE]
-    company_types = list(CompanyTypes.objects.values('name', 'id'))
-    company_industries = list(Industries.objects.values('name', 'id'))
-    how_connection_made_list = UserProfile.HOW_CONNECTION_MADE
-    # career_journey_choices = TalentProfile.CAREER_JOURNEY
-    career_journey_choices = TalentProfile.CAREER_JOURNEY
-    connection_options = []
-    career_journey_steps = []
-    roles_data = []
-    for id, name in career_journey_choices:
-        career_journey_steps.append({
-            'name': name,
-            'id': id
-        })
-
-    for connection_type in how_connection_made_list:
-        connection_options.append({
-            'name': connection_type[1]
-        })
-
-    # Iterate over roles and get their skill names.
-    for role in job_roles:
-        skill_names = [skill.name for skill in role.job_skill_list.all()[:3]]
-        roles_data.append({
-            'id': role.id,
-            'name': role.name,
-            'job_skill_list': skill_names
-        })
-
-    return Response({
-        'status': True,
-        "total_companies": len(company_list),
-        "sexual_identities": sexual_identities,
-        "gender_identities": gender_identities,
-        "ethic_identities": ethic_identities,
-        "pronouns_identities": pronouns_identities,
-        "job_skills": job_skills,
-        "community_needs": community_needs,
-        "job_department": job_department,
-        "job_roles": roles_data,
-        "job_salary_range": job_salary_range,
-        "job_site": job_site,
-        "company_list": company_list,
-        "company_sizes": company_sizes,
-        "company_types": company_types,
-        "company_industries": company_industries,
-        "career_journey_choices": career_journey_steps,
-        "connection_options": connection_options,
-    })
-
-
 # @login_required
 @parser_classes([MultiPartParser])
 @api_view(['PATCH'])
@@ -273,6 +210,7 @@ def create_new_member(request):
             user = create_or_update_user(request.user, user_data)
             talent_profile = create_or_update_talent_profile(user, talent_data)
             user_profile = create_or_update_user_profile(user, profile_data)
+            user_company_connection = create_or_update_company_connection(user, company_data)
 
             if user_data['is_mentee'] or user_data['is_mentor']:
                 MentorshipProgramProfile.objects.create(user=user)
