@@ -65,6 +65,7 @@ class CustomUser(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     is_recruiter = models.BooleanField(default=False)
     is_member = models.BooleanField(default=False)
+    is_member_onboarding_complete = models.BooleanField(default=False)
     # mentorship program
     is_mentor = models.BooleanField(default=False)
     is_mentee = models.BooleanField(default=False)

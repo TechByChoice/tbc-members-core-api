@@ -199,6 +199,11 @@ def get_announcement(request):
 @parser_classes([MultiPartParser])
 @api_view(['PATCH'])
 def create_new_member(request):
+    if request.user.is_member_onboarding_complete:
+        return Response(
+            {'status': False, 'message': 'Member has already been created for this user.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     try:
         data = request.data
         user_data = extract_user_data(data)
@@ -212,6 +217,9 @@ def create_new_member(request):
             user_profile = create_or_update_user_profile(user, profile_data)
             user_company_connection = create_or_update_company_connection(user, company_data)
 
+            request.user.is_member_onboarding_complete = True
+            request.user.save()
+
             if user_data['is_mentee'] or user_data['is_mentor']:
                 MentorshipProgramProfile.objects.create(user=user)
             # send slack invite
@@ -223,11 +231,11 @@ def create_new_member(request):
 
     except Exception as e:
         # Handle specific known exceptions
-        return Response({'status': 'Error', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'status': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     except Exception as e:
         # Handle unexpected exceptions
         print(e)
-        return Response({'status': 'Error', 'error': 'An unexpected error occurred.'},
+        return Response({'status': False, 'error': 'An unexpected error occurred.'},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
