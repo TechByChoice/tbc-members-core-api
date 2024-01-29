@@ -58,7 +58,7 @@ class MemberDetailsView(APIView):
         user_profile_serializer = UserProfileSerializer(user_profile)
         talent_profile_serializer = TalentProfileSerializer(talent_profile)
         mentor_program_serializer = None
-        if mentor_program:
+        if mentor_program and user.is_mentor_profile_active:
             mentor_program_serializer = MentorshipProgramProfileSerializer(mentor_program)
 
         data = {

@@ -3,7 +3,8 @@ from rest_framework.response import Response
 
 from apps.company.models import Roles, CompanyProfile, CAREER_JOURNEY, Skill, Department, Industries, CompanyTypes, \
     SalaryRange
-from apps.core.models import PronounsIdentities, GenderIdentities, SexualIdentities, EthicIdentities
+from apps.core.models import PronounsIdentities, GenderIdentities, SexualIdentities, EthicIdentities, CommunityNeeds, \
+    UserProfile
 
 
 @api_view(['GET'])
@@ -46,6 +47,12 @@ def get_dropdown_data(request):
 
     if not requested_fields or 'job_salary_range' in requested_fields:
         data['job_salary_range'] = list(SalaryRange.objects.values('range', 'id'))
+
+    if not requested_fields or 'community_needs' in requested_fields:
+        data['community_needs'] = list(CommunityNeeds.objects.values('name', 'id'))
+
+    if not requested_fields or 'how_connected' in requested_fields:
+        data['how_connected'] = UserProfile.HOW_CONNECTION_MADE
 
     data['status'] = True
 
