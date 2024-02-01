@@ -189,7 +189,7 @@ class CompanyProfile(models.Model):
     company_types = models.ManyToManyField(CompanyTypes, related_name='company_types', blank=True)
 
     company_name = models.CharField(max_length=200)
-    industries = models.ManyToManyField(Industries, blank=True, null=True)
+    industries = models.ManyToManyField(Industries, blank=True)
 
     job_post_credit = models.IntegerField(default=0)
     job_feature_credit = models.IntegerField(default=0)
@@ -394,8 +394,8 @@ class Job(models.Model):
         ('rejected_bad_company', 'Rejected Bad Company'),
         ('rejected_role_alignment', 'Rejected Role Alignment'),
     )
-    department = models.ManyToManyField(Department, null=True, blank=True)
-    skills = models.ManyToManyField(Skill, null=True, blank=True)
+    department = models.ManyToManyField(Department, blank=True)
+    skills = models.ManyToManyField(Skill, blank=True)
 
     status = models.CharField(max_length=23, choices=STATUS_CHOICE, default=DRAFT)
 
