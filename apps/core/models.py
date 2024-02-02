@@ -65,6 +65,8 @@ class CustomUser(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     is_recruiter = models.BooleanField(default=False)
     is_member = models.BooleanField(default=False)
+    is_member_onboarding_complete = models.BooleanField(default=False)
+    is_slack_invite_sent = models.BooleanField(default=False)
     # mentorship program
     is_mentor = models.BooleanField(default=False)
     is_mentee = models.BooleanField(default=False)
@@ -112,39 +114,39 @@ class CustomUser(AbstractBaseUser):
 
 
 class SexualIdentities(models.Model):
-    identity = models.CharField(max_length=30, null=False, unique=True)
+    name = models.CharField(max_length=30, null=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.identity
+        return self.name
 
 
 class GenderIdentities(models.Model):
-    gender = models.CharField(max_length=30, null=False, unique=True)
+    name = models.CharField(max_length=30, null=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.gender
+        return self.name
 
 
 class EthicIdentities(models.Model):
-    ethnicity = models.CharField(max_length=30, null=False, unique=True)
+    name = models.CharField(max_length=30, null=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.ethnicity
+        return self.name
 
 
 class PronounsIdentities(models.Model):
-    pronouns = models.CharField(max_length=30, null=False, unique=True)
+    name = models.CharField(max_length=30, null=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.pronouns
+        return self.name
 
 
 class CommunityNeeds(models.Model):
@@ -202,18 +204,24 @@ class UserProfile(models.Model):
 
     # DEI Stuff
     identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True)
+    is_identity_sexuality_displayed = models.BooleanField(default=False)
     identity_gender = models.ManyToManyField(GenderIdentities, blank=True)
+    is_identity_gender_displayed = models.BooleanField(default=False)
     identity_ethic = models.ManyToManyField(EthicIdentities, blank=True)
-    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=False)
+    is_identity_ethic_displayed = models.BooleanField(default=False)
+    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=True)
     is_pronouns_displayed = models.BooleanField(default=False)
     disability = models.BooleanField(blank=True, null=True, choices=CHOICES)
+    is_disability_displayed = models.BooleanField(default=False)
     care_giver = models.BooleanField(blank=True, null=True, choices=CHOICES)
+    is_care_giver_displayed = models.BooleanField(default=False)
     VETERAN_STATUS = (
         ('1', 'I am not a protected veteran'),
         ('2', 'I identify as one or more of the classifications of a protected veteran'),
         ('3', 'Prefer not to answer'),
     )
     veteran_status = models.CharField(max_length=100, choices=VETERAN_STATUS, blank=True, null=True)
+    is_veteran_status_displayed = models.BooleanField(default=False)
     HOW_CONNECTION_MADE = (
         ('twitter', 'Twitter'),
         ('facebook', 'Facebook'),
@@ -239,7 +247,7 @@ class UserProfile(models.Model):
     # location based info
     postal_code = models.CharField(max_length=10, null=True, blank=True)
     is_current_member_spotlight = models.BooleanField(default=False)
-    member_spotlight = models.ManyToManyField(MembersSpotlight, null=True)
+    member_spotlight = models.ManyToManyField(MembersSpotlight, blank=True)
 
     def __str__(self):
         return self.user.first_name + ' Profile'

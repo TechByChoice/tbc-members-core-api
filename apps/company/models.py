@@ -23,6 +23,15 @@ COMPANY_SIZE = (
     ('5001', '5001'),
 )
 
+CAREER_JOURNEY = (
+    ('1', '0 years'),
+    ('2', '1 - 2 years'),
+    ('3', '3 - 5 years'),
+    ('4', '6 - 10 years'),
+    ('5', '11 - 15  years'),
+    ('6', '16 - 20 years'),
+    ('7', '21+ years'),
+)
 
 class Skill(models.Model):
     name = models.CharField(max_length=300)
@@ -180,7 +189,7 @@ class CompanyProfile(models.Model):
     company_types = models.ManyToManyField(CompanyTypes, related_name='company_types', blank=True)
 
     company_name = models.CharField(max_length=200)
-    industries = models.ManyToManyField(Industries, blank=True, null=True)
+    industries = models.ManyToManyField(Industries, blank=True)
 
     job_post_credit = models.IntegerField(default=0)
     job_feature_credit = models.IntegerField(default=0)
@@ -385,8 +394,8 @@ class Job(models.Model):
         ('rejected_bad_company', 'Rejected Bad Company'),
         ('rejected_role_alignment', 'Rejected Role Alignment'),
     )
-    department = models.ManyToManyField(Department, null=True, blank=True)
-    skills = models.ManyToManyField(Skill, null=True, blank=True)
+    department = models.ManyToManyField(Department, blank=True)
+    skills = models.ManyToManyField(Skill, blank=True)
 
     status = models.CharField(max_length=23, choices=STATUS_CHOICE, default=DRAFT)
 
@@ -406,20 +415,13 @@ class Job(models.Model):
     #
     role = models.ForeignKey(Roles, related_name='job_role_types', on_delete=models.CASCADE, null=True, blank=True)
     experience = models.BooleanField(default=False, null=True, blank=True)
-    CAREER_JOURNEY = (
-        ('1', '0 years'),
-        ('2', '1 - 2 years'),
-        ('3', '3 - 5 years'),
-        ('4', '6 - 10 years'),
-        ('5', '11 - 15  years'),
-        ('6', '16 - 20 years'),
-        ('7', '21+ years'),
-    )
+
     years_of_experience = models.CharField(max_length=10, choices=CAREER_JOURNEY, null=True, blank=True)
     pub_date = models.DateTimeField('date published', auto_now=True)
     sourced_talent_from_us = models.BooleanField(default=False)
     featured_job = models.BooleanField(default=False)
     is_referral_job = models.BooleanField(default=False)
+    referral_note = models.TextField(max_length=1000, blank=True, null=True)
 
     team_size = models.IntegerField(null=True, blank=True)
     female_team_size_total = models.IntegerField(null=True, blank=True)
