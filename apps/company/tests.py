@@ -12,7 +12,7 @@ class NewMemberDataTests(TestCase):
 
     def setUp(self):
         # If you're not using fixtures, you can create and save test data here.
-        # e.g., SexualIdentities.objects.create(identity="Identity1")
+        # e.g., SexualIdentities.objects.create(name="Identity1")
         # Creating test data for SexualIdentities
         SexualIdentities.objects.create(identity="TestIdentity1")
         SexualIdentities.objects.create(identity="TestIdentity2")
@@ -47,6 +47,6 @@ class NewMemberDataTests(TestCase):
 
         # Optionally, check if the data in the response matches your test data.
         # e.g.,
-        # self.assertIn({'identity': 'Identity1'}, response.data['data'][0]['questions'][1]['options'])
+        # self.assertIn({'name': 'Identity1'}, response.data['data'][0]['questions'][1]['options'])
 
         # You can add more assertions as necessary for other parts of the response.

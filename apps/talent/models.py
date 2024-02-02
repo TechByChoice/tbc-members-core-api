@@ -36,7 +36,7 @@ class TalentProfile(models.Model):
     role = models.ManyToManyField(Roles, related_name='talent_role_types')
     industries = models.ManyToManyField(Industries, blank=True)
     company_types = models.ManyToManyField(CompanyTypes, blank=True)
-    talent_status = models.CharField(max_length=3, choices=STATUS_CHOICE, default=CLOSED)
+    is_talent_status = models.BooleanField(default=False)
     #board level folks
     role_c_level = models.BooleanField(default=False)
     experience_board = models.BooleanField(default=False)

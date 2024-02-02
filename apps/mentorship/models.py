@@ -112,7 +112,7 @@ class ValuesMatch(models.Model):
 
 
 class MentorProfile(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
     MENTORSHIP_STATUS = (
         ('submitted', 'Submitted'),
         ('active', 'Active'),
@@ -141,7 +141,7 @@ class MentorProfile(models.Model):
 
 
 class MenteeProfile(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
     #   Account Status
     # mentorship_status = models.CharField(max_length=18, choices=MENTORSHIP_STATUS, default=1)
     activated_at_date = models.DateTimeField(blank=True, null=True)
@@ -187,7 +187,7 @@ class Session(models.Model):
 
 
 class MentorshipProgramProfile(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
     calendar_link = models.URLField(null=True, blank=True, max_length=200)
     tbc_email = models.EmailField(null=True, blank=True, max_length=50)
     # Value based questions
@@ -219,4 +219,15 @@ class MentorshipProgramProfile(models.Model):
     value_conformity = models.IntegerField(blank=True, null=True)
     value_security = models.IntegerField(blank=True, null=True)
 
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding  # Check if this is a new instance
 
+        # Call the real save() method
+        super(MentorshipProgramProfile, self).save(*args, **kwargs)
+
+        if is_new:
+            # If this is a new instance, create and associate a MenteeProfile
+            mentee_profile, created = MenteeProfile.objects.get_or_create(user=self.user)
+            self.mentee_profile = mentee_profile
+            # Call save() again to save the association
+            super(MentorshipProgramProfile, self).save(update_fields=['mentee_profile'])

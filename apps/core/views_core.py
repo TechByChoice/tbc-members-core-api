@@ -3,7 +3,8 @@ from rest_framework.response import Response
 
 from apps.company.models import Roles, CompanyProfile, CAREER_JOURNEY, Skill, Department, Industries, CompanyTypes, \
     SalaryRange
-from apps.core.models import PronounsIdentities, GenderIdentities, SexualIdentities, EthicIdentities
+from apps.core.models import PronounsIdentities, GenderIdentities, SexualIdentities, EthicIdentities, CommunityNeeds, \
+    UserProfile
 
 
 @api_view(['GET'])
@@ -12,7 +13,7 @@ def get_dropdown_data(request):
     requested_fields = request.query_params.getlist('fields', [])
 
     if not requested_fields or 'pronouns' in requested_fields:
-        data['pronouns'] = list(PronounsIdentities.objects.values('pronouns', 'id'))
+        data['pronouns'] = list(PronounsIdentities.objects.values('name', 'id'))
 
     if not requested_fields or 'job_roles' in requested_fields:
         data['job_roles'] = list(Roles.objects.values('name', 'id'))
@@ -36,16 +37,22 @@ def get_dropdown_data(request):
         data['company_types'] = list(CompanyTypes.objects.values('name', 'id'))
 
     if not requested_fields or 'gender' in requested_fields:
-        data['gender'] = list(GenderIdentities.objects.values('gender', 'id'))
+        data['gender'] = list(GenderIdentities.objects.values('name', 'id'))
 
     if not requested_fields or 'sexuality' in requested_fields:
-        data['sexuality'] = list(SexualIdentities.objects.values('identity', 'id'))
+        data['sexuality'] = list(SexualIdentities.objects.values('name', 'id'))
 
     if not requested_fields or 'ethic' in requested_fields:
-        data['ethic'] = list(EthicIdentities.objects.values('ethnicity', 'id'))
+        data['ethic'] = list(EthicIdentities.objects.values('name', 'id'))
 
     if not requested_fields or 'job_salary_range' in requested_fields:
         data['job_salary_range'] = list(SalaryRange.objects.values('range', 'id'))
+
+    if not requested_fields or 'community_needs' in requested_fields:
+        data['community_needs'] = list(CommunityNeeds.objects.values('name', 'id'))
+
+    if not requested_fields or 'how_connected' in requested_fields:
+        data['how_connected'] = UserProfile.HOW_CONNECTION_MADE
 
     data['status'] = True
 
