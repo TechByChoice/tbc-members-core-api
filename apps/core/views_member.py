@@ -1,6 +1,8 @@
 from django.core.serializers import serialize
 from django.http import Http404
 from rest_framework import status
+from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,6 +10,7 @@ from apps.company.models import CompanyProfile
 from apps.core.models import CustomUser, UserProfile
 from apps.core.serializers import TalentProfileSerializer
 from apps.core.serializers_member import CustomUserSerializer, UserProfileSerializer
+from apps.core.util import get_current_company_data
 from apps.mentorship.models import MentorProfile, MenteeProfile, MentorshipProgramProfile
 from apps.mentorship.serializer import MentorProfileSerializer, MenteeProfileSerializer, \
     MentorshipProgramProfileSerializer
@@ -18,25 +21,16 @@ class MemberDetailsView(APIView):
     """
     Retrieve CustomUser, UserProfile, and TalentProfile details.
     """
+    permission_classes = [IsAuthenticated, ]
+
+#     # @permission_classes([IsAuthenticated])
     def get_profile(self, model, user):
         try:
             return model.objects.get(user=user)
         except model.DoesNotExist:
             return None
 
-    def get_current_company_data(self, user):
-        try:
-            company = CompanyProfile.objects.get(current_employees=user)
-            return {
-                "id": company.id,
-                "company_name": company.company_name,
-                "logo": company.logo.url,
-                "company_size": company.company_size,
-                "industries": [industry.name for industry in company.industries.all()]
-            }
-        except CompanyProfile.DoesNotExist:
-            return None
-
+    # @permission_classes([IsAuthenticated])
     def get(self, request, pk, format=None):
         try:
             user = CustomUser.objects.get(pk=pk)
@@ -52,7 +46,7 @@ class MemberDetailsView(APIView):
             raise Http404('Talent profile not found.')
 
         mentor_program = self.get_profile(MentorshipProgramProfile, user)
-        current_company_data = self.get_current_company_data(user)
+        current_company_data = get_current_company_data(user)
 
         user_serializer = CustomUserSerializer(user)
         user_profile_serializer = UserProfileSerializer(user_profile)

@@ -2,39 +2,32 @@ import json
 import logging
 
 from django.contrib.auth import user_logged_out
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
-from django.db.models import Prefetch
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from knox.auth import AuthToken, TokenAuthentication
 from rest_framework import status
-from rest_framework.decorators import api_view, throttle_classes, parser_classes
-from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import api_view, throttle_classes, parser_classes, permission_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from apps.company.models import Roles, JobLevel, CompanyProfile, Skill, Department, CompanyTypes, Industries, \
-    SalaryRange, COMPANY_SIZE, ON_SITE_REMOTE
-from apps.core.models import UserProfile, PronounsIdentities, EthicIdentities, GenderIdentities, SexualIdentities, \
-    CommunityNeeds, CustomUser
+from apps.company.models import Roles, CompanyProfile, Skill, Department
+from apps.core.models import UserProfile, EthicIdentities, GenderIdentities, SexualIdentities, \
+    CustomUser
 from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializer, \
-    UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, UpdateCustomUserSerializer, \
-    TalentProfileRoleSerializer, TalentProfileSerializer
+    UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, TalentProfileSerializer
 from apps.core.util import extract_user_data, extract_company_data, extract_profile_data, extract_talent_data, \
     create_or_update_user, create_or_update_talent_profile, create_or_update_user_profile, \
     create_or_update_company_connection
 from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
 from apps.mentorship.serializer import MentorRosterSerializer, MentorshipProgramProfileSerializer
 from apps.talent.models import TalentProfile
-from apps.talent.serializers import UpdateTalentProfileSerializer
 from utils.emails import send_dynamic_email
-from utils.helper import prepend_https_if_not_empty
 from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
@@ -46,6 +39,7 @@ class LoginThrottle(UserRateThrottle):
 
 @api_view(['POST'])
 @throttle_classes([LoginThrottle])
+@permission_classes([AllowAny])
 def login_api(request):
     serializer = CustomAuthTokenSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
@@ -159,6 +153,7 @@ def get_user_data(request):
             'is_staff': user.is_staff,
             'is_recruiter': user.is_recruiter,
             'is_member': user.is_member,
+            'is_member_onboarding_complete': user.is_member_onboarding_complete,
             'is_mentor': user.is_mentor,
             'is_mentee': user.is_mentee,
             'is_mentor_profile_active': user.is_mentor_profile_active,
@@ -217,13 +212,19 @@ def create_new_member(request):
             user_profile = create_or_update_user_profile(user, profile_data)
             user_company_connection = create_or_update_company_connection(user, company_data)
 
-            request.user.is_member_onboarding_complete = True
-            request.user.save()
-
             if user_data['is_mentee'] or user_data['is_mentor']:
                 MentorshipProgramProfile.objects.create(user=user)
             # send slack invite
-            send_invite(user.email)
+            try:
+                send_invite(user.email)
+                request.user.is_slack_invite_sent = True
+            except Exception as e:
+                request.user.is_slack_invite_sent = False
+                print(e)
+
+            request.user.is_member_onboarding_complete = True
+            request.user.save()
+
             return Response(
                 {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
                 status=status.HTTP_200_OK
@@ -311,11 +312,29 @@ def get_new_company_data(request):
 
 @api_view(['POST'])
 def update_profile_account_details(request):
+    """
+    Update the account details associated with a user's profile.
+
+    This view function handles a POST request to update various fields of a user's profile. It leverages
+    Django Rest Framework's serializer for data validation and saving. If the profile associated with the
+    user does not exist, it returns an appropriate response.
+
+    Parameters:
+    - request: The HttpRequest object containing the POST data and the logged-in user's information.
+
+    Returns:
+    - Response: A DRF Response object. If the update is successful, it returns a success status and message.
+                If the profile does not exist, it returns a 404 Not Found status with an error message.
+                If the provided data is invalid, it returns a 400 Bad Request status with error details.
+
+    Raises:
+    - TalentProfile.DoesNotExist: If the UserProfile associated with the user does not exist.
+    """
     user = request.user
     try:
         profile = user.userprofile
     except TalentProfile.DoesNotExist:
-        return Response({'error': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response({'status': False, 'message': 'Profile not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'POST':
         serializer = UpdateProfileAccountDetailsSerializer(profile, data=request.data, partial=True)
@@ -437,7 +456,7 @@ def update_profile_identity(request):
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = SexualIdentities.objects.get(identity=role_name['identity'])
+            role = SexualIdentities.objects.get(identity=role_name)
             sexuality_to_set.append(role)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -449,25 +468,25 @@ def update_profile_identity(request):
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = GenderIdentities.objects.get(gender=role_name['gender'])
+            role = GenderIdentities.objects.get(gender=role_name['name'])
             gender_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
-            return Response({'detail': f'Invalid gender: {role_name}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': f'Invalid name: {role_name}'}, status=status.HTTP_400_BAD_REQUEST)
 
     ethic_to_set = []  # This list will hold the role objects to be set to the TalentProfile
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = EthicIdentities.objects.get(ethnicity=role_name['ethnicity'])
+            role = EthicIdentities.objects.get(ethnicity=role_name['name'])
             ethic_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
-            return Response({'detail': f'Invalid ethnicity: {role_name}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': f'Invalid name: {role_name}'}, status=status.HTTP_400_BAD_REQUEST)
     if sexuality_to_set:
         userprofile.userprofile.identity_sexuality.set(sexuality_to_set)
     if gender_to_set:
@@ -517,55 +536,55 @@ def update_profile_notifications(request):
 
 @csrf_exempt
 def create_new_user(request):
-    if request.method == 'POST':
-        data = json.loads(request.body)
-        first_name = data.get('first_name')
-        last_name = data.get('last_name')
-        email = data.get('email').lower()
-        password = data.get('password')
-
-        if not all([first_name, last_name, email, password]):
-            return JsonResponse({'status': False, 'error': 'Missing required parameters'}, status=400)
-
-        # Check if a user with this email already exists
-        if CustomUser.objects.filter(email=email).exists():
-            return JsonResponse({'status': False, 'message': 'Email already in use'}, status=400)
-
-        password = make_password(password)
-        user = CustomUser(first_name=first_name, last_name=last_name, email=email, password=password)
-        try:
-            user.save()
-
-            # response = JsonResponse({'status': True, 'message': 'User created successfully'}, status=201)
-
-            # Create a token to track login
-            _, token = AuthToken.objects.create(user)
-
-            user.is_member = True
-            user.save()
-
-            # Prepare email data
-            email_data = {
-                'subject': 'Welcome to Our Platform',
-                'recipient_emails': [user.email],
-                'template_id': 'd-342822c240ed43778ba9e94a04fb10cf',
-                'dynamic_template_data': {
-                    'first_name': user.first_name,
-                }
-            }
-
-            send_dynamic_email(email_data)
-
-            response = JsonResponse({'status': True, 'message': 'User created successfully', 'token': token},
-                                    status=201)
-            return response
-        except Exception as e:
-            # Log the exception for debugging
-            print("Error while saving user: ", str(e))
-            return JsonResponse({'status': False, 'error': 'Unable to create user'}, status=500)
-
-    else:
+    """
+    Create a new user. This view handles the POST request to register a new user.
+    It performs input validation, user creation, and sending a welcome email.
+    """
+    if request.method != 'POST':
         return JsonResponse({'status': False, 'error': 'Invalid request method'}, status=405)
+
+    data = json.loads(request.body)
+    first_name, last_name, email, password = data.get('first_name'), data.get('last_name'), data.get('email',
+                                                                                                     '').lower(), data.get(
+        'password')
+
+    if not all([first_name, last_name, email, password]):
+        return JsonResponse({'status': False, 'error': 'Missing required parameters'}, status=400)
+
+    if CustomUser.objects.filter(email=email).exists():
+        return JsonResponse({'status': False, 'message': 'Email already in use'}, status=400)
+
+    if not all([first_name, last_name, email, password]):
+        return JsonResponse({'status': False, 'error': 'Missing required parameters'}, status=400)
+
+    user = CustomUser(first_name=first_name, last_name=last_name, email=email, password=make_password(password))
+    try:
+        user.save()
+        _, token = AuthToken.objects.create(user)
+        user.is_member = True
+        user.save()
+
+        # Prepare email data
+        email_data = {
+            'subject': 'Welcome to Our Platform',
+            'recipient_emails': [user.email],
+            'template_id': 'd-342822c240ed43778ba9e94a04fb10cf',
+            'dynamic_template_data': {
+                'first_name': user.first_name,
+            }
+        }
+
+        send_dynamic_email(email_data)
+
+        response = JsonResponse({'status': True,
+                                 'message': 'User created successfully',
+                                 'token': token},
+                                status=201)
+        return response
+    except Exception as e:
+        # Log the exception for debugging
+        print("Error while saving user: ", str(e))
+        return JsonResponse({'status': False, 'error': 'Unable to create user'}, status=500)
 
 
 class LogoutView(APIView):

@@ -9,7 +9,6 @@ router = DefaultRouter()
 router.register(r'mentors', views.MentorListView)
 
 urlpatterns = [
-    path('questions/', views.ApplicationQuestionList.as_view(), name='question-list'),
     path('details/', views.get_mentorship_data, name='details'),
     path('update/support/', views.update_support_type, name='update-support'),
     path('update/career/', views.update_career_questions, name='update-career-questions'),

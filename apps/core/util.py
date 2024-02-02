@@ -3,7 +3,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from utils.errors import CustomException
-from .models import UserProfile
+from .models import UserProfile, SexualIdentities, GenderIdentities, EthicIdentities, PronounsIdentities
 from .serializers import UpdateCustomUserSerializer
 from ..company.models import CompanyTypes, Department, Skill, SalaryRange, Roles, CompanyProfile
 from ..talent.models import TalentProfile
@@ -106,15 +106,22 @@ def create_or_update_user_profile(user, profile_data):
     try:
         user_profile, created = UserProfile.objects.get_or_create(user=user, defaults=profile_data)
 
-        # Set related fields if provided
-        if 'identity_sexuality' in profile_data and profile_data['identity_sexuality'] is not None:
-            user_profile.identity_sexuality.set(profile_data['identity_sexuality'])
-        if 'identity_gender' in profile_data and profile_data['identity_gender'] is not None:
-            user_profile.identity_gender.set(profile_data['identity_gender'])
-        if 'identity_ethic' in profile_data and profile_data['identity_ethic'] is not None:
-            user_profile.identity_ethic.set(profile_data['identity_ethic'])
-        if 'identity_pronouns' in profile_data and profile_data['identity_pronouns'] is not None:
-            user_profile.identity_pronouns.set(profile_data['identity_pronouns'])
+        # Process and set many-to-many fields
+        if 'identity_sexuality' in profile_data:
+            sexuality_instances = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
+            user_profile.identity_sexuality.set(sexuality_instances)
+
+        if 'identity_gender' in profile_data:
+            gender_instances = process_identity_field(profile_data['identity_gender'], GenderIdentities)
+            user_profile.identity_gender.set(gender_instances)
+
+        if 'identity_ethic' in profile_data:
+            ethic_instances = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
+            user_profile.identity_ethic.set(ethic_instances)
+
+        if 'identity_pronouns' in profile_data:
+            pronouns_instances = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
+            user_profile.identity_pronouns.set(pronouns_instances)
 
         # For fields that are not many-to-many relationships, update them directly
         for field, value in profile_data.items():
@@ -127,6 +134,43 @@ def create_or_update_user_profile(user, profile_data):
         # Log the exception and raise a custom exception for the caller to handle
         print(f"Error in create_or_update_user_profile: {str(e)}")
         raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+
+
+def process_identity_field(identity_list, model):
+    """
+    Process and validate name-related fields before setting them in the UserProfile.
+
+    This function takes a list of name names or identifiers, ensures that these identities
+    are present in the database (creating them if necessary), and returns a queryset
+    or list of Identity model instances.
+
+    Args:
+    identity_list (list): A list of name names or identifiers.
+    model (Django model class): The model class for the name (e.g., SexualIdentities, GenderIdentities).
+
+    Returns:
+    QuerySet: A QuerySet of Identity instances to be associated with the UserProfile.
+
+    Raises:
+    ValueError: If any of the identities are invalid or cannot be processed.
+    """
+    identity_instances = []
+
+    for identity_name in identity_list:
+        # Validate or process identity_name here (e.g., check if it's a non-empty string)
+        if not identity_name or not isinstance(identity_name, str):
+            raise ValueError(f"Invalid name: {identity_name}")
+
+        # Try to get the name by name, or create it if it doesn't exist
+        identity, created = model.objects.get_or_create(name=identity_name.strip())
+
+        # Optionally, handle the case where the name creation failed (if get_or_create does not meet your needs)
+        if not identity:
+            raise ValueError(f"Failed to create or retrieve name with name: {identity_name}")
+
+        identity_instances.append(identity)
+
+    return identity_instances
 
 
 def create_or_update_company_connection(user, company_data):
@@ -267,11 +311,11 @@ def extract_profile_data(data, files):
         'photo': files['photo'] if 'photo' in files else None,
     }
 
-    # Process identity fields to ensure they are lists or None if empty
-    profile_data['identity_sexuality'] = process_identity_field(profile_data['identity_sexuality'])
-    profile_data['identity_gender'] = process_identity_field(profile_data['identity_gender'])
-    profile_data['identity_ethic'] = process_identity_field(profile_data['identity_ethic'])
-    profile_data['identity_pronouns'] = process_identity_field(profile_data['identity_pronouns'])
+    # Process name fields to ensure they are lists or None if empty
+    # profile_data['identity_sexuality'] = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
+    # profile_data['identity_gender'] = process_identity_field(profile_data['identity_gender'], GenderIdentities)
+    # profile_data['identity_ethic'] = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
+    # profile_data['identity_pronouns'] = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
 
     return profile_data
 
@@ -331,16 +375,41 @@ def prepend_https_if_not_empty(url):
     return url
 
 
-def process_identity_field(field):
+def process_identity_field(identity_list, model):
     """
-    Process identity-related fields. Converts empty or 'None' fields to None, and ensures the field is a list.
+    Process and validate name-related fields before setting them in the UserProfile.
 
-    :param field: The field value to process, expected to be a list or a single string.
-    :return: A processed list or None if the field was empty or 'None'.
+    This function takes a list of name names or identifiers, ensures that these identities
+    are present in the database (creating them if necessary), and returns a queryset
+    or list of Identity model instances.
+
+    Args:
+    identity_list (list): A list of name names or identifiers.
+    model (Django model class): The model class for the name (e.g., SexualIdentities, GenderIdentities).
+
+    Returns:
+    QuerySet: A QuerySet of Identity instances to be associated with the UserProfile.
+
+    Raises:
+    ValueError: If any of the identities are invalid or cannot be processed.
     """
-    if field and not (isinstance(field, list) and len(field) == 1 and field[0] == ''):
-        return field
-    return None
+    identity_instances = []
+
+    for identity_name in identity_list:
+        # Validate or process identity_name here (e.g., check if it's a non-empty string)
+        if not identity_name or not isinstance(identity_name, str):
+            raise ValueError(f"Invalid name name: {identity_name}")
+
+        # Try to get the name by name, or create it if it doesn't exist
+        identity, created = model.objects.get_or_create(name=identity_name.strip())
+
+        # Optionally, handle the case where the name creation failed (if get_or_create does not meet your needs)
+        if not identity:
+            raise ValueError(f"Failed to create or retrieve name with name: {identity_name}")
+
+        identity_instances.append(identity)
+
+    return identity_instances
 
 
 def process_company_types(company_types):
@@ -535,3 +604,39 @@ def process_compensation(compensation_data, default_value=None):
     return compensation_to_set[0] if compensation_to_set else default_value
 
 
+def get_current_company_data(user):
+    """
+    Retrieve data of the company where the given user is currently employed.
+
+    This function fetches the company associated with the given user as a current employee. It extracts
+    and returns relevant company data, including the company's ID, name, logo, size, and industries.
+
+    Args:
+        user (CustomUser): The user whose current company data is to be retrieved.
+
+    Returns:
+        dict: A dictionary containing the company's ID, name, logo URL, size, and list of industries,
+              if the company is found. For example:
+              {
+                  "id": 1,
+                  "company_name": "Example Corp",
+                  "logo": "/media/logo_pics/default-logo.jpeg",
+                  "company_size": "501-1000",
+                  "industries": ["Tech", "Media"]
+              }
+        None: If the user is not currently associated with any company or the company does not exist.
+
+    Raises:
+        CompanyProfile.DoesNotExist: If no CompanyProfile is associated with the user as a current employee.
+    """
+    try:
+        company = CompanyProfile.objects.get(current_employees=user)
+        return {
+            "id": company.id,
+            "company_name": company.company_name,
+            "logo": company.logo.url,
+            "company_size": company.company_size,
+            "industries": [industry.name for industry in company.industries.all()]
+        }
+    except CompanyProfile.DoesNotExist:
+        return None

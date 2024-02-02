@@ -1,8 +1,9 @@
 from datetime import datetime
 
 from django.db.models import Q, Count
-from rest_framework import generics, viewsets, status
-from rest_framework.decorators import action, api_view
+from rest_framework import generics, viewsets, status, mixins
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -16,53 +17,62 @@ from utils.google_admin import create_user
 from utils.helper import generate_random_password
 
 
-class ApplicationQuestionList(generics.ListAPIView):
-    queryset = ApplicationQuestion.objects.all()
-    serializer_class = ApplicationQuestionSerializer
-
-
-class ApplicationAnswersViewSet(viewsets.ModelViewSet):
-    queryset = ApplicationAnswers.objects.all()
-    serializer_class = ApplicationAnswersSerializer
-
-    @action(detail=False, methods=['post'])
-    def create_program_profile(self, request):
-        # Retrieve and validate ApplicationAnswers data
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        # Create a new MentorshipProgramProfile
-        program_profile = MentorshipProgramProfile.objects.create(
-            user=request.user,
-            # You can add other fields here based on your requirements
-        )
-
-        # Associate the ApplicationAnswers with the program profile
-        answers_data = serializer.validated_data
-        for answer_data in answers_data:
-            ApplicationAnswers.objects.create(
-                user=request.user,
-                question=answer_data['question'],
-                answer=answer_data['answer'],
-            )
-
-        return Response({'status': True, 'message': 'Mentorship Program Profile created successfully.'},
-                        status=status.HTTP_201_CREATED)
-
-
 class MentorListView(APIView):
     """
     View to list all mentors or create a new mentor.
+    GET: Retrieve a list of all mentors.
+    POST: Create a new mentor.
     """
     queryset = MentorProfile.objects.all()
     serializer_class = MentorProfileSerializer
 
+    @permission_classes([IsAuthenticated])
     def get(self, request, format=None):
+        """
+        Retrieve a list of mentors or a specific mentor's details.
+
+        This method handles GET requests sent to the MentorListView endpoint. It returns a list of all mentors
+        if no specific parameters are provided. If an ID or other identifier is provided as a parameter, it returns
+        the details of the specified mentor.
+
+        Args:
+            request (HttpRequest or Request): The request object containing the HTTP headers.
+            *args: Variable length argument list.
+            **kwargs: Arbitrary keyword arguments. This may include parameters such as 'id' to specify a mentor.
+
+        Returns:
+            Response: A Response object containing the list of mentors or the details of a specific mentor.
+                     The data is serialized into a suitable format (e.g., JSON).
+
+        Raises:
+            Http404: If a specific mentor is requested but does not exist.
+            ValidationError: If the request contains invalid parameters.
+        """
         mentors = MentorProfile.objects.filter(user__is_mentor_profile_active=True)
         serializer = MentorProfileSerializer(mentors, many=True)
         return Response(serializer.data)
 
     def post(self, request, format=None):
+        """
+        Add a new mentor to the list.
+
+        This method handles the POST request to add a new mentor. It expects data in the
+        request body containing the mentor's details, validates the data, and if valid,
+        creates a new mentor record.
+
+        Args:
+            request (HttpRequest): The request object containing the POST data.
+            format (str, optional): The format of the request content. Defaults to None.
+
+        Returns:
+            Response: A DRF Response object. Returns a 201 status code and the newly created mentor data
+                      if successful. Returns a 400 status code and error details if the data is invalid or
+                      the creation fails.
+
+        Raises:
+            ValidationError: If the provided data is not valid to create a new mentor.
+            Exception: If an unexpected error occurs during mentor creation.
+        """
         serializer = MentorProfileSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -73,19 +83,25 @@ class MentorListView(APIView):
 class MentorDetailView(APIView):
     """
     View to retrieve, update, or delete a mentor instance.
+    GET: Retrieve a specific mentor.
+    PUT/PATCH: Update a specific mentor.
+    DELETE: Delete a specific mentor.
     """
 
+    @permission_classes([IsAuthenticated])
     def get_object(self, pk):
         try:
             return MentorProfile.objects.get(pk=pk)
         except MentorProfile.DoesNotExist:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
+    @permission_classes([IsAuthenticated])
     def get(self, request, pk, format=None):
         mentor = self.get_object(pk)
         serializer = MentorProfileSerializer(mentor)
         return Response(serializer.data)
 
+    @permission_classes([IsAuthenticated])
     def put(self, request, pk, format=None):
         mentor = self.get_object(pk)
         serializer = MentorProfileSerializer(mentor, data=request.data)
@@ -94,6 +110,7 @@ class MentorDetailView(APIView):
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @permission_classes([IsAuthenticated])
     def delete(self, request, pk, format=None):
         mentor = self.get_object(pk)
         mentor.delete()
@@ -120,6 +137,7 @@ def get_mentorship_data(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_or_update_mentorship_profile(request):
     user = request.user  # Get the user from the request
     data = request.data
@@ -180,6 +198,7 @@ def create_or_update_mentorship_profile(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_support_type(request):
     user = request.user
     data = request.data
@@ -227,6 +246,7 @@ def update_support_type(request):
 
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_career_questions(request):
     user = request.user
     data = request.data
@@ -253,6 +273,7 @@ def update_career_questions(request):
 
 # @permission_classes([IsAuthenticated])
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_profile_questions(request):
     user = request.user
     data = request.data
@@ -275,6 +296,7 @@ def update_profile_questions(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_values_questions(request):
     user = request.user
     data = request.data
@@ -305,6 +327,7 @@ def update_values_questions(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_calendar_link(request):
     user = request.user
     data = request.data
@@ -334,6 +357,7 @@ def update_calendar_link(request):
 
 
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def update_mentor_application_status(request, mentor_id):
     user = request.user
     data = request.data
@@ -500,6 +524,7 @@ def update_mentor_application_status(request, mentor_id):
 
 
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_top_mentor_match(request):
     """
     Retrieve top mentor profile.
