@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+import logging.config
 
 from celery.schedules import crontab
 from django.core.management.utils import get_random_secret_key
@@ -180,20 +181,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'knox.auth.TokenAuthentication',
-        # 'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication'
     ],
-    # 'DEFAULT_PERMISSION_CLASSES': [
-    #     'rest_framework.permissions.IsAuthenticated',
-    # ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 
 }
 
-# add security to prevent CSRF
-CSRF_COOKIE_HTTPONLY = True
-# CSRF_COOKIE_SECURE = True
-
-# Allow for cross domain
+# Security settings
 
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
@@ -217,31 +213,25 @@ CORS_ALLOWED_ORIGINS = [
     'https://beta.techbychoice.org',
     'https://www.gamma.techbychoice.org'
 ]
-CSRF_COOKIE_SECURE = False  # Set to True in production
 CSRF_COOKIE_DOMAIN = "localhost:3000"
-SESSION_COOKIE_SECURE = False  # Set to True in production
-SESSION_COOKIE_DOMAIN = "localhost:3000"
+X_FRAME_OPTIONS = 'DENY'
+CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE')
+SESSION_COOKIE_SECURE = os.getenv('SESSION_COOKIE')
+SECURE_BROWSER_XSS_FILTER = os.getenv('SESSION_COOKIE')
+SECURE_CONTENT_TYPE_NOSNIFF = os.getenv('SESSION_COOKIE')
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv('SESSION_COOKIE')
+SECURE_HSTS_PRELOAD = os.getenv('SESSION_COOKIE')
+SECURE_SSL_REDIRECT = os.getenv('SESSION_COOKIE')
+SESSION_COOKIE_HTTPONLY = os.getenv('SESSION_COOKIE')
+CSRF_COOKIE_HTTPONLY = True
+
+# SESSION_COOKIE_SECURE = False  # Set to True in production
+# SESSION_COOKIE_DOMAIN = "localhost:3000"
 
 # Allow cookies
-SESSION_COOKIE_SAMESITE = None
-SESSION_COOKIE_SECURE = False  # Set this to True in production with HTTPS
-
-# CORS_ORIGIN_WHITELIST = [
-#     'http://localhost:3000',
-#     'http://127.0.0.1:3000',
-#     'https://dev.onsolosocial.com',
-#     'https://app.onsolosocial.com',
-#     'https://onsolosocial.com',
-#     'https://containers-us-west-57.railway.app',
-#     # other origins...
-# ]
-# CORS_ALLOW_HEADERS = [
-#     'http://localhost:3000',
-#     'http://127.0.0.1:3000',
-# ]
-#
-# SESSION_COOKIE_SECURE = False
-# SESSION_COOKIE_SAMESITE = 'None'
+# SESSION_COOKIE_SAMESITE = None
+# SESSION_COOKIE_SECURE = False  # Set this to True in production with HTTPS
 
 
 LOGGING = {
@@ -255,6 +245,7 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console'],
+        # 'level': 'INFO', prod
         'level': 'DEBUG',
     },
 }
@@ -295,5 +286,5 @@ JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
 JWT_ALGORITHM = 'HS256'
 TOKEN_EXPIRATION = timedelta(days=7)
 
-# disabled for deployment testing
+# Ensure you don't run collectstatic during deployment if not necessary
 DISABLE_COLLECTSTATIC=1
