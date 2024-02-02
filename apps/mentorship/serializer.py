@@ -5,7 +5,7 @@ from apps.core.models import UserProfile
 from apps.core.serializers import TalentProfileSerializer
 from apps.core.serializers_member import CustomUserSerializer, UserProfileSerializer
 from apps.mentorship.models import MentorSupportAreas, CommitmentLevel, ApplicationQuestion, MentorProfile, \
-    MenteeProfile, ApplicationAnswers, MentorshipProgramProfile
+    MenteeProfile, ApplicationAnswers, MentorshipProgramProfile, MentorRoster, MentorReview
 from apps.talent.models import TalentProfile
 
 
@@ -36,6 +36,7 @@ class MentorProfileSerializer(serializers.ModelSerializer):
     talent_profile = serializers.SerializerMethodField(read_only=True)
     user_profile = serializers.SerializerMethodField(read_only=True)
     mentor_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
+    mentor_commitment_level = CommitmentLevelSerializer(many=True, read_only=True)
 
     class Meta:
         model = MentorProfile
@@ -68,6 +69,8 @@ class MentorshipProgramProfileSerializer(serializers.ModelSerializer):
     mentor_profile = serializers.SerializerMethodField(read_only=True)
     mentee_profile = serializers.SerializerMethodField(read_only=True)
     mentor_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
+    commitment_level = CommitmentLevelSerializer(many=True, read_only=True)
+    mentee_support_areas = MentorSupportAreasSerializer(many=True, read_only=True)
     class Meta:
         model = MentorshipProgramProfile
         fields = '__all__'
@@ -79,3 +82,19 @@ class MentorshipProgramProfileSerializer(serializers.ModelSerializer):
     def get_mentee_profile(self, obj):
         mentee_profile = MenteeProfile.objects.filter(user=obj.user.id).first()
         return MentorProfileSerializer(mentee_profile).data if mentee_profile else None
+
+
+class MentorRosterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MentorRoster
+        fields = ['mentor', 'mentee', 'mentee_review_of_mentor', 'mentor_review_of_mentee']
+
+    def create(self, validated_data):
+        # Additional logic (if needed) before saving the instance
+        return MentorRoster.objects.create(**validated_data)
+
+
+class MentorReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MentorReview
+        fields = ['mentor', 'mentee', 'rating', 'review_content']

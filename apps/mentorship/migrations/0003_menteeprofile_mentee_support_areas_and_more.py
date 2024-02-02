@@ -15,7 +15,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="mentorprofile",
-            name="mentor_support_areas",
+            name="commitment_level",
             field=models.CharField(blank=True, max_length=3000, null=True),
         ),
         migrations.AddField(
