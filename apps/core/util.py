@@ -54,15 +54,19 @@ def create_or_update_talent_profile(user, talent_data):
     """
     try:
         # Check if the user already has a TalentProfile
-        talent_profile, created = TalentProfile.objects.get_or_create(user=user)
+        # TODO: Testing Fix | We can switch this out to allways get since model is
+        #  now creating TalentProfile on customUser create ()
+        talent_profile = TalentProfile.objects.get(user=user)
 
         # Update or set fields in talent_profile from talent_data
         talent_profile.tech_journey = talent_data.get('tech_journey', talent_profile.tech_journey)
         talent_profile.is_talent_status = talent_data.get('talent_status', talent_profile.is_talent_status)
 
         # Handle many-to-many fields like company_types, roles, departments, skills, etc.
+        # TODO: Testing Fix | we can use the process_identity_field() to simplify the code here
         talent_profile.company_types.set(process_company_types(talent_data.get('company_types', [])))
         talent_profile.role.set(process_roles(talent_data.get('role', [])))
+        # Department is one that's messed up on prod so it's one I'm checking first
         talent_profile.department.set(process_departments(talent_data.get('department', [])))
         talent_profile.skills.set(process_skills(talent_data.get('skills', [])))
 
@@ -107,23 +111,25 @@ def create_or_update_user_profile(user, profile_data):
         user_profile, created = UserProfile.objects.get_or_create(user=user, defaults=profile_data)
 
         # Process and set many-to-many fields
-        if 'identity_sexuality' in profile_data:
+        if 'identity_sexuality' in profile_data and not profile_data['identity_sexuality'] == ['']:
             sexuality_instances = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
             user_profile.identity_sexuality.set(sexuality_instances)
 
-        if 'identity_gender' in profile_data:
+        if 'identity_gender' in profile_data and not profile_data['identity_gender'] == ['']:
             gender_instances = process_identity_field(profile_data['identity_gender'], GenderIdentities)
             user_profile.identity_gender.set(gender_instances)
 
-        if 'identity_ethic' in profile_data:
+        if 'identity_ethic' in profile_data and not profile_data['identity_ethic'] == ['']:
             ethic_instances = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
             user_profile.identity_ethic.set(ethic_instances)
 
-        if 'identity_pronouns' in profile_data:
+        if 'identity_pronouns' in profile_data and not profile_data['identity_pronouns'] == ['']:
             pronouns_instances = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
             user_profile.identity_pronouns.set(pronouns_instances)
 
         # For fields that are not many-to-many relationships, update them directly
+        # TODO: Testing Fix | I'm looping through all the items when I should
+        #  only loop through the ones for this grouping
         for field, value in profile_data.items():
             if field not in ['identity_sexuality', 'identity_gender', 'identity_ethic', 'identity_pronouns']:
                 setattr(user_profile, field, value)
@@ -195,7 +201,7 @@ def create_or_update_company_connection(user, company_data):
     company_logo = company_data.get('company_logo')
 
     # Check if the user is currently associated with a different company
-    previous_company = CompanyProfile.objects.filter(current_employees=user).exclude(id=company_id).first()
+    previous_company = CompanyProfile.objects.filter(current_employees=user).first()
     if previous_company:
         previous_company.current_employees.remove(user)
         previous_company.past_employees.add(user)
@@ -206,16 +212,21 @@ def create_or_update_company_connection(user, company_data):
         company_profile.current_employees.add(user)
     else:
         # The company doesn't exist, create a new one and set user as unclaimed_account_creator and in current_employees
-        company_profile = CompanyProfile.objects.create(
-            unclaimed_account_creator=user,
-            is_unclaimed_account=True,
-            company_name=company_name,
-            logo=company_logo,
-            company_url=company_url
-        )
-        company_profile.current_employees.add(user)
+        if company_name and company_url and company_logo:
+            company_profile = CompanyProfile.objects.create(
+                unclaimed_account_creator=user,
+                is_unclaimed_account=True,
+                company_name=company_name,
+                logo=company_logo,
+                company_url=company_url
+            )
+            company_profile.current_employees.add(user)
+            return company_profile
+        else:
+            return False
 
-    return company_profile
+
+
 
 
 def extract_user_data(data):
@@ -474,6 +485,10 @@ def process_roles(role_identifiers):
 
     roles_to_set = []
     for identifier in role_identifiers:
+        # Check and remove 'Add "' prefix and trailing '"' if present
+        if identifier.startswith('Add "') and identifier.endswith('"'):
+            identifier = identifier[5:-1].strip()
+
         try:
             # If identifier is a role ID
             if isinstance(identifier, int):
@@ -481,6 +496,9 @@ def process_roles(role_identifiers):
             # If identifier is a role name
             elif isinstance(identifier, str):
                 role, created = Roles.objects.get_or_create(name=identifier)
+
+                if created:
+                    print(f"Created new role: {identifier.name}")
             else:
                 raise ValueError(f"Invalid role identifier: {identifier}")
 
@@ -523,9 +541,21 @@ def process_departments(department_names):
             # Handle empty string or None
             raise ValueError("Department name cannot be empty or None.")
 
-        # Check if department exists, if not, create it
-        department, created = Department.objects.get_or_create(name=name.strip())
-        department_set.append(department)
+        # Check and remove 'Add "' prefix and trailing '"' if present
+        if name.startswith('Add "') and name.endswith('"'):
+            name = name[5:-1].strip()
+
+        try:
+            # Check if department exists, if not, create it
+            k = name.strip()
+            department, created = Department.objects.get_or_create(name=k)
+            department_set.append(department)
+            if created:
+                print(f"Created new department: {department.name}")
+        except Exception as e:
+            # Log the exception and skip this department
+            print(f"Failed to create or retrieve department '{name.strip()}': {e}")
+            continue
 
     # Return a QuerySet or a list of Department instances
     return department_set
@@ -555,15 +585,19 @@ def process_skills(skill_list):
         if not skill_name or not isinstance(skill_name, str):
             raise ValueError(f"Invalid skill name: {skill_name}")
 
+        # Check and remove 'Add "' prefix and trailing '"' if present
+        if skill_name.startswith('Add "') and skill_name.endswith('"'):
+            skill_name = skill_name[5:-1].strip()
+
         # Try to get the skill by name, or create it if it doesn't exist
-        skill, created = Skill.objects.get_or_create(name=skill_name.strip())
-
+        try:
+            skill, created = Skill.objects.get_or_create(name=skill_name.strip())
+            if created:
+                print(f"Created new department: {skill.name}")
+            skill_instances.append(skill)
         # Optionally, handle the case where the skill creation failed (if get_or_create does not meet your needs)
-        if not skill:
-            raise ValueError(f"Failed to create or retrieve skill with name: {skill_name}")
-
-        skill_instances.append(skill)
-
+        except Exception as e:
+            raise ValueError(f"Failed to create or retrieve skill with name: {skill_name}. Error: {e}")
     return skill_instances
 
 
