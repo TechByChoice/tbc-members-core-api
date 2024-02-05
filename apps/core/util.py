@@ -54,8 +54,6 @@ def create_or_update_talent_profile(user, talent_data):
     """
     try:
         # Check if the user already has a TalentProfile
-        # TODO: Testing Fix | We can switch this out to allways get since model is
-        #  now creating TalentProfile on customUser create ()
         talent_profile = TalentProfile.objects.get(user=user)
 
         # Update or set fields in talent_profile from talent_data
