@@ -1,4 +1,3 @@
-import json
 from datetime import date
 
 import pytz
@@ -244,7 +243,7 @@ class UserProfile(models.Model):
         ('Our Paid Open Source Program', 'Our Paid Open Source Program'),
         ('Not Sure at the Moment', 'Not Sure at the Moment')
     )
-    tbc_program_interest = models.TextField(max_length=37, blank=True, null=True)
+    tbc_program_interest = models.CharField(max_length=37, choices=TBC_INTEREST, blank=True, null=True)
     # location based info
     postal_code = models.CharField(max_length=10, null=True, blank=True)
     is_current_member_spotlight = models.BooleanField(default=False)
@@ -252,16 +251,3 @@ class UserProfile(models.Model):
 
     def __str__(self):
         return self.user.first_name + ' Profile'
-
-    def get_tbc_program_interest(self):
-        """Returns the list of interests."""
-        if self.tbc_program_interest:
-            return json.loads(self.tbc_program_interest)
-        return []
-
-    def set_tbc_program_interest(self, interests):
-        """Saves the list of interests as a JSON string."""
-        if interests:
-            self.tbc_program_interest = json.dumps(interests)
-        else:
-            self.tbc_program_interest = None

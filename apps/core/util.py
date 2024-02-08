@@ -4,14 +4,14 @@ from rest_framework.exceptions import ValidationError
 
 from utils.errors import CustomException
 from .models import UserProfile, SexualIdentities, GenderIdentities, EthicIdentities, PronounsIdentities
-from .serializers import UpdateCustomUserSerializer
+from .serializers import UpdateCustomUserSerializer, UserProfileSerializer
 from ..company.models import CompanyTypes, Department, Skill, SalaryRange, Roles, CompanyProfile
 from ..talent.models import TalentProfile
 
 User = get_user_model()
 
 
-def create_or_update_user(current_user, user_data):
+def update_user(current_user, user_data):
     """
     Create or update a user instance based on the provided user_data.
 
@@ -21,7 +21,7 @@ def create_or_update_user(current_user, user_data):
     """
     try:
         # Assuming you're partially updating an existing user
-        user_serializer = UpdateCustomUserSerializer(instance=current_user, data=user_data, partial=True)
+        user_serializer = UserProfileSerializer(instance=current_user, data=user_data, partial=True)
 
         # Validate the user data
         user_serializer.is_valid(raise_exception=True)
@@ -38,7 +38,7 @@ def create_or_update_user(current_user, user_data):
         raise
 
 
-def create_or_update_talent_profile(user, talent_data):
+def update_talent_profile(user, talent_data):
     """
     Create or update the TalentProfile for a given user.
 
@@ -72,7 +72,6 @@ def create_or_update_talent_profile(user, talent_data):
         talent_profile.min_compensation = process_compensation(talent_data.get('min_compensation', []))
         talent_profile.max_compensation = process_compensation(talent_data.get('max_compensation', []))
 
-
         # Handle file fields like resume
         if 'resume' in talent_data and talent_data['resume'] is not None:
             talent_profile.resume = talent_data['resume']
@@ -83,14 +82,14 @@ def create_or_update_talent_profile(user, talent_data):
 
     except Exception as e:
         # Log the exception for debugging
-        print(f"Error in create_or_update_talent_profile: {str(e)}")
+        print(f"Error in update_talent_profile: {str(e)}")
         # Re-raise the exception to be handled by the caller
         raise
 
 
-def create_or_update_user_profile(user, profile_data):
+def update_user_profile(user, profile_data):
     """
-    Create or update a user profile.
+    Update a user profile.
 
     This function will create a new UserProfile or update an existing one based on the provided user. It will set fields
     for identity_sexuality, identity_gender, identity_ethic, identity_pronouns, and other provided profile data.
@@ -106,38 +105,65 @@ def create_or_update_user_profile(user, profile_data):
         CustomException: If there's any issue in creating or updating the UserProfile or related objects.
     """
     try:
-        user_profile, created = UserProfile.objects.get_or_create(user=user, defaults=profile_data)
+        user_profile = UserProfile.objects.get(user=user)
+    except UserProfile.DoesNotExist as e:
+        # Log the exception and raise a custom exception for the caller to handle
+        print(f"UserProfile does not exist for user {user.id}: {e}")
+        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
 
-        # Process and set many-to-many fields
-        if 'identity_sexuality' in profile_data and not profile_data['identity_sexuality'] == ['']:
-            sexuality_instances = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
-            user_profile.identity_sexuality.set(sexuality_instances)
+    # Process and set many-to-many fields
+    if 'identity_sexuality' in profile_data and not profile_data['identity_sexuality'] == ['']:
+        sexuality_instances = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
+        profile_data['identity_sexuality'] = sexuality_instances
+    else:
+        del profile_data['identity_sexuality']
 
-        if 'identity_gender' in profile_data and not profile_data['identity_gender'] == ['']:
-            gender_instances = process_identity_field(profile_data['identity_gender'], GenderIdentities)
-            user_profile.identity_gender.set(gender_instances)
+    if 'identity_gender' in profile_data and not profile_data['identity_gender'] == ['']:
+        gender_instances = process_identity_field(profile_data['identity_gender'], GenderIdentities)
+        profile_data['identity_gender'] = gender_instances
+    else:
+        del profile_data['identity_gender']
 
-        if 'identity_ethic' in profile_data and not profile_data['identity_ethic'] == ['']:
-            ethic_instances = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
-            user_profile.identity_ethic.set(ethic_instances)
+    if 'identity_ethic' in profile_data and not profile_data['identity_ethic'] == ['']:
+        ethic_instances = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
+        profile_data['identity_ethic'] = ethic_instances
+    else:
+        del profile_data['identity_ethic']
 
-        if 'identity_pronouns' in profile_data and not profile_data['identity_pronouns'] == ['']:
-            pronouns_instances = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
-            user_profile.identity_pronouns.set(pronouns_instances)
+    if 'identity_pronouns' in profile_data and not profile_data['identity_pronouns'] == ['']:
+        pronouns_instances = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
+        profile_data['identity_pronouns'] = pronouns_instances
+    else:
+        del profile_data['identity_pronouns']
 
-        # For fields that are not many-to-many relationships, update them directly
-        # TODO: Testing Fix | I'm looping through all the items when I should
-        #  only loop through the ones for this grouping
+    # For fields that are not many-to-many relationships, update them directly
+    try:
         for field, value in profile_data.items():
             if field not in ['identity_sexuality', 'identity_gender', 'identity_ethic', 'identity_pronouns']:
                 setattr(user_profile, field, value)
+            if 'photo' in field:
+                user_profile.photo = value
+        try:
+            user_profile.set_tbc_program_interest(profile_data['tbc_program_interest'])
+            user_profile.postal_code = profile_data['postal_code']
+        except Exception as e:
+            print(f"Error trying to update items: {e}")
+        try:
+            user_profile.save(force_update=True)
+            print("UserProfile saved successfully.")
+        except Exception as e:
+            print(f"Error saving UserProfile: {e}")
 
-        user_profile.save()
+        # Verify the save operation by fetching the profile again
+        try:
+            updated_profile = UserProfile.objects.get(user=user)
+            print(f"Updated postal code: {updated_profile.postal_code}")
+        except UserProfile.DoesNotExist:
+            print("UserProfile does not exist.")
+
         return user_profile
     except Exception as e:
-        # Log the exception and raise a custom exception for the caller to handle
-        print(f"Error in create_or_update_user_profile: {str(e)}")
-        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+        print(f'Error updating user_profile: {e}')
 
 
 def process_identity_field(identity_list, model):
@@ -224,9 +250,6 @@ def create_or_update_company_connection(user, company_data):
             return False
 
 
-
-
-
 def extract_user_data(data):
     """
     Extracts and processes user-related data from the request data.
@@ -301,7 +324,7 @@ def extract_profile_data(data, files):
         'identity_ethic': data.get('identity_ethic', '').split(','),
         'is_identity_ethic_displayed': bool(data.get('is_identity_ethic_displayed', '')),
         'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get(
-            'pronouns_identities') else None,
+            'pronouns_identities') else '',
         'disability': bool(data.get('disability', '')),
         'is_disability_displayed': bool(data.get('is_disability_displayed', '')),
         'care_giver': bool(data.get('care_giver', '')),
@@ -316,15 +339,10 @@ def extract_profile_data(data, files):
         'marketing_jobs': bool(data.get('marketing_jobs', '')),
         'marketing_org_updates': bool(data.get('marketing_org_updates', '')),
         'postal_code': data.get('postal_code', ''),
-        'tbc_program_interest': data.get('tbc_program_interest', ''),
+        'tbc_program_interest': data.get('tbc_program_interest', '').split(',') if data.get('tbc_program_interest',
+                                                                                            '') else None,
         'photo': files['photo'] if 'photo' in files else None,
     }
-
-    # Process name fields to ensure they are lists or None if empty
-    # profile_data['identity_sexuality'] = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
-    # profile_data['identity_gender'] = process_identity_field(profile_data['identity_gender'], GenderIdentities)
-    # profile_data['identity_ethic'] = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
-    # profile_data['identity_pronouns'] = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
 
     return profile_data
 
@@ -382,43 +400,6 @@ def prepend_https_if_not_empty(url):
     if url and not url.startswith(('http://', 'https://')):
         return f'https://{url}'
     return url
-
-
-def process_identity_field(identity_list, model):
-    """
-    Process and validate name-related fields before setting them in the UserProfile.
-
-    This function takes a list of name names or identifiers, ensures that these identities
-    are present in the database (creating them if necessary), and returns a queryset
-    or list of Identity model instances.
-
-    Args:
-    identity_list (list): A list of name names or identifiers.
-    model (Django model class): The model class for the name (e.g., SexualIdentities, GenderIdentities).
-
-    Returns:
-    QuerySet: A QuerySet of Identity instances to be associated with the UserProfile.
-
-    Raises:
-    ValueError: If any of the identities are invalid or cannot be processed.
-    """
-    identity_instances = []
-
-    for identity_name in identity_list:
-        # Validate or process identity_name here (e.g., check if it's a non-empty string)
-        if not identity_name or not isinstance(identity_name, str):
-            raise ValueError(f"Invalid name name: {identity_name}")
-
-        # Try to get the name by name, or create it if it doesn't exist
-        identity, created = model.objects.get_or_create(name=identity_name.strip())
-
-        # Optionally, handle the case where the name creation failed (if get_or_create does not meet your needs)
-        if not identity:
-            raise ValueError(f"Failed to create or retrieve name with name: {identity_name}")
-
-        identity_instances.append(identity)
-
-    return identity_instances
 
 
 def process_company_types(company_types):
@@ -589,7 +570,7 @@ def process_skills(skill_list):
 
         # Try to get the skill by name, or create it if it doesn't exist
         try:
-            skill, created = Skill.objects.get_or_create(name=skill_name.strip())
+            skill, created = Skill.objects.get_or_create(name=skill_name)
             if created:
                 print(f"Created new department: {skill.name}")
             skill_instances.append(skill)

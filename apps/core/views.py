@@ -22,7 +22,7 @@ from apps.core.models import UserProfile, EthicIdentities, GenderIdentities, Sex
 from apps.core.serializers import UserProfileSerializer, CustomAuthTokenSerializer, \
     UpdateProfileAccountDetailsSerializer, CompanyProfileSerializer, TalentProfileSerializer
 from apps.core.util import extract_user_data, extract_company_data, extract_profile_data, extract_talent_data, \
-    create_or_update_user, create_or_update_talent_profile, create_or_update_user_profile, \
+    update_user, update_talent_profile, update_user_profile, \
     create_or_update_company_connection
 from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
 from apps.mentorship.serializer import MentorRosterSerializer, MentorshipProgramProfileSerializer
@@ -192,7 +192,7 @@ def get_announcement(request):
 
 # @login_required
 @parser_classes([MultiPartParser])
-@api_view(['PATCH'])
+@api_view(['POST'])
 def create_new_member(request):
     if request.user.is_member_onboarding_complete:
         return Response(
@@ -207,9 +207,9 @@ def create_new_member(request):
         talent_data = extract_talent_data(data, request.FILES)
 
         with transaction.atomic():
-            user = create_or_update_user(request.user, user_data)
-            talent_profile = create_or_update_talent_profile(user, talent_data)
-            user_profile = create_or_update_user_profile(user, profile_data)
+            user = update_user(request.user, user_data)
+            talent_profile = update_talent_profile(user, talent_data)
+            user_profile = update_user_profile(user, profile_data)
             user_company_connection = create_or_update_company_connection(user, company_data)
 
             if user_data['is_mentee'] or user_data['is_mentor']:
@@ -222,13 +222,13 @@ def create_new_member(request):
                 request.user.is_slack_invite_sent = False
                 print(e)
 
-            request.user.is_member_onboarding_complete = True
-            request.user.save()
+        request.user.is_member_onboarding_complete = True
+        request.user.save()
 
-            return Response(
-                {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
-                status=status.HTTP_200_OK
-            )
+        return Response(
+            {'status': True, 'message': 'User, TalentProfile, and UserProfile created successfully!'},
+            status=status.HTTP_200_OK
+        )
 
     except Exception as e:
         # Handle specific known exceptions

@@ -4,7 +4,7 @@ from rest_framework import status
 from django.contrib.auth.models import User
 
 from apps.core.models import UserProfile
-from apps.core.util import create_or_update_talent_profile, create_or_update_user, create_or_update_user_profile, \
+from apps.core.util import update_talent_profile, update_user, update_user_profile, \
     extract_user_data, extract_company_data, process_company_types
 from apps.core.views import create_new_member
 from apps.talent.models import TalentProfile
@@ -21,9 +21,9 @@ class CreateNewMemberTestCase(TestCase):
     @patch('apps.core.util.extract_company_data')
     @patch('apps.core.util.extract_profile_data')
     @patch('apps.core.util.extract_talent_data')
-    @patch('apps.core.util.create_or_update_user')
-    @patch('apps.core.util.create_or_update_talent_profile')
-    @patch('apps.core.util.create_or_update_user_profile')
+    @patch('apps.core.util.update_user')
+    @patch('apps.core.util.update_talent_profile')
+    @patch('apps.core.util.update_user_profile')
     @patch('utils.slack.send_invite')
     def test_create_new_member_success(self, mock_send_invite, mock_create_or_update_user_profile,
                                        mock_create_or_update_talent_profile, mock_create_or_update_user,
@@ -62,7 +62,7 @@ class CreateUserTestCase(TestCase):
         mock_user_serializer.return_value.is_valid.return_value = True
         mock_user_serializer.return_value.save.return_value = self.user
 
-        result = create_or_update_user(self.user, self.user_data)
+        result = update_user(self.user, self.user_data)
 
         # Assertions
         mock_user_serializer.assert_called_once_with(instance=self.user, data=self.user_data, partial=True)
@@ -80,7 +80,7 @@ class CreateTalentProfileTestCase(TestCase):
         mock_talent_profile = MagicMock()
         mock_get_or_create.return_value = (mock_talent_profile, True)
 
-        result = create_or_update_talent_profile(self.user, self.talent_data)
+        result = update_talent_profile(self.user, self.talent_data)
 
         # Assertions
         mock_get_or_create.assert_called_once_with(user=self.user)
@@ -99,7 +99,7 @@ class CreateUserProfileTestCase(TestCase):
         mock_user_profile = MagicMock()
         mock_get_or_create.return_value = (mock_user_profile, True)
 
-        result = create_or_update_user_profile(self.user, self.profile_data)
+        result = update_user_profile(self.user, self.profile_data)
 
         # Assertions
         mock_get_or_create.assert_called_once_with(user=self.user, defaults=self.profile_data)
