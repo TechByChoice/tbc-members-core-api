@@ -11,11 +11,7 @@ from django.db import models
 from django_quill.fields import QuillField
 
 # Create your models here.
-CHOICES = (
-    (None, "Prefer not to answer"),
-    (True, "Yes"),
-    (False, "No")
-)
+CHOICES = ((None, "Prefer not to answer"), (True, "Yes"), (False, "No"))
 
 
 class CustomUserManager(BaseUserManager):
@@ -23,7 +19,7 @@ class CustomUserManager(BaseUserManager):
 
     def _create_user(self, email, password, **extra_fields):
         if not email:
-            raise ValueError('Users require an email field')
+            raise ValueError("Users require an email field")
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
@@ -32,11 +28,11 @@ class CustomUserManager(BaseUserManager):
 
     def create_user(self, email, password=None, **extra_fields):
         if not email:
-            raise ValueError('The Email field must be set')
+            raise ValueError("The Email field must be set")
         try:
             validate_email(email)
         except ValidationError:
-            raise ValueError('Enter a valid email address')
+            raise ValueError("Enter a valid email address")
 
         email = self.normalize_email(email)
         user = self.model(email=email, **extra_fields)
@@ -45,13 +41,13 @@ class CustomUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
-        extra_fields.setdefault('is_staff', True)
-        extra_fields.setdefault('is_superuser', True)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
 
-        if extra_fields.get('is_staff') is not True:
-            raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
-            raise ValueError('Superuser must have is_superuser=True.')
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser must have is_staff=True.")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
 
@@ -95,8 +91,8 @@ class CustomUser(AbstractBaseUser):
     joined_at = models.DateTimeField(auto_now_add=True)
     email_confirmed = models.BooleanField(default=False)
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['first_name', 'last_name']
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = CustomUserManager()
 
@@ -105,13 +101,19 @@ class CustomUser(AbstractBaseUser):
         Returns True if the user has any permissions in the given app label.
         """
         # User has the named permission from the app label.
-        return self.is_staff or self.user_permissions.filter(content_type__app_label=app_label).exists() or self.is_superuser
+        return (
+            self.is_staff
+            or self.user_permissions.filter(content_type__app_label=app_label).exists()
+            or self.is_superuser
+        )
 
     def has_perm(self, perm, obj=None):
         """
         Returns True if the user has the specified permission.
         """
-        return self.is_active and (self.is_superuser or self.user_permissions.filter(codename=perm).exists())
+        return self.is_active and (
+            self.is_superuser or self.user_permissions.filter(codename=perm).exists()
+        )
 
 
 class SexualIdentities(models.Model):
@@ -175,18 +177,22 @@ class MembersSpotlight(models.Model):
     updated_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.user.first_name + ' spotlight'
+        return self.user.first_name + " spotlight"
 
 
 class UserProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    photo = models.FileField(null=True, blank=True, upload_to='users')
+    photo = models.FileField(null=True, blank=True, upload_to="users")
     # timezone = models.CharField(max_length=50, choices=[(tz, tz) for tz in pytz.all_timezones])
     access_token = models.CharField(max_length=255, null=True)
     # Marketing
-    marketing_monthly_newsletter = models.BooleanField(blank=False, null=False, default=False)
+    marketing_monthly_newsletter = models.BooleanField(
+        blank=False, null=False, default=False
+    )
     marketing_events = models.BooleanField(blank=False, null=False, default=False)
-    marketing_identity_based_programing = models.BooleanField(blank=False, null=False, default=False)
+    marketing_identity_based_programing = models.BooleanField(
+        blank=False, null=False, default=False
+    )
     marketing_jobs = models.BooleanField(blank=False, null=False, default=False)
     marketing_org_updates = models.BooleanField(blank=False, null=False, default=False)
     # terms
@@ -217,32 +223,42 @@ class UserProfile(models.Model):
     care_giver = models.BooleanField(blank=True, null=True, choices=CHOICES)
     is_care_giver_displayed = models.BooleanField(default=False)
     VETERAN_STATUS = (
-        ('1', 'I am not a protected veteran'),
-        ('2', 'I identify as one or more of the classifications of a protected veteran'),
-        ('3', 'Prefer not to answer'),
+        ("1", "I am not a protected veteran"),
+        (
+            "2",
+            "I identify as one or more of the classifications of a protected veteran",
+        ),
+        ("3", "Prefer not to answer"),
     )
-    veteran_status = models.CharField(max_length=100, choices=VETERAN_STATUS, blank=True, null=True)
+    veteran_status = models.CharField(
+        max_length=100, choices=VETERAN_STATUS, blank=True, null=True
+    )
     is_veteran_status_displayed = models.BooleanField(default=False)
     HOW_CONNECTION_MADE = (
-        ('twitter', 'Twitter'),
-        ('facebook', 'Facebook'),
-        ('linkedin', 'LinkedIn'),
-        ('instagram', 'Instagram'),
-        ('slack', 'Slack'),
-        ('youtube', 'Youtube'),
-        ('github', 'Github'),
-        ('clubhouse', 'Clubhouse'),
-        ('other', 'Other')
+        ("twitter", "Twitter"),
+        ("facebook", "Facebook"),
+        ("linkedin", "LinkedIn"),
+        ("instagram", "Instagram"),
+        ("slack", "Slack"),
+        ("youtube", "Youtube"),
+        ("github", "Github"),
+        ("clubhouse", "Clubhouse"),
+        ("other", "Other"),
     )
-    how_connection_made = models.CharField(max_length=9, choices=HOW_CONNECTION_MADE, blank=True, null=True)
+    how_connection_made = models.CharField(
+        max_length=9, choices=HOW_CONNECTION_MADE, blank=True, null=True
+    )
     TBC_INTEREST = (
-        ('Job Placement Help', 'Job Placement Help'),
-        ('Mentorship', 'Mentorship'),
-        ('Learning New Skills', 'Learning New Skills'),
-        ('Help Starting a Business', 'Help Starting a Business'),
-        ('Being a Part of a Welcoming Community', 'Being a Part of a Welcoming Community'),
-        ('Our Paid Open Source Program', 'Our Paid Open Source Program'),
-        ('Not Sure at the Moment', 'Not Sure at the Moment')
+        ("Job Placement Help", "Job Placement Help"),
+        ("Mentorship", "Mentorship"),
+        ("Learning New Skills", "Learning New Skills"),
+        ("Help Starting a Business", "Help Starting a Business"),
+        (
+            "Being a Part of a Welcoming Community",
+            "Being a Part of a Welcoming Community",
+        ),
+        ("Our Paid Open Source Program", "Our Paid Open Source Program"),
+        ("Not Sure at the Moment", "Not Sure at the Moment"),
     )
     tbc_program_interest = models.TextField(max_length=37, blank=True, null=True)
     # location based info
@@ -251,7 +267,7 @@ class UserProfile(models.Model):
     member_spotlight = models.ManyToManyField(MembersSpotlight, blank=True)
 
     def __str__(self):
-        return self.user.first_name + ' Profile'
+        return self.user.first_name + " Profile"
 
     def get_tbc_program_interest(self):
         """Returns the list of interests."""

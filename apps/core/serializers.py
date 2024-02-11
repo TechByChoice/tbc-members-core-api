@@ -13,29 +13,29 @@ from apps.talent.models import TalentProfile
 class CustomAuthTokenSerializer(AuthTokenSerializer):
     email = serializers.EmailField()
     password = serializers.CharField(
-        style={'input_type': 'password'},
-        trim_whitespace=True
+        style={"input_type": "password"}, trim_whitespace=True
     )
 
     def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
+        email = attrs.get("email")
+        password = attrs.get("password")
 
         if email and password:
-            user = authenticate(request=self.context.get('request'),
-                                username=email, password=password)
+            user = authenticate(
+                request=self.context.get("request"), username=email, password=password
+            )
 
             # The authenticate call simply returns None for is_active=False
             # users. (Assuming the default ModelBackend authentication
             # backend.)
             if not user:
-                msg = _('Unable to log in with provided credentials.')
-                raise serializers.ValidationError(msg, code='authorization')
+                msg = _("Unable to log in with provided credentials.")
+                raise serializers.ValidationError(msg, code="authorization")
         else:
             msg = _('Must include "email" and "password".')
-            raise serializers.ValidationError(msg, code='authorization')
+            raise serializers.ValidationError(msg, code="authorization")
 
-        attrs['user'] = user
+        attrs["user"] = user
         return attrs
 
 
@@ -45,30 +45,27 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ("password", "email", "first_name", "last_name")
 
         extra_kwargs = {
-            'password': {"write_only": True},
-            'email': {
+            "password": {"write_only": True},
+            "email": {
                 "required": True,
                 "allow_blank": False,
                 "validators": {
                     validators.UniqueValidator(
-                        CustomUser.objects.all(), "A user with that email already exists"
+                        CustomUser.objects.all(),
+                        "A user with that email already exists",
                     )
-                }
-            }
-
+                },
+            },
         }
 
     def create(self, validated_data):
-        password = validated_data.get('password')
-        email = validated_data.get('email')
-        first_name = validated_data.get('first_name')
-        last_name = validated_data.get('last_name')
+        password = validated_data.get("password")
+        email = validated_data.get("email")
+        first_name = validated_data.get("first_name")
+        last_name = validated_data.get("last_name")
 
         user = CustomUser.objects.create_user(
-            email=email,
-            password=password,
-            first_name=first_name,
-            last_name=last_name,
+            email=email, password=password, first_name=first_name, last_name=last_name
         )
         return user
 
@@ -98,29 +95,29 @@ class UpdateCustomUserSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = '__all__'
+        fields = "__all__"
 
 
 class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
-    first_name = serializers.CharField(source='user.first_name')
-    last_name = serializers.CharField(source='user.last_name')
-    email = serializers.EmailField(source='user.email')
+    first_name = serializers.CharField(source="user.first_name")
+    last_name = serializers.CharField(source="user.last_name")
+    email = serializers.EmailField(source="user.email")
     postal_code = serializers.CharField()
 
     class Meta:
         model = TalentProfile
-        fields = ['first_name', 'last_name', 'email', 'postal_code']
+        fields = ["first_name", "last_name", "email", "postal_code"]
 
     def update(self, instance, validated_data):
         # Extracting user related data
-        user_data = validated_data.pop('user', {})
-        instance.postal_code = validated_data.get('postal_code', instance.postal_code)
+        user_data = validated_data.pop("user", {})
+        instance.postal_code = validated_data.get("postal_code", instance.postal_code)
 
         # Updating user instance related fields
         user_instance = instance.user
-        user_instance.first_name = user_data.get('first_name', user_instance.first_name)
-        user_instance.last_name = user_data.get('last_name', user_instance.last_name)
-        user_instance.email = user_data.get('email', user_instance.email)
+        user_instance.first_name = user_data.get("first_name", user_instance.first_name)
+        user_instance.last_name = user_data.get("last_name", user_instance.last_name)
+        user_instance.email = user_data.get("email", user_instance.email)
 
         user_instance.save()
         instance.save()
@@ -129,22 +126,26 @@ class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
-    current_employees = serializers.PrimaryKeyRelatedField(queryset=CustomUser.objects.all(), many=True, required=False)
+    current_employees = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), many=True, required=False
+    )
     company_name = serializers.CharField(required=False, allow_blank=True)
     company_url = serializers.URLField(required=False, allow_blank=True)
 
     class Meta:
         model = CompanyProfile
-        fields = ['id', 'company_name', 'company_url', 'current_employees']
+        fields = ["id", "company_name", "company_url", "current_employees"]
 
     def create(self, validated_data):
-        user = self.context['request'].user  # get the user from the request context
-        company_name = validated_data.get('company_name', None)
-        company_url = validated_data.get('company_url', None)
+        user = self.context["request"].user  # get the user from the request context
+        company_name = validated_data.get("company_name", None)
+        company_url = validated_data.get("company_url", None)
 
         # Only create a new company if both company_name and company_url are provided.
         if not company_name or not company_url:
-            raise serializers.ValidationError("Both company_name and company_url must be provided for new companies.")
+            raise serializers.ValidationError(
+                "Both company_name and company_url must be provided for new companies."
+            )
 
         company = CompanyProfile.objects.create(**validated_data)
         company.current_employees.add(user)
@@ -158,14 +159,13 @@ class TalentProfileRoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TalentProfile
-        fields = ['role']
+        fields = ["role"]
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = Department
-        fields = ('id', 'name')
+        fields = ("id", "name")
 
 
 class TalentProfileSerializer(serializers.ModelSerializer):
@@ -175,5 +175,4 @@ class TalentProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TalentProfile
-        fields = '__all__'
-
+        fields = "__all__"

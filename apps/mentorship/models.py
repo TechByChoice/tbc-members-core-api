@@ -29,16 +29,13 @@ class CommitmentLevel(models.Model):
 class ApplicationQuestion(models.Model):
     # Define choices for the 'question_type' field
     QUESTION_TYPE_CHOICES = [
-        ('text', 'Text'),
-        ('quill', 'Quill'),
-        ('boolean', 'Boolean'),
-        ('array', 'Array'),
+        ("text", "Text"),
+        ("quill", "Quill"),
+        ("boolean", "Boolean"),
+        ("array", "Array"),
     ]
     # Define choices for the 'question_type' field
-    QUESTION_GROUP_CHOICES = [
-        ('career', 'Career'),
-        ('mentorship', 'Mentorship'),
-    ]
+    QUESTION_GROUP_CHOICES = [("career", "Career"), ("mentorship", "Mentorship")]
 
     question_text = models.CharField(max_length=255)
     question_type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES)
@@ -47,10 +44,10 @@ class ApplicationQuestion(models.Model):
     application_type = models.CharField(
         max_length=20,
         choices=[
-            ('mentor_only', 'Mentor Only'),
-            ('mentee_only', 'Mentee Only'),
-            ('both', 'Both')
-        ]
+            ("mentor_only", "Mentor Only"),
+            ("mentee_only", "Mentee Only"),
+            ("both", "Both"),
+        ],
     )
 
     def __str__(self):
@@ -67,35 +64,35 @@ class ApplicationAnswers(models.Model):
 
     @property
     def text_answer(self):
-        return self.answer.get('text', '')
+        return self.answer.get("text", "")
 
     @text_answer.setter
     def text_answer(self, answer_text):
-        self.answer = {'text': answer_text}
+        self.answer = {"text": answer_text}
 
     @property
     def boolean_answer(self):
-        return self.answer.get('boolean', False)
+        return self.answer.get("boolean", False)
 
     @boolean_answer.setter
     def boolean_answer(self, answer_boolean):
-        self.answer = {'boolean': answer_boolean}
+        self.answer = {"boolean": answer_boolean}
 
     @property
     def array_answer(self):
-        return self.answer.get('array', [])
+        return self.answer.get("array", [])
 
     @array_answer.setter
     def array_answer(self, answer_array):
-        self.answer = {'array': answer_array}
+        self.answer = {"array": answer_array}
 
     @property
     def quill_answer(self):
-        return self.answer.get('quill', '')
+        return self.answer.get("quill", "")
 
     @quill_answer.setter
     def quill_answer(self, answer_quill):
-        self.answer = {'quill': answer_quill}
+        self.answer = {"quill": answer_quill}
 
 
 class ValuesMatch(models.Model):
@@ -114,20 +111,22 @@ class ValuesMatch(models.Model):
 class MentorProfile(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
     MENTORSHIP_STATUS = (
-        ('submitted', 'Submitted'),
-        ('active', 'Active'),
-        ('interviewing', 'Interviewing'),
-        ('paused', 'Paused'),
-        ('need_cal_info', 'Need Booking Info'),
-        ('removed', 'Removed'),
-        ('removed_coc_issues', 'Removed COC Issues'),
-        ('removed_inactive', 'Removed Inactive'),
-        ('incomplete_application', 'Incomplete Application'),
-        ('lacking_experience', 'Lacking Skill or Experience'),
-        ('rejected_other', 'Other'),
-        ('passed_interview', 'Passed Interview')
+        ("submitted", "Submitted"),
+        ("active", "Active"),
+        ("interviewing", "Interviewing"),
+        ("paused", "Paused"),
+        ("need_cal_info", "Need Booking Info"),
+        ("removed", "Removed"),
+        ("removed_coc_issues", "Removed COC Issues"),
+        ("removed_inactive", "Removed Inactive"),
+        ("incomplete_application", "Incomplete Application"),
+        ("lacking_experience", "Lacking Skill or Experience"),
+        ("rejected_other", "Other"),
+        ("passed_interview", "Passed Interview"),
     )
-    mentor_status = models.CharField(max_length=22, choices=MENTORSHIP_STATUS, default=1)
+    mentor_status = models.CharField(
+        max_length=22, choices=MENTORSHIP_STATUS, default=1
+    )
     activated_at_date = models.DateTimeField(blank=True, null=True)
     interview_requested_at_date = models.DateTimeField(blank=True, null=True)
     paused_date = models.DateTimeField(blank=True, null=True)
@@ -135,7 +134,9 @@ class MentorProfile(models.Model):
     removed_coc_date = models.DateTimeField(blank=True, null=True)
     removed_inactive_date = models.DateTimeField(blank=True, null=True)
     interview_reminder_date = models.DateTimeField(blank=True, null=True)
-    mentor_commitment_level = models.ManyToManyField(CommitmentLevel, blank=True, name="mentor_commitment_level")
+    mentor_commitment_level = models.ManyToManyField(
+        CommitmentLevel, blank=True, name="mentor_commitment_level"
+    )
     mentor_how_to_help = models.CharField(max_length=3000, blank=True, null=True)
     mentorship_goals = models.CharField(max_length=3000, blank=True, null=True)
 
@@ -156,10 +157,7 @@ class MenteeProfile(models.Model):
 
 
 class MentorReview(models.Model):
-    REVIEW_AUTHOR_CHOICES = [
-        ('mentor', 'Mentor'),
-        ('mentee', 'Mentee'),
-    ]
+    REVIEW_AUTHOR_CHOICES = [("mentor", "Mentor"), ("mentee", "Mentee")]
 
     mentor = models.ForeignKey(MentorProfile, on_delete=models.CASCADE)
     mentee = models.ForeignKey(MenteeProfile, on_delete=models.CASCADE)
@@ -171,18 +169,26 @@ class MentorReview(models.Model):
 class MentorRoster(models.Model):
     mentor = models.ForeignKey(MentorProfile, on_delete=models.CASCADE)
     mentee = models.ForeignKey(MenteeProfile, on_delete=models.CASCADE)
-    mentee_review_of_mentor = models.ManyToManyField(MentorReview, related_name='mentee_reviews', blank=True)
-    mentor_review_of_mentee = models.ManyToManyField(MentorReview, related_name='mentor_reviews', blank=True)
-    sessions = models.ManyToManyField('Session', related_name='mentor_roster_sessions')
+    mentee_review_of_mentor = models.ManyToManyField(
+        MentorReview, related_name="mentee_reviews", blank=True
+    )
+    mentor_review_of_mentee = models.ManyToManyField(
+        MentorReview, related_name="mentor_reviews", blank=True
+    )
+    sessions = models.ManyToManyField("Session", related_name="mentor_roster_sessions")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
 
 class Session(models.Model):
-    mentor_mentee_connection = models.ForeignKey(MentorRoster, related_name='MenteeMentorConnections', on_delete=models.CASCADE)
+    mentor_mentee_connection = models.ForeignKey(
+        MentorRoster, related_name="MenteeMentorConnections", on_delete=models.CASCADE
+    )
     note = models.TextField(blank=True, null=True)
     reason = models.ManyToManyField(MentorSupportAreas, blank=False)
-    created_by = models.ForeignKey(CustomUser, related_name='MenteeMentorConnections', on_delete=models.CASCADE)
+    created_by = models.ForeignKey(
+        CustomUser, related_name="MenteeMentorConnections", on_delete=models.CASCADE
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
 
@@ -191,16 +197,30 @@ class MentorshipProgramProfile(models.Model):
     calendar_link = models.URLField(null=True, blank=True, max_length=200)
     tbc_email = models.EmailField(null=True, blank=True, max_length=50)
     # Value based questions
-    values = models.ForeignKey(ValuesMatch, on_delete=models.CASCADE, blank=True, null=True)
+    values = models.ForeignKey(
+        ValuesMatch, on_delete=models.CASCADE, blank=True, null=True
+    )
     # Mentor profile data
-    mentor_profile = models.ForeignKey(MentorProfile, on_delete=models.CASCADE, blank=True, null=True)
+    mentor_profile = models.ForeignKey(
+        MentorProfile, on_delete=models.CASCADE, blank=True, null=True
+    )
     # Mentee profile data
-    mentee_profile = models.ForeignKey(MenteeProfile, on_delete=models.CASCADE, blank=True, null=True)
+    mentee_profile = models.ForeignKey(
+        MenteeProfile, on_delete=models.CASCADE, blank=True, null=True
+    )
     # Roster profile data
-    roster = models.ForeignKey(MentorRoster, on_delete=models.CASCADE, blank=True, null=True)
-    commitment_level = models.ManyToManyField(CommitmentLevel, related_name='commitment_level')
-    mentee_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True, related_name='mentee_support_areas')
-    mentor_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True, related_name='mentor_support_areas')
+    roster = models.ForeignKey(
+        MentorRoster, on_delete=models.CASCADE, blank=True, null=True
+    )
+    commitment_level = models.ManyToManyField(
+        CommitmentLevel, related_name="commitment_level"
+    )
+    mentee_support_areas = models.ManyToManyField(
+        MentorSupportAreas, blank=True, related_name="mentee_support_areas"
+    )
+    mentor_support_areas = models.ManyToManyField(
+        MentorSupportAreas, blank=True, related_name="mentor_support_areas"
+    )
     # details
     biggest_strengths = models.CharField(max_length=3000, blank=True, null=True)
     career_success = models.CharField(max_length=3000, blank=True, null=True)
@@ -227,7 +247,9 @@ class MentorshipProgramProfile(models.Model):
 
         if is_new:
             # If this is a new instance, create and associate a MenteeProfile
-            mentee_profile, created = MenteeProfile.objects.get_or_create(user=self.user)
+            mentee_profile, created = MenteeProfile.objects.get_or_create(
+                user=self.user
+            )
             self.mentee_profile = mentee_profile
             # Call save() again to save the association
-            super(MentorshipProgramProfile, self).save(update_fields=['mentee_profile'])
+            super(MentorshipProgramProfile, self).save(update_fields=["mentee_profile"])

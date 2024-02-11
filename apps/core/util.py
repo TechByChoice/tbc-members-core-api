@@ -3,9 +3,22 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from utils.errors import CustomException
-from .models import UserProfile, SexualIdentities, GenderIdentities, EthicIdentities, PronounsIdentities
+from .models import (
+    UserProfile,
+    SexualIdentities,
+    GenderIdentities,
+    EthicIdentities,
+    PronounsIdentities,
+)
 from .serializers import UpdateCustomUserSerializer, UserProfileSerializer
-from ..company.models import CompanyTypes, Department, Skill, SalaryRange, Roles, CompanyProfile
+from ..company.models import (
+    CompanyTypes,
+    Department,
+    Skill,
+    SalaryRange,
+    Roles,
+    CompanyProfile,
+)
 from ..talent.models import TalentProfile
 
 User = get_user_model()
@@ -21,7 +34,9 @@ def update_user(current_user, user_data):
     """
     try:
         # Assuming you're partially updating an existing user
-        user_serializer = UserProfileSerializer(instance=current_user, data=user_data, partial=True)
+        user_serializer = UserProfileSerializer(
+            instance=current_user, data=user_data, partial=True
+        )
 
         # Validate the user data
         user_serializer.is_valid(raise_exception=True)
@@ -57,24 +72,36 @@ def update_talent_profile(user, talent_data):
         talent_profile = TalentProfile.objects.get(user=user)
 
         # Update or set fields in talent_profile from talent_data
-        talent_profile.tech_journey = talent_data.get('tech_journey', talent_profile.tech_journey)
-        talent_profile.is_talent_status = talent_data.get('talent_status', talent_profile.is_talent_status)
+        talent_profile.tech_journey = talent_data.get(
+            "tech_journey", talent_profile.tech_journey
+        )
+        talent_profile.is_talent_status = talent_data.get(
+            "talent_status", talent_profile.is_talent_status
+        )
 
         # Handle many-to-many fields like company_types, roles, departments, skills, etc.
         # TODO: Testing Fix | we can use the process_identity_field() to simplify the code here
-        talent_profile.company_types.set(process_company_types(talent_data.get('company_types', [])))
-        talent_profile.role.set(process_roles(talent_data.get('role', [])))
+        talent_profile.company_types.set(
+            process_company_types(talent_data.get("company_types", []))
+        )
+        talent_profile.role.set(process_roles(talent_data.get("role", [])))
         # Department is one that's messed up on prod so it's one I'm checking first
-        talent_profile.department.set(process_departments(talent_data.get('department', [])))
-        talent_profile.skills.set(process_skills(talent_data.get('skills', [])))
+        talent_profile.department.set(
+            process_departments(talent_data.get("department", []))
+        )
+        talent_profile.skills.set(process_skills(talent_data.get("skills", [])))
 
         # Handle compensation ranges
-        talent_profile.min_compensation = process_compensation(talent_data.get('min_compensation', []))
-        talent_profile.max_compensation = process_compensation(talent_data.get('max_compensation', []))
+        talent_profile.min_compensation = process_compensation(
+            talent_data.get("min_compensation", [])
+        )
+        talent_profile.max_compensation = process_compensation(
+            talent_data.get("max_compensation", [])
+        )
 
         # Handle file fields like resume
-        if 'resume' in talent_data and talent_data['resume'] is not None:
-            talent_profile.resume = talent_data['resume']
+        if "resume" in talent_data and talent_data["resume"] is not None:
+            talent_profile.resume = talent_data["resume"]
 
         # Save the updated profile
         talent_profile.save()
@@ -112,40 +139,59 @@ def update_user_profile(user, profile_data):
         raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
 
     # Process and set many-to-many fields
-    if 'identity_sexuality' in profile_data and not profile_data['identity_sexuality'] == ['']:
-        sexuality_instances = process_identity_field(profile_data['identity_sexuality'], SexualIdentities)
-        profile_data['identity_sexuality'] = sexuality_instances
+    if "identity_sexuality" in profile_data and not profile_data[
+        "identity_sexuality"
+    ] == [""]:
+        sexuality_instances = process_identity_field(
+            profile_data["identity_sexuality"], SexualIdentities
+        )
+        profile_data["identity_sexuality"] = sexuality_instances
     else:
-        del profile_data['identity_sexuality']
+        del profile_data["identity_sexuality"]
 
-    if 'identity_gender' in profile_data and not profile_data['identity_gender'] == ['']:
-        gender_instances = process_identity_field(profile_data['identity_gender'], GenderIdentities)
-        profile_data['identity_gender'] = gender_instances
+    if "identity_gender" in profile_data and not profile_data["identity_gender"] == [
+        ""
+    ]:
+        gender_instances = process_identity_field(
+            profile_data["identity_gender"], GenderIdentities
+        )
+        profile_data["identity_gender"] = gender_instances
     else:
-        del profile_data['identity_gender']
+        del profile_data["identity_gender"]
 
-    if 'identity_ethic' in profile_data and not profile_data['identity_ethic'] == ['']:
-        ethic_instances = process_identity_field(profile_data['identity_ethic'], EthicIdentities)
-        profile_data['identity_ethic'] = ethic_instances
+    if "identity_ethic" in profile_data and not profile_data["identity_ethic"] == [""]:
+        ethic_instances = process_identity_field(
+            profile_data["identity_ethic"], EthicIdentities
+        )
+        profile_data["identity_ethic"] = ethic_instances
     else:
-        del profile_data['identity_ethic']
+        del profile_data["identity_ethic"]
 
-    if 'identity_pronouns' in profile_data and not profile_data['identity_pronouns'] == ['']:
-        pronouns_instances = process_identity_field(profile_data['identity_pronouns'], PronounsIdentities)
-        profile_data['identity_pronouns'] = pronouns_instances
+    if "identity_pronouns" in profile_data and not profile_data[
+        "identity_pronouns"
+    ] == [""]:
+        pronouns_instances = process_identity_field(
+            profile_data["identity_pronouns"], PronounsIdentities
+        )
+        profile_data["identity_pronouns"] = pronouns_instances
     else:
-        del profile_data['identity_pronouns']
+        del profile_data["identity_pronouns"]
 
     # For fields that are not many-to-many relationships, update them directly
     try:
         for field, value in profile_data.items():
-            if field not in ['identity_sexuality', 'identity_gender', 'identity_ethic', 'identity_pronouns']:
+            if field not in [
+                "identity_sexuality",
+                "identity_gender",
+                "identity_ethic",
+                "identity_pronouns",
+            ]:
                 setattr(user_profile, field, value)
-            if 'photo' in field:
+            if "photo" in field:
                 user_profile.photo = value
         try:
-            user_profile.set_tbc_program_interest(profile_data['tbc_program_interest'])
-            user_profile.postal_code = profile_data['postal_code']
+            user_profile.set_tbc_program_interest(profile_data["tbc_program_interest"])
+            user_profile.postal_code = profile_data["postal_code"]
         except Exception as e:
             print(f"Error trying to update items: {e}")
         try:
@@ -163,7 +209,7 @@ def update_user_profile(user, profile_data):
 
         return user_profile
     except Exception as e:
-        print(f'Error updating user_profile: {e}')
+        print(f"Error updating user_profile: {e}")
 
 
 def process_identity_field(identity_list, model):
@@ -196,7 +242,9 @@ def process_identity_field(identity_list, model):
 
         # Optionally, handle the case where the name creation failed (if get_or_create does not meet your needs)
         if not identity:
-            raise ValueError(f"Failed to create or retrieve name with name: {identity_name}")
+            raise ValueError(
+                f"Failed to create or retrieve name with name: {identity_name}"
+            )
 
         identity_instances.append(identity)
 
@@ -219,10 +267,10 @@ def create_or_update_company_connection(user, company_data):
     Returns:
     - CompanyProfile: The company profile object that the user was added to.
     """
-    company_id = company_data.get('company_id')
-    company_name = company_data.get('company_name')
-    company_url = company_data.get('company_url')
-    company_logo = company_data.get('company_logo')
+    company_id = company_data.get("company_id")
+    company_name = company_data.get("company_name")
+    company_url = company_data.get("company_url")
+    company_logo = company_data.get("company_logo")
 
     # Check if the user is currently associated with a different company
     previous_company = CompanyProfile.objects.filter(current_employees=user).first()
@@ -242,7 +290,7 @@ def create_or_update_company_connection(user, company_data):
                 is_unclaimed_account=True,
                 company_name=company_name,
                 logo=company_logo,
-                company_url=company_url
+                company_url=company_url,
             )
             company_profile.current_employees.add(user)
             return company_profile
@@ -267,8 +315,8 @@ def extract_user_data(data):
     """
 
     return {
-        'is_mentee': bool(data.get('is_mentee', '')),
-        'is_mentor': bool(data.get('is_mentor', '')),
+        "is_mentee": bool(data.get("is_mentee", "")),
+        "is_mentor": bool(data.get("is_mentor", "")),
     }
 
 
@@ -289,9 +337,9 @@ def extract_company_data(data):
     """
 
     return {
-        'company_name': data.get('company_name', ''),
-        'company_url': data.get('company_url', ''),
-        'company_id': data.get('company_id', ''),
+        "company_name": data.get("company_name", ""),
+        "company_url": data.get("company_url", ""),
+        "company_id": data.get("company_id", ""),
     }
 
 
@@ -311,37 +359,51 @@ def extract_profile_data(data, files):
     :return: A dictionary containing processed profile-related data.
     """
     profile_data = {
-        'linkedin': prepend_https_if_not_empty(data.get('linkedin', '')),
-        'instagram': data.get('instagram', ''),
-        'github': prepend_https_if_not_empty(data.get('github', '')),
-        'twitter': data.get('twitter', ''),
-        'youtube': prepend_https_if_not_empty(data.get('youtube', '')),
-        'personal': prepend_https_if_not_empty(data.get('personal', '')),
-        'identity_sexuality': data.get('identity_sexuality', '').split(','),
-        'is_identity_sexuality_displayed': bool(data.get('is_identity_sexuality_displayed', '')),
-        'identity_gender': data.get('gender_identities', '').split(','),
-        'is_identity_gender_displayed': bool(data.get('is_identity_gender_displayed', '')),
-        'identity_ethic': data.get('identity_ethic', '').split(','),
-        'is_identity_ethic_displayed': bool(data.get('is_identity_ethic_displayed', '')),
-        'identity_pronouns': data.get('pronouns_identities', '').split(',') if data.get(
-            'pronouns_identities') else '',
-        'disability': bool(data.get('disability', '')),
-        'is_disability_displayed': bool(data.get('is_disability_displayed', '')),
-        'care_giver': bool(data.get('care_giver', '')),
-        'is_care_giver_displayed': bool(data.get('is_care_giver_displayed', '')),
-        'veteran_status': data.get('veteran_status', ''),
-        'is_veteran_status_displayed': bool(data.get('is_veteran_status_displayed', '')),
-        'how_connection_made': data.get('how_connection_made', '').lower(),
-        'is_pronouns_displayed': bool(data.get('is_pronouns_displayed', '')),
-        'marketing_monthly_newsletter': bool(data.get('marketing_monthly_newsletter', '')),
-        'marketing_events': bool(data.get('marketing_events', '')),
-        'marketing_identity_based_programing': bool(data.get('marketing_identity_based_programing', '')),
-        'marketing_jobs': bool(data.get('marketing_jobs', '')),
-        'marketing_org_updates': bool(data.get('marketing_org_updates', '')),
-        'postal_code': data.get('postal_code', ''),
-        'tbc_program_interest': data.get('tbc_program_interest', '').split(',') if data.get('tbc_program_interest',
-                                                                                            '') else None,
-        'photo': files['photo'] if 'photo' in files else None,
+        "linkedin": prepend_https_if_not_empty(data.get("linkedin", "")),
+        "instagram": data.get("instagram", ""),
+        "github": prepend_https_if_not_empty(data.get("github", "")),
+        "twitter": data.get("twitter", ""),
+        "youtube": prepend_https_if_not_empty(data.get("youtube", "")),
+        "personal": prepend_https_if_not_empty(data.get("personal", "")),
+        "identity_sexuality": data.get("identity_sexuality", "").split(","),
+        "is_identity_sexuality_displayed": bool(
+            data.get("is_identity_sexuality_displayed", "")
+        ),
+        "identity_gender": data.get("gender_identities", "").split(","),
+        "is_identity_gender_displayed": bool(
+            data.get("is_identity_gender_displayed", "")
+        ),
+        "identity_ethic": data.get("identity_ethic", "").split(","),
+        "is_identity_ethic_displayed": bool(
+            data.get("is_identity_ethic_displayed", "")
+        ),
+        "identity_pronouns": data.get("pronouns_identities", "").split(",")
+        if data.get("pronouns_identities")
+        else "",
+        "disability": bool(data.get("disability", "")),
+        "is_disability_displayed": bool(data.get("is_disability_displayed", "")),
+        "care_giver": bool(data.get("care_giver", "")),
+        "is_care_giver_displayed": bool(data.get("is_care_giver_displayed", "")),
+        "veteran_status": data.get("veteran_status", ""),
+        "is_veteran_status_displayed": bool(
+            data.get("is_veteran_status_displayed", "")
+        ),
+        "how_connection_made": data.get("how_connection_made", "").lower(),
+        "is_pronouns_displayed": bool(data.get("is_pronouns_displayed", "")),
+        "marketing_monthly_newsletter": bool(
+            data.get("marketing_monthly_newsletter", "")
+        ),
+        "marketing_events": bool(data.get("marketing_events", "")),
+        "marketing_identity_based_programing": bool(
+            data.get("marketing_identity_based_programing", "")
+        ),
+        "marketing_jobs": bool(data.get("marketing_jobs", "")),
+        "marketing_org_updates": bool(data.get("marketing_org_updates", "")),
+        "postal_code": data.get("postal_code", ""),
+        "tbc_program_interest": data.get("tbc_program_interest", "").split(",")
+        if data.get("tbc_program_interest", "")
+        else None,
+        "photo": files["photo"] if "photo" in files else None,
     }
 
     return profile_data
@@ -364,28 +426,36 @@ def extract_talent_data(data, files):
     """
 
     talent_data = {
-        'tech_journey': data.get('years_of_experience', []),
-        'is_talent_status': data.get('talent_status', False),
-        'company_types': data.get('company_types', '').split(',') if data.get('company_types') else [],
-        'department': data.get('job_department', '').split(',') if data.get('job_department') else [],
-        'role': data.get('job_roles', '').split(',') if data.get('job_roles') else [],
-        'skills': data.get('job_skills', '').split(',') if data.get('job_skills') else [],
-        'max_compensation': data.get('max_compensation', []),
-        'min_compensation': data.get('min_compensation', []),
-        'resume': files.get('resume') if 'resume' in files else None
+        "tech_journey": data.get("years_of_experience", []),
+        "is_talent_status": data.get("talent_status", False),
+        "company_types": data.get("company_types", "").split(",")
+        if data.get("company_types")
+        else [],
+        "department": data.get("job_department", "").split(",")
+        if data.get("job_department")
+        else [],
+        "role": data.get("job_roles", "").split(",") if data.get("job_roles") else [],
+        "skills": data.get("job_skills", "").split(",")
+        if data.get("job_skills")
+        else [],
+        "max_compensation": data.get("max_compensation", []),
+        "min_compensation": data.get("min_compensation", []),
+        "resume": files.get("resume") if "resume" in files else None,
     }
 
     # Ensuring that the list fields containing IDs are actually lists of integers
-    for field in ['max_compensation', 'min_compensation']:
+    for field in ["max_compensation", "min_compensation"]:
         if isinstance(talent_data[field], list):
             talent_data[field] = [int(i) for i in talent_data[field] if i.isdigit()]
 
     # Convert boolean fields from string to actual boolean values
-    talent_data['is_talent_status'] = bool(talent_data['is_talent_status'])
+    talent_data["is_talent_status"] = bool(talent_data["is_talent_status"])
 
     # Clean up list fields to ensure there are no empty strings
-    for list_field in ['company_types', 'department', 'role', 'skills']:
-        talent_data[list_field] = [item for item in talent_data[list_field] if item.strip()]
+    for list_field in ["company_types", "department", "role", "skills"]:
+        talent_data[list_field] = [
+            item for item in talent_data[list_field] if item.strip()
+        ]
 
     return talent_data
 
@@ -397,8 +467,8 @@ def prepend_https_if_not_empty(url):
     :param url: The URL string to process.
     :return: The processed URL string with 'https://' prepended if applicable.
     """
-    if url and not url.startswith(('http://', 'https://')):
-        return f'https://{url}'
+    if url and not url.startswith(("http://", "https://")):
+        return f"https://{url}"
     return url
 
 
@@ -427,10 +497,14 @@ def process_company_types(company_types):
             # Attempt to get the CompanyType by name or ID
             if isinstance(company_type, int):
                 # If company_type is an int, we assume it's an ID
-                company_type_instance, created = CompanyTypes.objects.get_or_create(id=company_type)
+                company_type_instance, created = CompanyTypes.objects.get_or_create(
+                    id=company_type
+                )
             else:
                 # If company_type is a string, we assume it's the name of the company type
-                company_type_instance, created = CompanyTypes.objects.get_or_create(name=company_type)
+                company_type_instance, created = CompanyTypes.objects.get_or_create(
+                    name=company_type
+                )
 
             company_type_instances.append(company_type_instance)
         except CompanyTypes.MultipleObjectsReturned:
@@ -576,7 +650,9 @@ def process_skills(skill_list):
             skill_instances.append(skill)
         # Optionally, handle the case where the skill creation failed (if get_or_create does not meet your needs)
         except Exception as e:
-            raise ValueError(f"Failed to create or retrieve skill with name: {skill_name}. Error: {e}")
+            raise ValueError(
+                f"Failed to create or retrieve skill with name: {skill_name}. Error: {e}"
+            )
     return skill_instances
 
 
@@ -606,13 +682,13 @@ def process_compensation(compensation_data, default_value=None):
             compensation_to_set.append(salary_range)
         except SalaryRange.DoesNotExist:
             # Handle the case where the SalaryRange does not exist for the given id
-            raise ValidationError(f'Salary range with id {comp_id} does not exist.')
+            raise ValidationError(f"Salary range with id {comp_id} does not exist.")
         except SalaryRange.MultipleObjectsReturned:
             # Handle the case where multiple SalaryRanges are returned for the given id
-            raise ValidationError(f'Multiple salary ranges found for id {comp_id}.')
+            raise ValidationError(f"Multiple salary ranges found for id {comp_id}.")
         except ValueError:
             # Handle the case where comp_id is not a valid integer (if ids are integers)
-            raise ValidationError(f'Invalid id: {comp_id}. Id must be an integer.')
+            raise ValidationError(f"Invalid id: {comp_id}. Id must be an integer.")
 
     return compensation_to_set[0] if compensation_to_set else default_value
 
@@ -649,7 +725,7 @@ def get_current_company_data(user):
             "company_name": company.company_name,
             "logo": company.logo.url,
             "company_size": company.company_size,
-            "industries": [industry.name for industry in company.industries.all()]
+            "industries": [industry.name for industry in company.industries.all()],
         }
     except CompanyProfile.DoesNotExist:
         return None

@@ -7,6 +7,7 @@ class CustomException(Exception):
         status_code (int): HTTP status code to return in case of this exception.
         payload (dict, optional): Additional data to include with the exception.
     """
+
     def __init__(self, message, status_code=None, payload=None):
         self.message = message
         self.status_code = status_code or 400  # Default status code is 400
@@ -24,6 +25,6 @@ class CustomException(Exception):
             dict: A dictionary representation of the exception.
         """
         rv = dict(self.payload or ())
-        rv['message'] = self.message
-        rv['status'] = self.status_code
+        rv["message"] = self.message
+        rv["status"] = self.status_code
         return rv

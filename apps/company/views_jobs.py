@@ -22,7 +22,9 @@ class JobMatchView(View):
         matching_jobs = Job.objects.filter(
             skills__in=talent_skills,
             role__in=talent_roles,
-            department__in=talent_departments
+            department__in=talent_departments,
         ).distinct()
 
-        return Response({'status': True, 'jobs': matching_jobs}, status=status.HTTP_200_OK)
+        return Response(
+            {"status": True, "jobs": matching_jobs}, status=status.HTTP_200_OK
+        )

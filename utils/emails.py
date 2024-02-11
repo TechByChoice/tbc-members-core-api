@@ -11,17 +11,19 @@ def send_dynamic_email(email_data):
                        Required keys are 'subject', 'recipient_emails', 'template_id', and 'dynamic_template_data'.
     """
     # Set up the API key
-    sendgrid_api_key = os.getenv('SENDGRID_API_KEY')
+    sendgrid_api_key = os.getenv("SENDGRID_API_KEY")
     if sendgrid_api_key is None:
-        raise ValueError("The SendGrid API key is not set in the environment variables.")
+        raise ValueError(
+            "The SendGrid API key is not set in the environment variables."
+        )
 
     # Create a Mail object
     message = Mail(
         from_email=os.getenv("SENDGRID_FROM_EMAIL"),
-        to_emails=email_data['recipient_emails']
+        to_emails=email_data["recipient_emails"],
     )
-    message.template_id = email_data['template_id']
-    message.dynamic_template_data = email_data['dynamic_template_data']
+    message.template_id = email_data["template_id"]
+    message.dynamic_template_data = email_data["dynamic_template_data"]
 
     try:
         # Create SendGrid client and send the email

@@ -18,4 +18,6 @@ class Command(BaseCommand):
         for company in CompanyProfile.objects.filter(lever_xml_feed_url__isnull=False):
             sync_jobs_for_company(company)
 
-        self.stdout.write(self.style.SUCCESS('Successfully synced jobs from Lever for all companies'))
+        self.stdout.write(
+            self.style.SUCCESS("Successfully synced jobs from Lever for all companies")
+        )

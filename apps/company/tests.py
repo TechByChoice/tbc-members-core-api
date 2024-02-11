@@ -36,14 +36,17 @@ class NewMemberDataTests(TestCase):
 
     def test_get_new_member_data(self):
         response = self.client.get(
-            reverse(views.get_new_member_data))  # Replace with the name of your view if you're using named URLs.
+            reverse(views.get_new_member_data)
+        )  # Replace with the name of your view if you're using named URLs.
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         # Check if the returned data structure matches the expected one.
         # Here's a small example for just one part:
-        self.assertIn('total_companies', response.data)
-        self.assertIn('data', response.data)
-        self.assertEqual(len(response.data['data']), 5)  # You have 3 main steps in your data.
+        self.assertIn("total_companies", response.data)
+        self.assertIn("data", response.data)
+        self.assertEqual(
+            len(response.data["data"]), 5
+        )  # You have 3 main steps in your data.
 
         # Optionally, check if the data in the response matches your test data.
         # e.g.,

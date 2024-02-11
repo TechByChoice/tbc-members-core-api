@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from apps.company.models import CompanyProfile, Job, Department, Skill, Roles, SalaryRange
+from apps.company.models import (
+    CompanyProfile,
+    Job,
+    Department,
+    Skill,
+    Roles,
+    SalaryRange,
+)
 from apps.core.models import CustomUser, UserProfile
 
 
@@ -13,23 +20,20 @@ class CompanySignUpSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ('password', 'first_name', 'last_name', 'email', 'company_name')
-        extra_kwargs = {'password': {'write_only': True}}
+        fields = ("password", "first_name", "last_name", "email", "company_name")
+        extra_kwargs = {"password": {"write_only": True}}
 
     def create(self, validated_data):
-        company_name = validated_data.pop('company_name')
+        company_name = validated_data.pop("company_name")
 
         # Create CustomUser object
         user = CustomUser.objects.create(**validated_data)
 
         # Create CompanyProfile object
-        user_profile = UserProfile.objects.create(
-            user=user
-        )
+        user_profile = UserProfile.objects.create(user=user)
         # Create CompanyProfile object
         company_profile = CompanyProfile.objects.create(
-            company_name=company_name,
-            account_creator=user
+            company_name=company_name, account_creator=user
         )
         company_profile.account_owner.set([user]),
         company_profile.billing_team.set([user]),
@@ -43,47 +47,63 @@ class JobReferralSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = [
-            'job_title', 'id', 'external_description', 'level', 'url',
-            'external_interview_process', 'status', 'is_referral_job',
-            'job_type', 'department', 'skills', 'on_site_remote',
-            'min_compensation', 'max_compensation', 'parent_company',
-            'role', 'experience', 'years_of_experience', 'location',
-            'created_by', 'created_by_id', 'referral_note'
+            "job_title",
+            "id",
+            "external_description",
+            "level",
+            "url",
+            "external_interview_process",
+            "status",
+            "is_referral_job",
+            "job_type",
+            "department",
+            "skills",
+            "on_site_remote",
+            "min_compensation",
+            "max_compensation",
+            "parent_company",
+            "role",
+            "experience",
+            "years_of_experience",
+            "location",
+            "created_by",
+            "created_by_id",
+            "referral_note",
         ]
 
     def create(self, validated_data):
-        validated_data['is_referral_job'] = True
+        validated_data["is_referral_job"] = True
         return super(JobReferralSerializer, self).create(validated_data)
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Department
-        fields = ('id', 'name')
+        fields = ("id", "name")
 
 
 class SkillSerializer(serializers.ModelSerializer):
     class Meta:
         model = Skill
-        fields = ('id', 'name', 'skill_type')
+        fields = ("id", "name", "skill_type")
 
 
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Roles
-        fields = ('id', 'name')
+        fields = ("id", "name")
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CompanyProfile
-        fields = ('id', 'company_name', 'company_url', 'logo', 'industries')
+        fields = ("id", "company_name", "company_url", "logo", "industries")
 
 
 class SalaryRangeSerializer(serializers.ModelSerializer):
     class Meta:
         model = SalaryRange
-        fields = ('id', 'range')
+        fields = ("id", "range")
 
 
 class JobSerializer(serializers.ModelSerializer):
@@ -97,16 +117,44 @@ class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job
         fields = [
-            'id', 'job_title', 'external_description', 'level', 'url', 'external_interview_process',
-            'job_type', 'department', 'skills', 'on_site_remote', 'status',
-            'compensation_range', 'min_compensation', 'max_compensation',
-            'role', 'experience', 'years_of_experience', 'location',
-            'team_size', 'female_team_size_total', 'poc_team_size_total',
-            'black_team_size_total', 'indigenous_team_size_total',
-            'lgbtqia_team_size_total', 'disabled_team_size_total',
-            'department_size', 'female_department_size_total',
-            'poc_department_size_total', 'black_department_size_total',
-            'indigenous_department_size_total', 'lgbtqia_department_size_total',
-            'disabled_department_size_total', 'is_paid', 'parent_company',
-            'is_remote', 'is_referral_job', 'created_by', 'created_by_id', 'created_at', 'updated_at'
+            "id",
+            "job_title",
+            "external_description",
+            "level",
+            "url",
+            "external_interview_process",
+            "job_type",
+            "department",
+            "skills",
+            "on_site_remote",
+            "status",
+            "compensation_range",
+            "min_compensation",
+            "max_compensation",
+            "role",
+            "experience",
+            "years_of_experience",
+            "location",
+            "team_size",
+            "female_team_size_total",
+            "poc_team_size_total",
+            "black_team_size_total",
+            "indigenous_team_size_total",
+            "lgbtqia_team_size_total",
+            "disabled_team_size_total",
+            "department_size",
+            "female_department_size_total",
+            "poc_department_size_total",
+            "black_department_size_total",
+            "indigenous_department_size_total",
+            "lgbtqia_department_size_total",
+            "disabled_department_size_total",
+            "is_paid",
+            "parent_company",
+            "is_remote",
+            "is_referral_job",
+            "created_by",
+            "created_by_id",
+            "created_at",
+            "updated_at",
         ]

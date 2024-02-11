@@ -3,8 +3,8 @@ from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
 # Initialize a Web client
-slack_client = WebClient(token=os.environ['SLACK_API_TOKEN'])
-slack_admin_client = WebClient(token=os.environ['SLACK_API_ADMIN_TOKEN'])
+slack_client = WebClient(token=os.environ["SLACK_API_TOKEN"])
+slack_admin_client = WebClient(token=os.environ["SLACK_API_ADMIN_TOKEN"])
 
 
 def fetch_new_posts(channel_id, limit=10):
@@ -15,11 +15,8 @@ def fetch_new_posts(channel_id, limit=10):
     :return: A list of recent messages.
     """
     try:
-        response = slack_client.conversations_history(
-            channel=channel_id,
-            limit=limit
-        )
-        return response['messages']
+        response = slack_client.conversations_history(channel=channel_id, limit=limit)
+        return response["messages"]
     except SlackApiError as e:
         print(f"Error fetching conversations: {e}")
         return None
@@ -33,10 +30,7 @@ def post_message(channel_id, text):
     :return: The response from the API.
     """
     try:
-        response = slack_client.chat_postMessage(
-            channel=channel_id,
-            text=text
-        )
+        response = slack_client.chat_postMessage(channel=channel_id, text=text)
         return response
     except SlackApiError as e:
         print(f"Error posting message: {e}")
@@ -55,8 +49,8 @@ def send_invite(email, channels=[]):
             email=email,
             # channel_ids=channels,
             resend=True,
-            team_id='TEM0JJSBX',
-            channel_ids='CF4FMFMFC,CELM2RTRR,C0439DMHXFE,C044FUKPV24,C03HFL33ZEG,CFJM9RU7K',
+            team_id="TEM0JJSBX",
+            channel_ids="CF4FMFMFC,CELM2RTRR,C0439DMHXFE,C044FUKPV24,C03HFL33ZEG,CFJM9RU7K",
             custom_message="Welcome to Tech by Choice Slack!",
         )
         return response

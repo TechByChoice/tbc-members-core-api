@@ -7,9 +7,8 @@ from utils.eventbrite import EventbriteManager
 
 
 class EventView(View):
-
     def get(self, request, *args, **kwargs):
-        event_id = kwargs.get('event_id')
+        event_id = kwargs.get("event_id")
         manager = EventbriteManager()
 
         if event_id:
@@ -18,15 +17,16 @@ class EventView(View):
                 event = manager.eventbrite.get_event(event_id)
                 return JsonResponse(event)
             except Exception as e:
-                return JsonResponse({'error': str(e)}, status=404)
+                return JsonResponse({"error": str(e)}, status=404)
         else:
             # Get all events
             try:
                 events = manager.get_all_events()
-                return JsonResponse(events, safe=False)  # Note the safe=False for non-dict objects
+                return JsonResponse(
+                    events, safe=False
+                )  # Note the safe=False for non-dict objects
             except Exception as e:
-                return JsonResponse({'error': str(e)}, status=500)
-
+                return JsonResponse({"error": str(e)}, status=500)
 
     def post(self, request, *args, **kwargs):
         # Create a new event
@@ -36,12 +36,11 @@ class EventView(View):
             event = manager.create_event(event_data)
             return JsonResponse(event, status=201)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-
+            return JsonResponse({"error": str(e)}, status=400)
 
     def put(self, request, *args, **kwargs):
         # Edit an existing event
-        event_id = kwargs.get('event_id')
+        event_id = kwargs.get("event_id")
         if not event_id:
             raise BadRequest("Event ID is required.")
 
@@ -51,18 +50,17 @@ class EventView(View):
             event = manager.update_event(event_id, event_data)
             return JsonResponse(event, status=200)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-
+            return JsonResponse({"error": str(e)}, status=400)
 
     def delete(self, request, *args, **kwargs):
         # Delete an event
-        event_id = kwargs.get('event_id')
+        event_id = kwargs.get("event_id")
         if not event_id:
             raise BadRequest("Event ID is required.")
 
         try:
             manager = EventbriteManager()
             manager.delete_event(event_id)
-            return JsonResponse({'status': 'Deleted'}, status=204)
+            return JsonResponse({"status": "Deleted"}, status=204)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse({"error": str(e)}, status=400)

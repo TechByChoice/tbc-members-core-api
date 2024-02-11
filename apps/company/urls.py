@@ -3,8 +3,6 @@ from rest_framework.routers import DefaultRouter
 from .views_accounts import JobViewSet
 
 router = DefaultRouter()
-router.register(r'jobs', JobViewSet, basename='jobs')
+router.register(r"jobs", JobViewSet, basename="jobs")
 
-urlpatterns = [
-    path('new/', include(router.urls)),
-]
+urlpatterns = [path("new/", include(router.urls))]
