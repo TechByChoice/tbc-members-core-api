@@ -1,8 +1,12 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views_accounts import JobViewSet
+from .views_company import CompanyView
 
 router = DefaultRouter()
 router.register(r"jobs", JobViewSet, basename="jobs")
+# router.register(r"company", CompanyView, basename="company")
 
-urlpatterns = [path("new/", include(router.urls))]
+urlpatterns = [
+    path("new/", include(router.urls))
+]

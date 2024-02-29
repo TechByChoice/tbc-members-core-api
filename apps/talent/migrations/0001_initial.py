@@ -6,50 +6,141 @@ import django.db.models.deletion
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('core', '0001_initial'),
-        ('company', '0001_initial'),
+        ("core", "0001_initial"),
+        ("company", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TalentProfile',
+            name="TalentProfile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('postal_code', models.CharField(blank=True, max_length=10, null=True)),
-                ('tech_journey', models.CharField(choices=[('1', '0 years'), ('2', '1 - 2 years'), ('3', '3 - 5 years'), ('4', '6 - 10 years'), ('5', '11 - 15  years'), ('6', '16 - 20 years'), ('7', '21+ years')], default=1, max_length=10)),
-                ('resume', models.FileField(blank=True, null=True, upload_to='resumes')),
-                ('talent_status', models.CharField(choices=[('Yes', 'Yes'), ('No', 'No')], default='Yes', max_length=30)),
-                ('role_c_level', models.BooleanField(default=False)),
-                ('experience_board', models.BooleanField(default=False)),
-                ('experience_c_level', models.BooleanField(default=False)),
-                ('experience_advisory', models.BooleanField(default=False)),
-                ('experience_vp', models.BooleanField(default=False)),
-                ('experience_director', models.BooleanField(default=False)),
-                ('time_commitment_monthly', models.BooleanField(default=False)),
-                ('time_commitment_quarterly', models.BooleanField(default=False)),
-                ('time_commitment_bi_annually', models.BooleanField(default=False)),
-                ('time_commitment_annually', models.BooleanField(default=False)),
-                ('compensation_paid', models.BooleanField(default=False)),
-                ('compensation_equity', models.BooleanField(default=False)),
-                ('compensation_cash', models.BooleanField(default=False)),
-                ('compensation_none', models.BooleanField(default=False)),
-                ('talent_search_active', models.BooleanField(default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('company_types', models.ManyToManyField(blank=True, to='company.companytypes')),
-                ('department', models.ManyToManyField(related_name='talent_department_list', to='company.department')),
-                ('industries', models.ManyToManyField(blank=True, to='company.industries')),
-                ('job_level', models.ForeignKey(blank=True, db_constraint=False, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='talents_job_level', to='company.joblevel')),
-                ('max_compensation', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='max_salary_range', to='company.salaryrange')),
-                ('min_compensation', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='min_salary_range', to='company.salaryrange')),
-                ('role', models.ManyToManyField(related_name='talent_role_types', to='company.roles')),
-                ('skills', models.ManyToManyField(related_name='talent_skills_list', to='company.skill')),
-                ('tbc_program_interest', models.ManyToManyField(to='core.communityneeds')),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='user', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("postal_code", models.CharField(blank=True, max_length=10, null=True)),
+                (
+                    "tech_journey",
+                    models.CharField(
+                        choices=[
+                            ("1", "0 years"),
+                            ("2", "1 - 2 years"),
+                            ("3", "3 - 5 years"),
+                            ("4", "6 - 10 years"),
+                            ("5", "11 - 15  years"),
+                            ("6", "16 - 20 years"),
+                            ("7", "21+ years"),
+                        ],
+                        default=1,
+                        max_length=10,
+                    ),
+                ),
+                (
+                    "resume",
+                    models.FileField(blank=True, null=True, upload_to="resumes"),
+                ),
+                (
+                    "talent_status",
+                    models.CharField(
+                        choices=[("Yes", "Yes"), ("No", "No")],
+                        default="Yes",
+                        max_length=30,
+                    ),
+                ),
+                ("role_c_level", models.BooleanField(default=False)),
+                ("experience_board", models.BooleanField(default=False)),
+                ("experience_c_level", models.BooleanField(default=False)),
+                ("experience_advisory", models.BooleanField(default=False)),
+                ("experience_vp", models.BooleanField(default=False)),
+                ("experience_director", models.BooleanField(default=False)),
+                ("time_commitment_monthly", models.BooleanField(default=False)),
+                ("time_commitment_quarterly", models.BooleanField(default=False)),
+                ("time_commitment_bi_annually", models.BooleanField(default=False)),
+                ("time_commitment_annually", models.BooleanField(default=False)),
+                ("compensation_paid", models.BooleanField(default=False)),
+                ("compensation_equity", models.BooleanField(default=False)),
+                ("compensation_cash", models.BooleanField(default=False)),
+                ("compensation_none", models.BooleanField(default=False)),
+                ("talent_search_active", models.BooleanField(default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "company_types",
+                    models.ManyToManyField(blank=True, to="company.companytypes"),
+                ),
+                (
+                    "department",
+                    models.ManyToManyField(
+                        related_name="talent_department_list", to="company.department"
+                    ),
+                ),
+                (
+                    "industries",
+                    models.ManyToManyField(blank=True, to="company.industries"),
+                ),
+                (
+                    "job_level",
+                    models.ForeignKey(
+                        blank=True,
+                        db_constraint=False,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="talents_job_level",
+                        to="company.joblevel",
+                    ),
+                ),
+                (
+                    "max_compensation",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="max_salary_range",
+                        to="company.salaryrange",
+                    ),
+                ),
+                (
+                    "min_compensation",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="min_salary_range",
+                        to="company.salaryrange",
+                    ),
+                ),
+                (
+                    "role",
+                    models.ManyToManyField(
+                        related_name="talent_role_types", to="company.roles"
+                    ),
+                ),
+                (
+                    "skills",
+                    models.ManyToManyField(
+                        related_name="talent_skills_list", to="company.skill"
+                    ),
+                ),
+                (
+                    "tbc_program_interest",
+                    models.ManyToManyField(to="core.communityneeds"),
+                ),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="user",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

@@ -4,15 +4,30 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0001_initial'),
+        ("core", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='userprofile',
-            name='tbc_program_interest',
-            field=models.CharField(blank=True, choices=[('Job Placement Help', 'Job Placement Help'), ('Mentorship', 'Mentorship'), ('Learning New Skills', 'Learning New Skills'), ('Help Starting a Business', 'Help Starting a Business'), ('Being a Part of a Welcoming Community', 'Being a Part of a Welcoming Community'), ('Our Paid Open Source Program', 'Our Paid Open Source Program'), ('Not Sure at the Moment', 'Not Sure at the Moment')], max_length=37, null=True),
+            model_name="userprofile",
+            name="tbc_program_interest",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("Job Placement Help", "Job Placement Help"),
+                    ("Mentorship", "Mentorship"),
+                    ("Learning New Skills", "Learning New Skills"),
+                    ("Help Starting a Business", "Help Starting a Business"),
+                    (
+                        "Being a Part of a Welcoming Community",
+                        "Being a Part of a Welcoming Community",
+                    ),
+                    ("Our Paid Open Source Program", "Our Paid Open Source Program"),
+                    ("Not Sure at the Moment", "Not Sure at the Moment"),
+                ],
+                max_length=37,
+                null=True,
+            ),
         ),
     ]
