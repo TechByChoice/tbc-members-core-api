@@ -19,6 +19,8 @@ from apps.core.models import (
     CommunityNeeds,
     UserProfile,
 )
+from apps.core.serializers_member import TalentProfileSerializer, FullTalentProfileSerializer
+from apps.talent.models import TalentProfile
 
 
 @api_view(["GET"])
@@ -90,3 +92,17 @@ def get_dropdown_data(request):
     data["status"] = True
 
     return Response(data)
+
+
+@api_view(["GET"])
+def get_all_members(request):
+    data = {}
+    requested_fields = request.query_params.getlist("fields", [])
+
+    members = TalentProfile.objects.order_by("created_at")
+    data["members"] = FullTalentProfileSerializer(members, many=True).data
+    data["status"] = True
+
+    return Response(data)
+
+
