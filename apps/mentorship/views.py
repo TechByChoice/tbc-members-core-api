@@ -21,7 +21,7 @@ from apps.mentorship.serializer import (
     ApplicationAnswersSerializer,
     MentorProfileSerializer,
 )
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
 from utils.google_admin import create_user
 from utils.helper import generate_random_password
@@ -624,7 +624,7 @@ def get_top_mentor_match(request):
     """
     Retrieve top mentor profile.
     """
-    talent_profile = TalentProfile.objects.get(user=request.user.id)
+    talent_profile = MemberProfile.objects.get(user=request.user.id)
 
     # Extract skills, roles, and departments
     talent_skills = talent_profile.skills.all()
@@ -632,7 +632,7 @@ def get_top_mentor_match(request):
     talent_departments = talent_profile.department.all()
 
     # Filter only mentor profiles (adjust this according to your model)
-    mentor_profiles = TalentProfile.objects.filter(user__is_mentor=True)
+    mentor_profiles = MemberProfile.objects.filter(user__is_mentor=True)
 
     # Create separate Q objects for each criteria
     skills_query = Q(skills__in=talent_skills)

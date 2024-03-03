@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("talent", "0001_initial"),
+        ("member", "0001_initial"),
     ]
 
     operations = [

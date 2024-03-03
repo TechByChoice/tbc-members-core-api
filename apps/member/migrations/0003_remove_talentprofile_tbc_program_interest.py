@@ -5,7 +5,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("talent", "0002_remove_talentprofile_postal_code_and_more"),
+        ("member", "0002_remove_talentprofile_postal_code_and_more"),
     ]
 
     operations = [

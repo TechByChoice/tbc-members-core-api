@@ -57,7 +57,7 @@ INSTALLED_APPS = [
     "knox",
     "apps.core",
     "apps.company",
-    "apps.talent",
+    "apps.member",
     "apps.mentorship",
     "corsheaders",
     "storages",

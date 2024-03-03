@@ -16,7 +16,7 @@ from apps.core.models import CustomUser, CommunityNeeds
 # Create your models here.
 
 
-class TalentProfile(models.Model):
+class MemberProfile(models.Model):
     ACTIVE = "Yes"
     CLOSED = "No"
 
