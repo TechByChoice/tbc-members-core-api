@@ -7,7 +7,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 from apps.company.models import CompanyProfile, Roles, Department
 from apps.company.serializers import RoleSerializer, SkillSerializer
 from apps.core.models import UserProfile, CustomUser
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 
 
 class CustomAuthTokenSerializer(AuthTokenSerializer):
@@ -105,7 +105,7 @@ class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
     postal_code = serializers.CharField()
 
     class Meta:
-        model = TalentProfile
+        model = MemberProfile
         fields = ["first_name", "last_name", "email", "postal_code"]
 
     def update(self, instance, validated_data):
@@ -158,7 +158,7 @@ class TalentProfileRoleSerializer(serializers.ModelSerializer):
     role = serializers.PrimaryKeyRelatedField(queryset=Roles.objects.all(), many=True)
 
     class Meta:
-        model = TalentProfile
+        model = MemberProfile
         fields = ["role"]
 
 
@@ -174,5 +174,5 @@ class TalentProfileSerializer(serializers.ModelSerializer):
     department = DepartmentSerializer(many=True, read_only=True)
 
     class Meta:
-        model = TalentProfile
+        model = MemberProfile
         fields = "__all__"

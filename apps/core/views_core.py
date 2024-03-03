@@ -20,7 +20,7 @@ from apps.core.models import (
     UserProfile,
 )
 from apps.core.serializers_member import TalentProfileSerializer, FullTalentProfileSerializer
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 from utils.helper import CustomPagination, paginate_items
 
 
@@ -104,7 +104,7 @@ def get_all_members(request):
 
     requested_fields = request.query_params.getlist("fields", [])
 
-    members = TalentProfile.objects.order_by("created_at")
+    members = MemberProfile.objects.order_by("created_at")
     paginated_members = paginate_items(members, request, paginator, FullTalentProfileSerializer)
 
     data["members"] = paginated_members

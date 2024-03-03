@@ -13,7 +13,7 @@ from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
 
-from ..talent.models import TalentProfile
+from ..member.models import MemberProfile
 
 
 class JobViewSet(viewsets.ViewSet):
@@ -292,7 +292,7 @@ class JobViewSet(viewsets.ViewSet):
         """
         Retrieve top job postings.
         """
-        talent_profile = TalentProfile.objects.get(user=request.user.id)
+        talent_profile = MemberProfile.objects.get(user=request.user.id)
 
         # Extract skills, roles, and departments
         talent_skills = talent_profile.skills.all()

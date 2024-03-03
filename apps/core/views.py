@@ -51,7 +51,7 @@ from apps.mentorship.serializer import (
     MentorRosterSerializer,
     MentorshipProgramProfileSerializer,
 )
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
 from utils.slack import fetch_new_posts, send_invite
 
@@ -150,20 +150,20 @@ def get_user_data(request):
             serializer = MentorRosterSerializer(mentorship_roster, many=True)
             mentor_roster_data = serializer.data
 
-    # Fetch and Serialize TalentProfile Data
+    # Fetch and Serialize MemberProfile Data
     try:
-        talentprofile = TalentProfile.objects.get(
+        talentprofile = MemberProfile.objects.get(
             user=user.id
-        )  # Fetch TalentProfile related to the user
+        )  # Fetch MemberProfile related to the user
         talentprofile_serializer = TalentProfileSerializer(
             talentprofile
-        )  # Serialize TalentProfile data
+        )  # Serialize MemberProfile data
         talentprofile_json_data = (
             talentprofile_serializer.data
         )  # Convert serialized data to JSON
     except (
-        TalentProfile.DoesNotExist
-    ):  # Handle the case when TalentProfile does not exist for the user
+        MemberProfile.DoesNotExist
+    ):  # Handle the case when MemberProfile does not exist for the user
         talentprofile_json_data = None
 
     try:
@@ -275,7 +275,7 @@ def create_new_member(request):
         return Response(
             {
                 "status": True,
-                "message": "User, TalentProfile, and UserProfile created successfully!",
+                "message": "User, MemberProfile, and UserProfile created successfully!",
             },
             status=status.HTTP_200_OK,
         )
@@ -384,12 +384,12 @@ def update_profile_account_details(request):
                 If the provided data is invalid, it returns a 400 Bad Request status with error details.
 
     Raises:
-    - TalentProfile.DoesNotExist: If the UserProfile associated with the user does not exist.
+    - MemberProfile.DoesNotExist: If the UserProfile associated with the user does not exist.
     """
     user = request.user
     try:
         profile = user.userprofile
-    except TalentProfile.DoesNotExist:
+    except MemberProfile.DoesNotExist:
         return Response(
             {"status": False, "message": "Profile not found"},
             status=status.HTTP_404_NOT_FOUND,
@@ -441,12 +441,12 @@ def update_profile_work_place(request):
     company.save()
 
     # Updating talent profile.
-    talent_profile = get_object_or_404(TalentProfile, user=request.user)
+    talent_profile = get_object_or_404(MemberProfile, user=request.user)
     role_names = request.data.get("job_roles")
 
     roles_to_set = (
         []
-    )  # This list will hold the role objects to be set to the TalentProfile
+    )  # This list will hold the role objects to be set to the MemberProfile
     for role_name in role_names:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
@@ -474,7 +474,7 @@ def update_profile_skills_roles(request):
 
     roles_to_set = (
         []
-    )  # This list will hold the role objects to be set to the TalentProfile
+    )  # This list will hold the role objects to be set to the MemberProfile
     for role_name in roles:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
@@ -491,7 +491,7 @@ def update_profile_skills_roles(request):
 
     skills_to_set = (
         []
-    )  # This list will hold the role objects to be set to the TalentProfile
+    )  # This list will hold the role objects to be set to the MemberProfile
     for skill in skills:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
@@ -549,7 +549,7 @@ def update_profile_identity(request):
 
     sexuality_to_set = (
         []
-    )  # This list will hold the role objects to be set to the TalentProfile
+    )  # This list will hold the role objects to be set to the MemberProfile
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
@@ -566,7 +566,7 @@ def update_profile_identity(request):
 
     gender_to_set = (
         []
-    )  # This list will hold the role objects to be set to the TalentProfile
+    )  # This list will hold the role objects to be set to the MemberProfile
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
@@ -583,7 +583,7 @@ def update_profile_identity(request):
 
     ethic_to_set = (
         []
-    )  # This list will hold the role objects to be set to the TalentProfile
+    )  # This list will hold the role objects to be set to the MemberProfile
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.

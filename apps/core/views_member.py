@@ -21,12 +21,12 @@ from apps.mentorship.serializer import (
     MenteeProfileSerializer,
     MentorshipProgramProfileSerializer,
 )
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 
 
 class MemberDetailsView(APIView):
     """
-    Retrieve CustomUser, UserProfile, and TalentProfile details.
+    Retrieve CustomUser, UserProfile, and MemberProfile details.
     """
 
     permission_classes = [IsAuthenticated]
@@ -49,7 +49,7 @@ class MemberDetailsView(APIView):
         if not user_profile:
             raise Http404("User profile not found.")
 
-        talent_profile = self.get_profile(TalentProfile, user)
+        talent_profile = self.get_profile(MemberProfile, user)
         if not talent_profile:
             raise Http404("Talent profile not found.")
 
