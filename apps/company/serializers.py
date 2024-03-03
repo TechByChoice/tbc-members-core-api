@@ -158,3 +158,10 @@ class JobSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class JobSimpleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Job
+        fields = "__all__"

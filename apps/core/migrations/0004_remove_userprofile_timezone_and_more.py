@@ -4,19 +4,18 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('core', '0003_alter_userprofile_instagram_and_more'),
+        ("core", "0003_alter_userprofile_instagram_and_more"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='userprofile',
-            name='timezone',
+            model_name="userprofile",
+            name="timezone",
         ),
         migrations.AlterField(
-            model_name='userprofile',
-            name='member_spotlight',
-            field=models.ManyToManyField(null=True, to='core.membersspotlight'),
+            model_name="userprofile",
+            name="member_spotlight",
+            field=models.ManyToManyField(null=True, to="core.membersspotlight"),
         ),
     ]

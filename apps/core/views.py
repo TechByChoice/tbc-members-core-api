@@ -553,7 +553,7 @@ def update_profile_identity(request):
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = SexualIdentities.objects.get(identity=role_name)
+            role = SexualIdentities.objects.get(name=role_name)
             sexuality_to_set.append(role)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -570,7 +570,7 @@ def update_profile_identity(request):
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = GenderIdentities.objects.get(gender=role_name["name"])
+            role = GenderIdentities.objects.get(name=role_name)
             gender_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -587,7 +587,7 @@ def update_profile_identity(request):
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = EthicIdentities.objects.get(ethnicity=role_name["name"])
+            role = EthicIdentities.objects.get(name=role_name)
             ethic_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or

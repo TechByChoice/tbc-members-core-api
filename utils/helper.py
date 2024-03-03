@@ -3,6 +3,7 @@ import random
 import string
 
 from django_quill.quill import Quill
+from rest_framework.pagination import PageNumberPagination
 
 
 def get_quill(value):
@@ -20,3 +21,20 @@ def generate_random_password():
     characters = string.ascii_letters + string.digits + string.punctuation
     password = "".join(random.choice(characters) for i in range(8))
     return password
+
+
+def paginate_items(queryset, request, paginator, item_serializer):
+    """
+    Helper method to paginate a queryset of jobs.
+    """
+    page = paginator.paginate_queryset(queryset, request)
+    if page is not None:
+        serializer = item_serializer(page, many=True, context={'request': request})
+        return paginator.get_paginated_response(serializer.data).data
+    return []
+
+
+class CustomPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'limit'
+    max_page_size = 100

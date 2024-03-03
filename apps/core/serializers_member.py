@@ -45,3 +45,23 @@ class TalentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TalentProfile
         fields = "__all__"
+
+
+class FullTalentProfileSerializer(serializers.ModelSerializer):
+    user = CustomUserSerializer(read_only=True)
+    talent_profile = serializers.SerializerMethodField(read_only=True)
+    user_profile = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = TalentProfile
+        fields = "__all__"
+
+    def get_talent_profile(self, obj):
+        # Assuming that there is a reverse relationship from CustomUser to TalentProfile named 'talentprofile'
+        talent_profile = TalentProfile.objects.filter(user=obj.user).first()
+        return TalentProfileSerializer(talent_profile).data if talent_profile else None
+
+    def get_user_profile(self, obj):
+        # Assuming that there is a reverse relationship from CustomUser to TalentProfile named 'talentprofile'
+        user_profile = UserProfile.objects.filter(user=obj.user).first()
+        return UserProfileSerializer(user_profile).data if user_profile else None

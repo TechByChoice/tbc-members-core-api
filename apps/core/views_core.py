@@ -19,6 +19,9 @@ from apps.core.models import (
     CommunityNeeds,
     UserProfile,
 )
+from apps.core.serializers_member import TalentProfileSerializer, FullTalentProfileSerializer
+from apps.talent.models import TalentProfile
+from utils.helper import CustomPagination, paginate_items
 
 
 @api_view(["GET"])
@@ -90,3 +93,23 @@ def get_dropdown_data(request):
     data["status"] = True
 
     return Response(data)
+
+
+@api_view(["GET"])
+def get_all_members(request):
+    data = {}
+
+    # Initialize the paginator
+    paginator = CustomPagination()
+
+    requested_fields = request.query_params.getlist("fields", [])
+
+    members = TalentProfile.objects.order_by("created_at")
+    paginated_members = paginate_items(members, request, paginator, FullTalentProfileSerializer)
+
+    data["members"] = paginated_members
+    data["status"] = True
+
+    return Response(data)
+
+

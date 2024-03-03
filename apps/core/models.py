@@ -85,7 +85,11 @@ class CustomUser(AbstractBaseUser):
     is_company_account = models.BooleanField(default=False)
     # Partnership
     is_partnership = models.BooleanField(default=False)
-
+    # Reviews
+    is_company_review_access_active = models.BooleanField(default=False)
+    company_review_tokens = models.IntegerField(
+        default=0,
+    )
     ip_address = models.CharField(blank=True, null=True, max_length=280)
     is_superuser = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)

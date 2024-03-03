@@ -3,9 +3,11 @@ import os
 from django.db.models import Q, Count
 
 from rest_framework import viewsets, status
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from utils.emails import send_dynamic_email
+from utils.helper import paginate_items, CustomPagination
 from utils.slack import post_message
 from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
@@ -265,18 +267,24 @@ class JobViewSet(viewsets.ViewSet):
         """
         Retrieve all job postings.
         """
-        all_active_jobs = Job.objects.filter(status="active").order_by("-created_at")
-        posted_job = Job.objects.filter(created_by=request.user.id).exclude(
-            status="active"
-        )
+        # Initialize the paginator
+        paginator = CustomPagination()
 
-        all_active_jobs_serializer = JobSerializer(all_active_jobs, many=True)
-        posted_job_serializer = JobSerializer(posted_job, many=True)
+        # Get and paginate all active jobs
+        all_active_jobs = Job.objects.all()
 
+        paginated_active_jobs = paginate_items(all_active_jobs, request, paginator, JobSerializer)
+
+        # Get and paginate jobs posted by the user
+        user_posted_jobs = Job.objects.filter(created_by=request.user)
+        paginated_posted_jobs = paginate_items(user_posted_jobs, request, paginator, JobSerializer)
+
+        # Combine data from both queries
         data = {
-            "all_jobs": all_active_jobs_serializer.data,
-            "posted_job": posted_job_serializer.data,
+            "all_jobs": paginated_active_jobs,
+            "posted_jobs": paginated_posted_jobs
         }
+
         return Response(data)
 
     @action(detail=False, methods=["get"], url_path="job-match")
@@ -308,11 +316,11 @@ class JobViewSet(viewsets.ViewSet):
                 "skills",
                 filter=Q(skills__in=talent_skills.values_list("id", flat=True)),
             )
-            + Count(
+                  + Count(
                 "role",
                 filter=Q(role__in=talent_profile.role.values_list("id", flat=True)),
             )
-            + Count(
+                  + Count(
                 "department",
                 filter=Q(
                     department__in=talent_departments.values_list("id", flat=True)
