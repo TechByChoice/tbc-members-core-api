@@ -13,7 +13,7 @@ from apps.core.util import (
     process_company_types,
 )
 from apps.core.views import create_new_member
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 
 
 class CreateNewMemberTestCase(TestCase):
@@ -61,7 +61,7 @@ class CreateNewMemberTestCase(TestCase):
         # Mocking the create_or_update functions to return model instances
         mock_create_or_update_user.return_value = self.user
         mock_create_or_update_talent_profile.return_value = (
-            TalentProfile.objects.create(user=self.user)
+            MemberProfile.objects.create(user=self.user)
         )
         mock_create_or_update_user_profile.return_value = UserProfile.objects.create(
             user=self.user
@@ -76,7 +76,7 @@ class CreateNewMemberTestCase(TestCase):
             response.data,
             {
                 "status": True,
-                "message": "User, TalentProfile, and UserProfile created successfully!",
+                "message": "User, MemberProfile, and UserProfile created successfully!",
             },
         )
         mock_send_invite.assert_called_once_with(self.user.email)
@@ -114,7 +114,7 @@ class CreateTalentProfileTestCase(TestCase):
         self.user = User.objects.create(username="testuser", email="test@example.com")
         self.talent_data = {"tech_journey": "5 years", "is_talent_status": True}
 
-    @patch("path.to.models.TalentProfile.objects.get_or_create")
+    @patch("path.to.models.MemberProfile.objects.get_or_create")
     def test_create_or_update_talent_profile_success(self, mock_get_or_create):
         mock_talent_profile = MagicMock()
         mock_get_or_create.return_value = (mock_talent_profile, True)

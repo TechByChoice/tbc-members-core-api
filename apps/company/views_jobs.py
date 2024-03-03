@@ -4,21 +4,21 @@ from django.views import View
 from rest_framework.decorators import action
 
 from apps.company.models import Job, CompanyProfile, Skill, Roles
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 
 
 class JobMatchView(View):
     def get(self, request, *args, **kwargs):
-        # Get the TalentProfile instance
+        # Get the MemberProfile instance
         print(f"Headers: {request.headers}")
-        talent_profile = TalentProfile.objects.get(user=request.user.id)
+        talent_profile = MemberProfile.objects.get(user=request.user.id)
 
         # Extract skills, roles, and departments
         talent_skills = talent_profile.skills.all()
         talent_roles = talent_profile.role.all()
         talent_departments = talent_profile.department.all()
 
-        # Filter Job instances based on the TalentProfile's preferences
+        # Filter Job instances based on the MemberProfile's preferences
         matching_jobs = Job.objects.filter(
             skills__in=talent_skills,
             role__in=talent_roles,

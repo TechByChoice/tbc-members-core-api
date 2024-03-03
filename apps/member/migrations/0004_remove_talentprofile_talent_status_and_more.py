@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-    dependencies = [("talent", "0003_remove_talentprofile_tbc_program_interest")]
+    dependencies = [("member", "0003_remove_talentprofile_tbc_program_interest")]
 
     operations = [
         migrations.RemoveField(model_name="talentprofile", name="talent_status"),

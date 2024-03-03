@@ -1,9 +1,9 @@
 from rest_framework import serializers
 
-from apps.talent.models import TalentProfile
+from apps.member.models import MemberProfile
 
 
 class UpdateTalentProfileSerializer(serializers.ModelSerializer):
     class Meta:
-        model = TalentProfile
+        model = MemberProfile
         fields = "__all__"

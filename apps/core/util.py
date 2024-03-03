@@ -19,7 +19,7 @@ from ..company.models import (
     Roles,
     CompanyProfile,
 )
-from ..talent.models import TalentProfile
+from ..member.models import MemberProfile
 
 User = get_user_model()
 
@@ -55,21 +55,21 @@ def update_user(current_user, user_data):
 
 def update_talent_profile(user, talent_data):
     """
-    Create or update the TalentProfile for a given user.
+    Create or update the MemberProfile for a given user.
 
     Args:
-    user (User model instance): The user for whom the TalentProfile needs to be created or updated.
-    talent_data (dict): A dictionary containing all the necessary data to create or update a TalentProfile.
+    user (User model instance): The user for whom the MemberProfile needs to be created or updated.
+    talent_data (dict): A dictionary containing all the necessary data to create or update a MemberProfile.
 
     Returns:
-    TalentProfile: The created or updated TalentProfile instance.
+    MemberProfile: The created or updated MemberProfile instance.
 
     Raises:
-    ValidationError: If the provided data is not valid to create or update a TalentProfile.
+    ValidationError: If the provided data is not valid to create or update a MemberProfile.
     """
     try:
-        # Check if the user already has a TalentProfile
-        talent_profile = TalentProfile.objects.get(user=user)
+        # Check if the user already has a MemberProfile
+        talent_profile = MemberProfile.objects.get(user=user)
 
         # Update or set fields in talent_profile from talent_data
         talent_profile.tech_journey = talent_data.get(
@@ -413,7 +413,7 @@ def extract_talent_data(data, files):
     """
     Extracts and processes talent-related data from the request.
 
-    The function processes incoming data to structure it according to the TalentProfile model's needs.
+    The function processes incoming data to structure it according to the MemberProfile model's needs.
     It handles extracting and converting data, ensuring that multi-value fields are appropriately split and
     that file fields are handled correctly.
 
@@ -422,7 +422,7 @@ def extract_talent_data(data, files):
     files (dict): The uploaded files in the request.
 
     Returns:
-    dict: A dictionary containing processed talent data ready to be used in a TalentProfile serializer or model.
+    dict: A dictionary containing processed talent data ready to be used in a MemberProfile serializer or model.
     """
 
     talent_data = {
@@ -519,7 +519,7 @@ def process_company_types(company_types):
 
 def process_roles(role_identifiers):
     """
-    Process and validate role identifiers before setting them in the TalentProfile.
+    Process and validate role identifiers before setting them in the MemberProfile.
 
     This function takes a list of role identifiers, which can be names or IDs, and returns the corresponding
     Role instances after validating their existence in the database. If a role does not exist, it's created.
@@ -528,7 +528,7 @@ def process_roles(role_identifiers):
     role_identifiers (list): A list of role names or IDs.
 
     Returns:
-    QuerySet or list: A QuerySet or list of Role model instances to be associated with the TalentProfile.
+    QuerySet or list: A QuerySet or list of Role model instances to be associated with the MemberProfile.
 
     Raises:
     ValueError: If any of the identifiers is invalid or if the role cannot be found or created.
@@ -571,7 +571,7 @@ def process_roles(role_identifiers):
 
 def process_departments(department_names):
     """
-    Process and validate department names before setting them in the TalentProfile.
+    Process and validate department names before setting them in the MemberProfile.
 
     This function ensures that all department names provided are valid and correspond to existing
     Department instances in the database. If a department does not exist, it's created.
@@ -580,7 +580,7 @@ def process_departments(department_names):
     department_names (list of str): A list of department names.
 
     Returns:
-    QuerySet: A QuerySet of Department instances to be associated with the TalentProfile.
+    QuerySet: A QuerySet of Department instances to be associated with the MemberProfile.
 
     Raises:
     ValueError: If any of the department names are invalid (e.g., empty strings or not matching any predefined departments).
@@ -616,7 +616,7 @@ def process_departments(department_names):
 
 def process_skills(skill_list):
     """
-    Process and validate skills before setting them in the TalentProfile.
+    Process and validate skills before setting them in the MemberProfile.
 
     This function takes a list of skill names or identifiers, ensures that these skills
     are present in the database (creating them if necessary), and returns a queryset
@@ -626,7 +626,7 @@ def process_skills(skill_list):
     skill_list (list): A list of skill names or identifiers.
 
     Returns:
-    QuerySet: A QuerySet of Skill instances to be associated with the TalentProfile.
+    QuerySet: A QuerySet of Skill instances to be associated with the MemberProfile.
 
     Raises:
     ValueError: If any of the skills are invalid or cannot be processed.
@@ -658,14 +658,14 @@ def process_skills(skill_list):
 
 def process_compensation(compensation_data, default_value=None):
     """
-    Process and validate compensation data before setting it in the TalentProfile.
+    Process and validate compensation data before setting it in the MemberProfile.
 
     Args:
         compensation_data (list): A list containing compensation range IDs or values.
         default_value (SalaryRange or None): The default SalaryRange to return if compensation_data is empty.
 
     Returns:
-        SalaryRange or None: The SalaryRange model instance to be associated with the TalentProfile, or the default value.
+        SalaryRange or None: The SalaryRange model instance to be associated with the MemberProfile, or the default value.
 
     Raises:
         ValidationError: If the compensation data is not valid or does not meet the business requirements.
