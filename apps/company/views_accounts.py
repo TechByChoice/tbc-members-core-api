@@ -7,19 +7,13 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from utils.emails import send_dynamic_email
-from utils.helper import paginate_items
+from utils.helper import paginate_items, CustomPagination
 from utils.slack import post_message
 from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
 
 from ..talent.models import TalentProfile
-
-
-class CustomPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'limit'
-    max_page_size = 100
 
 
 class JobViewSet(viewsets.ViewSet):
