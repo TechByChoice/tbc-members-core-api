@@ -84,6 +84,9 @@ class CustomUser(AbstractBaseUser):
     # TalentChoice
     is_community_recruiter = models.BooleanField(default=False)
     is_company_account = models.BooleanField(default=False)
+    is_email_confirmation_sent = models.BooleanField(default=False)
+    is_email_confirmed = models.BooleanField(default=False)
+    is_company_onboarding_complete = models.BooleanField(default=False)
     # Partnership
     is_partnership = models.BooleanField(default=False)
     # Reviews

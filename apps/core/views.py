@@ -1,10 +1,17 @@
 import json
 import logging
+import os
 
 from django.contrib.auth import user_logged_out
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.tokens import default_token_generator
+from django.contrib.sites.shortcuts import get_current_site
+from django.core.mail import EmailMessage
 from django.db import transaction
 from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
 from knox.auth import AuthToken, TokenAuthentication
 from rest_framework import status
@@ -694,45 +701,70 @@ def create_new_user(request):
         return JsonResponse(
             {"status": False, "message": "Email already in use"}, status=400
         )
+    try:
+        user, token = create_user_account(first_name, last_name, email, password)
+        try:
+            send_welcome_email(user.email, user.first_name)
+            user.is_email_confirmation_sent = True
+            user.save()
+            return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+        except Exception as e:
+            print("Error while saving user: ", str(e))
+            return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+    except Exception as e:
+        print("Error while saving user: ", str(e))
+        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
 
-    if not all([first_name, last_name, email, password]):
+
+@csrf_exempt
+def create_new_company(request):
+    """
+    Create a new company user. This view handles the POST request to register a new user.
+    It performs input validation, user creation, and sending a welcome email.
+    """
+    if request.method != "POST":
+        return JsonResponse(
+            {"status": False, "error": "Invalid request method"}, status=405
+        )
+
+    data = json.loads(request.body)
+    first_name, last_name, email, password, company_name = (
+        data.get("first_name"),
+        data.get("last_name"),
+        data.get("email", "").lower(),
+        data.get("password"),
+        data.get("company_name"),
+    )
+
+    if not all([first_name, last_name, email, password, company_name]):
         return JsonResponse(
             {"status": False, "error": "Missing required parameters"}, status=400
         )
 
-    user = CustomUser(
-        first_name=first_name,
-        last_name=last_name,
-        email=email,
-        password=make_password(password),
-    )
-    try:
-        user.save()
-        _, token = AuthToken.objects.create(user)
-        user.is_member = True
-        user.save()
-
-        # Prepare email data
-        email_data = {
-            "subject": "Welcome to Our Platform",
-            "recipient_emails": [user.email],
-            "template_id": "d-342822c240ed43778ba9e94a04fb10cf",
-            "dynamic_template_data": {"first_name": user.first_name},
-        }
-
-        send_dynamic_email(email_data)
-
-        response = JsonResponse(
-            {"status": True, "message": "User created successfully", "token": token},
-            status=201,
-        )
-        return response
-    except Exception as e:
-        # Log the exception for debugging
-        print("Error while saving user: ", str(e))
+    if CustomUser.objects.filter(email=email).exists():
         return JsonResponse(
-            {"status": False, "error": "Unable to create user"}, status=500
+            {"status": False, "message": "Email already in use"}, status=400
         )
+
+    try:
+        user, token = create_user_account(first_name, last_name, email, password, is_company=True)
+        # Create company profile logic here
+        company_profile = CompanyProfile(
+            account_creator=user,
+            company_name=company_name
+        )
+        company_profile.save()
+        company_profile.account_owner.add(user)
+        company_profile.hiring_team.add(user)
+        company_profile.save()
+        current_site = get_current_site(request)
+
+        send_welcome_email(user.email, user.first_name, company_name, user, current_site, request)
+
+        return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+    except Exception as e:
+        print("Error while saving user: ", str(e))
+        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
 
 
 class LogoutView(APIView):
@@ -745,3 +777,66 @@ class LogoutView(APIView):
             sender=request.user.__class__, request=request, user=request.user
         )
         return Response(None, status=status.HTTP_204_NO_CONTENT)
+
+
+def create_user_account(first_name, last_name, email, password, is_company=False, request=None):
+    """
+    Create a new CustomUser account.
+    """
+    user = CustomUser(
+        first_name=first_name,
+        last_name=last_name,
+        email=email,
+        password=make_password(password),
+        is_company_account=is_company
+    )
+    user.save()
+    _, token = AuthToken.objects.create(user)
+    if not is_company:
+        user.is_member = True
+
+    user.save()
+    return user, token
+
+
+def send_welcome_email(email, first_name, company_name=None, user=None, current_site=None, request=None):
+    """
+    Send a welcome email to the new user.
+    """
+    if company_name:
+        token = default_token_generator.make_token(user)
+
+        # Create the email
+        mail_subject = 'Activate your account.'
+        activation_link = f'{os.environ["FRONTEND_URL"]}new/company/confirm-account/{urlsafe_base64_encode(force_bytes(user.pk))}/{token}/'
+
+        context = {
+            'username': first_name,
+            'activation_link': activation_link,
+        }
+        print(context)
+
+        message = render_to_string('emails/acc_active_email.txt', context=context)
+        email_msg = EmailMessage(mail_subject, message, 'notifications@app.techbychocie.org', [user.email])
+        email_msg.extra_headers = {
+            'email_template': 'emails/acc_active_email.html',
+            'token': token,
+            'username': first_name,
+            'activation_link': activation_link,
+        }
+        try:
+            email_msg.send()
+        except Exception as e:
+            print("Error while sending emails: ", str(e))
+    else:
+        template_id = "d-342822c240ed43778ba9e94a04fb10cf"
+        dynamic_template_data = {"first_name": first_name}
+
+        email_data = {
+            "subject": "Welcome to Our Platform",
+            "recipient_emails": [email],
+            "template_id": template_id,
+            "dynamic_template_data": dynamic_template_data,
+        }
+
+        send_dynamic_email(email_data)

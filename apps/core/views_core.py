@@ -9,7 +9,7 @@ from apps.company.models import (
     Department,
     Industries,
     CompanyTypes,
-    SalaryRange,
+    SalaryRange, COMPANY_SIZE, ON_SITE_REMOTE,
 )
 from apps.core.models import (
     PronounsIdentities,
@@ -89,6 +89,12 @@ def get_dropdown_data(request):
 
     if not requested_fields or "how_connected" in requested_fields:
         data["how_connected"] = UserProfile.HOW_CONNECTION_MADE
+
+    if not requested_fields or "company_size" in requested_fields:
+        data["company_size"] = COMPANY_SIZE
+
+    if not requested_fields or "on_site_remote" in requested_fields:
+        data[" "] = ON_SITE_REMOTE
 
     data["status"] = True
 

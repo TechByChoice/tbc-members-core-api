@@ -1,0 +1,9 @@
+hi {{ username }},
+
+Please click the link below to confirm your email and activate your account:
+
+{{ activation_link }}
+
+If you didn't request this, please ignore this email.
+
+Your friends at Tech by Choice.
