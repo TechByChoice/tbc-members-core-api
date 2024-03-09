@@ -52,40 +52,10 @@ class MemberProfile(models.Model):
     resume = models.FileField(null=True, blank=True, upload_to="resumes")
 
     role = models.ManyToManyField(Roles, related_name="talent_role_types")
-    industries = models.ManyToManyField(Industries, blank=True)
-    company_types = models.ManyToManyField(CompanyTypes, blank=True)
+    industries = models.ManyToManyField(Industries, related_name="member_industries", blank=True)
+    company_types = models.ManyToManyField(CompanyTypes, related_name="member_company_types", blank=True)
     is_talent_status = models.BooleanField(default=False)
-    # board level folks
-    role_c_level = models.BooleanField(default=False)
-    experience_board = models.BooleanField(default=False)
-    experience_c_level = models.BooleanField(default=False)
-    experience_advisory = models.BooleanField(default=False)
-    experience_vp = models.BooleanField(default=False)
-    experience_director = models.BooleanField(default=False)
-    time_commitment_monthly = models.BooleanField(default=False)
-    time_commitment_quarterly = models.BooleanField(default=False)
-    time_commitment_bi_annually = models.BooleanField(default=False)
-    time_commitment_annually = models.BooleanField(default=False)
-    # compensation
-    compensation_paid = models.BooleanField(default=False)
-    compensation_equity = models.BooleanField(default=False)
-    compensation_cash = models.BooleanField(default=False)
-    compensation_none = models.BooleanField(default=False)
 
-    min_compensation = models.ForeignKey(
-        SalaryRange,
-        related_name="min_salary_range",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
-    max_compensation = models.ForeignKey(
-        SalaryRange,
-        related_name="max_salary_range",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-    )
 
     # tbc_program_interest = models.ManyToManyField(CommunityNeeds)
     # TODO | CHANGE COMPANY PROFILE -> TalentConnections TO KEEP TACK OF CONNECTIONS MADE

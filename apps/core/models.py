@@ -62,6 +62,7 @@ class CustomUser(AbstractBaseUser):
     is_staff = models.BooleanField(default=False)
     is_recruiter = models.BooleanField(default=False)
     is_member = models.BooleanField(default=False)
+    is_talent_choice = models.BooleanField(default=False)
     is_member_onboarding_complete = models.BooleanField(default=False)
     is_slack_invite_sent = models.BooleanField(default=False)
     # mentorship program
@@ -214,13 +215,13 @@ class UserProfile(models.Model):
     personal = models.URLField(null=True, blank=True, max_length=200)
 
     # DEI Stuff
-    identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True)
+    identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True, related_name='userprofile_identity_sexuality')
     is_identity_sexuality_displayed = models.BooleanField(default=False)
-    identity_gender = models.ManyToManyField(GenderIdentities, blank=True)
+    identity_gender = models.ManyToManyField(GenderIdentities, blank=True, related_name='userprofile_identity_gender')
     is_identity_gender_displayed = models.BooleanField(default=False)
-    identity_ethic = models.ManyToManyField(EthicIdentities, blank=True)
+    identity_ethic = models.ManyToManyField(EthicIdentities, blank=True, related_name='userprofile_identity_ethic')
     is_identity_ethic_displayed = models.BooleanField(default=False)
-    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=True)
+    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=True, related_name='userprofile_identity_pronouns')
     is_pronouns_displayed = models.BooleanField(default=False)
     disability = models.BooleanField(blank=True, null=True, choices=CHOICES)
     is_disability_displayed = models.BooleanField(default=False)
