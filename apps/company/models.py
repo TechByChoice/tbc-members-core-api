@@ -160,18 +160,10 @@ class CompanyTypes(models.Model):
         return self.name
 
 
-class CompanySubscriptionCodes(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    amounts = models.IntegerField(null=True)
-    number = models.IntegerField()
-
-    def __str__(self):
-        return self.name
-
-
 class CompanyProfile(models.Model):
     # DIFFERENT USER GROUPS RELATION
     # person who made the account: full access
+    talent_choice_account = models.BooleanField(default=False)
     account_creator = models.OneToOneField(
         CustomUser,
         on_delete=models.CASCADE,
@@ -221,14 +213,12 @@ class CompanyProfile(models.Model):
     company_name = models.CharField(max_length=200)
     industries = models.ManyToManyField(Industries, blank=True)
 
-    job_post_credit = models.IntegerField(default=0)
-    job_feature_credit = models.IntegerField(default=0)
-    tag_line = QuillField(blank=True, null=True)
-    mission = QuillField(blank=True, null=True)
-    vision = QuillField(blank=True, null=True)
-    company_highlights = QuillField(blank=True, null=True)
-    company_diversity_statement = QuillField(blank=True, null=True)
-    company_benefits = QuillField(blank=True, null=True)
+    tag_line = models.CharField(max_length=3000, blank=True, null=True)
+    mission = models.CharField(max_length=3000, blank=True, null=True)
+    vision = models.CharField(max_length=3000, blank=True, null=True)
+    company_highlights = models.CharField(max_length=3000, blank=True, null=True)
+    company_diversity_statement = models.CharField(max_length=3000, blank=True, null=True)
+    company_benefits = models.CharField(max_length=3000, blank=True, null=True)
     # ethics
     company_size = models.CharField(max_length=13, choices=COMPANY_SIZE)
     is_startup = models.BooleanField(blank=False, null=True)
@@ -245,7 +235,7 @@ class CompanyProfile(models.Model):
     startup_funding_series_stage = models.CharField(
         max_length=8, choices=SERIES_STAGE, blank=True, null=True
     )
-    ethics_statement = QuillField(blank=True, null=True)
+    ethics_statement = models.CharField(max_length=3000, blank=True, null=True)
     logo = models.ImageField(default="default-logo.jpeg", upload_to="logo_pics")
     logo_url = models.URLField(max_length=200, blank=True, null=True)
     background_img = models.ImageField(
@@ -259,121 +249,12 @@ class CompanyProfile(models.Model):
     facebook = models.URLField(blank=True, null=True, max_length=200)
     instagram = models.URLField(blank=True, null=True, max_length=200)
     location = models.CharField(blank=True, null=True, max_length=200)
-    # Board total
-    board_total = models.IntegerField(null=True, blank=True)
-    female_board_total = models.IntegerField(null=True, blank=True)
-    poc_board_total = models.IntegerField(null=True, blank=True)
-    black_board_total = models.IntegerField(null=True, blank=True)
-    indigenous_board_total = models.IntegerField(null=True, blank=True)
-    lgbtqia_board_total = models.IntegerField(null=True, blank=True)
-    disabled_board_total = models.IntegerField(null=True, blank=True)
-    # C level breakdown
-    leadership_total = models.IntegerField(null=True, blank=True)
-    female_c_level_total = models.IntegerField(null=True, blank=True)
-    poc_c_level_total = models.IntegerField(null=True, blank=True)
-    black_c_level_total = models.IntegerField(null=True, blank=True)
-    indigenous_c_level_total = models.IntegerField(null=True, blank=True)
-    lgbtqia_c_level_total = models.IntegerField(null=True, blank=True)
-    disabled_c_level_total = models.IntegerField(null=True, blank=True)
-
-    # TBC Details
-    covid_plan = QuillField(blank=True, null=True)
-    # Company Cultural
-    pay_transparency = models.BooleanField(default=False)
-    promotion_transparency = models.BooleanField(default=False)
-    remote_work = models.BooleanField(default=False)
-    company_outings = models.BooleanField(default=False)
-    erg = models.BooleanField(default=False)
-    flexible_working = models.BooleanField(default=False)
-    # not sure what entertainment is so will leave out for now
-    entertainment = models.BooleanField(default=False)
-    holidays = models.BooleanField(default=False)
-    # Career Development
-    career_frameworks = models.BooleanField(default=False)
-    career_frameworks_details = QuillField(blank=True, null=True)
-    internships = models.BooleanField(default=False)
-    apprenticeships = models.BooleanField(default=False)
-    mentorship_programs = models.BooleanField(default=False)
-
-    # Onboarding
-    onboarding_plans = QuillField(blank=True, null=True)
-    relocation_assistance = models.BooleanField(default=False)
-
-    # benefits
-    menstrual_leave = models.BooleanField(default=False)
-
-    unlimited_pto = models.BooleanField(default=False)
-    pto = models.BooleanField(default=False)
-    # Insurance
-    health_insurance = models.BooleanField(default=False)
-    life_insurance = models.BooleanField(default=False)
-    dental_insurance = models.BooleanField(default=False)
-    vision_insurance = models.BooleanField(default=False)
-    # 401K
-    retirement_plans = models.BooleanField(default=False)
-    retirement_plans_matching = models.BooleanField(default=False)
-    # health care
-    hsa = models.BooleanField(default=False)
-    fsa = models.BooleanField(default=False)
-    long_term_disability = models.BooleanField(default=False)
-    short_term_disability = models.BooleanField(default=False)
-    # continue leaning
-    tuition_reimbursement = models.BooleanField(default=False)
-    financial_education = models.BooleanField(default=False)
-    student_debt_refinancing = models.BooleanField(default=False)
-    education_budget_total = models.CharField(blank=True, null=True, max_length=140)
-    education_budget = models.BooleanField(default=False)
-    # family
-    childcare_benefits = models.BooleanField(default=False)
-    childcare_stipends = models.BooleanField(default=False)
-    paid_parental_leave = models.BooleanField(default=False)
-    paid_parental_leave_details = QuillField(blank=True, null=True)
-    # wellness
-    gym_benefits = models.BooleanField(default=False)
-    mental_health_stipend = models.BooleanField(default=False)
-    wellness_program = models.BooleanField(default=False)
-    sabbatical = models.BooleanField(default=False)
-    # workfrom home perks
-    office_setup = models.BooleanField(default=False)
-    wifi_reimbursement = models.BooleanField(default=False)
-    cellphone_reimbursement = models.BooleanField(default=False)
-    # vounteer matching
-    donation_matching = models.BooleanField(default=False)
-    service_hours = models.BooleanField(default=False)
-    # Family Planning
-    family_planning = models.BooleanField(default=False)
-    adoption_assistance = models.BooleanField(default=False)
-    ivf = models.BooleanField(default=False)
-    family_medical_leave = models.BooleanField(default=False)
-    # Pet
-    pet_friendly = models.BooleanField(default=False)
-    pet_insurances = models.BooleanField(default=False)
-    # In Office Perks
-    car_chargers = models.BooleanField(default=False)
-    in_office_snacks = models.BooleanField(default=False)
-    in_office_cafeteria = models.BooleanField(default=False)
-
-    # Finical Perks
-    stocks = models.BooleanField(default=False)
-
-    # Other
-    laundry = models.BooleanField(default=False)
-    commuting_reimbursement = models.BooleanField(default=False)
+    state = models.CharField(blank=True, null=True, max_length=200)
+    city = models.CharField(blank=True, null=True, max_length=200)
+    postal_code = models.CharField(blank=True, null=True, max_length=200)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
-
-    # INTEGRATIONS
-    stripe_customer_id = models.CharField(null=True, blank=True, max_length=200)
-    lever_xml_feed_url = models.URLField(max_length=500, blank=True, null=True)
-    greenhouse_api_key = models.URLField(max_length=500, blank=True, null=True)
-
-    account_subscription_status = models.ForeignKey(
-        CompanySubscriptionCodes, on_delete=models.CASCADE, blank=True, null=True
-    )
-    confirm_service_agreement = models.BooleanField(
-        blank=False, null=False, default=False
-    )
 
     def __str__(self):
         return self.company_name

@@ -1,4 +1,5 @@
 # views.py
+from django.db.models import F
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -11,11 +12,16 @@ class ExternalView(APIView):
     def get(self, request):
         user = request.user
         try:
-            user_demo_data = UserProfile.objects.filter(user=request.user).values(
-                "identity_sexuality",
-                "identity_gender",
-                "identity_ethic",
-                "identity_pronouns",
+            user_demo_data = UserProfile.objects.filter(user=request.user).annotate(
+                sexuality_name=F('identity_sexuality__name'),
+                gender_name=F('identity_gender__name'),
+                ethic_name=F('identity_ethic__name'),
+                pronouns_name=F('identity_pronouns__name'),
+            ).values(
+                'sexuality_name',
+                'gender_name',
+                'ethic_name',
+                'pronouns_name',
                 "disability",
                 "care_giver",
                 "veteran_status",
@@ -33,7 +39,7 @@ class ExternalView(APIView):
                 "company_review_tokens": request.user.company_review_tokens,
             }
             user_data = {
-                "user_demo": user_demo_data,
+                "user_demo": list(user_demo_data),
                 "user_account": user_account_data,
             }
             return Response(user_data, status=status.HTTP_200_OK)
