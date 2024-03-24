@@ -17,8 +17,6 @@ from apps.mentorship.models import (
     MentorshipProgramProfile,
 )
 from apps.mentorship.serializer import (
-    MentorProfileSerializer,
-    MenteeProfileSerializer,
     MentorshipProgramProfileSerializer,
 )
 from apps.member.models import MemberProfile

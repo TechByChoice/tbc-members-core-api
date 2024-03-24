@@ -2,6 +2,7 @@ import json
 import logging
 import os
 
+import requests
 from django.contrib.auth import user_logged_out
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.tokens import default_token_generator
@@ -128,99 +129,77 @@ def login_api(request):
 @api_view(["GET"])
 def get_user_data(request):
     user = request.user
-    userprofile = UserProfile.objects.get(user_id=user.id)
-    userprofile_serializer = UserProfileSerializer(userprofile)
-    userprofile_json_data = userprofile_serializer.data
-    mentor_data = {}
-    mentee_data = {}
-    mentor_roster_data = {}
+    userprofile = get_object_or_404(UserProfile, user=user)
+    userprofile_json_data = UserProfileSerializer(userprofile).data
 
-    # Get mentor data
-    # if user.is_mentor and user.is_mentor_application_submitted:
+    # Initialize empty data structures for optional response data
+    mentor_data, mentee_data, mentor_roster_data = {}, {}, {}
+    talentprofile_json_data = None
+
+    response_data = {
+        "status": True,
+        "user_info": {
+            "id": user.id,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "email": user.email,
+            "userprofile": userprofile_json_data,
+            # "talentprofile" and "current_company" will be conditionally added
+        },
+        "account_info": {field: getattr(user, field) for field in [
+            "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
+            "is_mentor", "is_mentee", "is_mentor_profile_active",
+            "is_mentor_profile_removed", "is_mentor_training_complete",
+            "is_mentor_interviewing", "is_mentor_profile_paused",
+            "is_mentor_profile_approved", "is_mentor_application_submitted",
+            "is_speaker", "is_volunteer", "is_team", "is_community_recruiter",
+            "is_company_account", "is_partnership",
+        ]},
+        "mentor_details": mentor_data,
+        "mentee_details": mentee_data,
+        "mentor_roster_data": mentor_roster_data,
+    }
+
+    # Conditional data based on user's roles
     if user.is_mentor_application_submitted:
-        mentor_application = MentorshipProgramProfile.objects.get(user=user)
-        mentor_serializer = MentorshipProgramProfileSerializer(mentor_application)
-        mentor_data = mentor_serializer.data
+        mentor_application = get_object_or_404(MentorshipProgramProfile, user=user)
+        mentor_data = MentorshipProgramProfileSerializer(mentor_application).data
+
     if user.is_mentee:
-        mentor_application = MentorshipProgramProfile.objects.get(user=user)
-        mentee_profile = MenteeProfile.objects.get(user_id=user.id)
-        mentee_data = {
-            "id": mentee_profile.id,
-            # 'mentee_support_areas': mentor_application.mentee_profile.mentee_support_areas,
-        }
+        mentee_profile = get_object_or_404(MenteeProfile, user=user)
+        mentee_data = {"id": mentee_profile.id}
+        mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profile)
+        if mentorship_roster.exists():
+            mentor_roster_data = MentorRosterSerializer(mentorship_roster, many=True).data
 
-        # Check to see if the user is connected with any mentors
-        mentee_profiles = MenteeProfile.objects.get(user=request.user)
-        mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profiles.id)
+    talent_profile = MemberProfile.objects.filter(user=user).first()
+    if talent_profile:
+        talentprofile_json_data = TalentProfileSerializer(talent_profile).data
+        response_data["user_info"]["talentprofile"] = talentprofile_json_data
 
-        if mentorship_roster:
-            serializer = MentorRosterSerializer(mentorship_roster, many=True)
-            mentor_roster_data = serializer.data
+    # Handle company account logic
+    if user.is_company_account:
+        company_account_details = get_object_or_404(CompanyProfile, account_owner=user)
+        local_company_data = CompanyProfileSerializer(company_account_details).data
 
-    # Fetch and Serialize MemberProfile Data
-    try:
-        talentprofile = MemberProfile.objects.get(
-            user=user.id
-        )  # Fetch MemberProfile related to the user
-        talentprofile_serializer = TalentProfileSerializer(
-            talentprofile
-        )  # Serialize MemberProfile data
-        talentprofile_json_data = (
-            talentprofile_serializer.data
-        )  # Convert serialized data to JSON
-    except (
-        MemberProfile.DoesNotExist
-    ):  # Handle the case when MemberProfile does not exist for the user
-        talentprofile_json_data = None
+        # Make an external request for additional company details
+        company_id = company_account_details.id
+        full_company_details_url = f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={company_id}'
+        response = requests.get(full_company_details_url)
+        if response.status_code == 200:
+            company_account_data = response.json()
+            # Append local company data to the fetched company data
+            company_account_data["company_profile"] = local_company_data
+        else:
+            company_account_data = {"error": "Could not fetch company details"}
 
-    try:
-        current_company = CompanyProfile.objects.get(current_employees=request.user)
-    except CompanyProfile.DoesNotExist:
-        current_company = None
+        response_data["company_account_data"] = company_account_data
 
-    return Response(
-        {
-            "status": True,
-            "user_info": {
-                "id": user.id,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-                "email": user.email,
-                "userprofile": userprofile_json_data,
-                "talentprofile": talentprofile_json_data,
-                "current_company": {
-                    "id": current_company.id if current_company else None,
-                    "company_name": current_company.company_name
-                    if current_company
-                    else None,
-                },
-            },
-            "account_info": {
-                "is_staff": user.is_staff,
-                "is_recruiter": user.is_recruiter,
-                "is_member": user.is_member,
-                "is_member_onboarding_complete": user.is_member_onboarding_complete,
-                "is_mentor": user.is_mentor,
-                "is_mentee": user.is_mentee,
-                "is_mentor_profile_active": user.is_mentor_profile_active,
-                "is_mentor_profile_removed": user.is_mentor_profile_removed,
-                "is_mentor_training_complete": user.is_mentor_training_complete,
-                "is_mentor_interviewing": user.is_mentor_interviewing,
-                "is_mentor_profile_paused": user.is_mentor_profile_paused,
-                "is_mentor_profile_approved": user.is_mentor_profile_approved,
-                "is_mentor_application_submitted": user.is_mentor_application_submitted,
-                "is_speaker": user.is_speaker,
-                "is_volunteer": user.is_volunteer,
-                "is_team": user.is_team,
-                "is_community_recruiter": user.is_community_recruiter,
-                "is_company_account": user.is_company_account,
-                "is_partnership": user.is_partnership,
-            },
-            "mentor_details": mentor_data,
-            "mentee_details": mentee_data,
-            "mentor_roster_data": mentor_roster_data,
-        }
-    )
+    return Response(response_data)
+
+def get_company_data(user_details):
+    company = get_object_or_404(CompanyProfile, account_owner=user_details)
+    return CompanyProfileSerializer(company).data
 
 
 @api_view(["GET"])

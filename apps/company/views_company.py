@@ -1,4 +1,5 @@
 import logging
+import os
 
 import requests
 from rest_framework.response import Response
@@ -20,6 +21,7 @@ class CompanyView(APIView):
         This view returns a single company profile
         identified by the `company_id` passed in the URL.
         """
+        talent_choice_jobs = {}
         try:
             company_data = CompanyProfile.objects.get(id=pk)
 
@@ -47,9 +49,31 @@ class CompanyView(APIView):
                 {"status": False, "error": f"An unexpected error occurred: {e}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+        # Make an external request to get talent choice data
+        if company_data.talent_choice_account:
+            try:
+                response = requests.get(f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={pk}', verify=False)
+                response.raise_for_status()
+                talent_choice_jobs = response.json()
+            except requests.exceptions.HTTPError as http_err:
+                return Response(
+                    {"status": False, "error": f"HTTP error occurred: {http_err}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+            except Exception as e:
+                return Response(
+                    {"status": False, "error": f"An unexpected error occurred: {e}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         # Return response with company profile data and reviews
         return Response(
-            {"status": True, "company": serializer_data, "companyJobs": serializer_job_list, "companyReview": reviews},
+            {
+                "status": True,
+                "company": serializer_data,
+                "companyJobs": serializer_job_list,
+                "companyReview": reviews,
+                "talentChoice": talent_choice_jobs
+            },
             status=status.HTTP_200_OK
         )

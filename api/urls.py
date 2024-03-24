@@ -23,6 +23,7 @@ urlpatterns = [
     path("member/", include("apps.core.urls_member")),
     path("mentorship/", include("apps.mentorship.urls")),
     path("company/", include("apps.company.urls")),
+    path("talent-choice/company/", include("apps.core.urls_talent_choice")),
     path("company-profile/", include("apps.company.urls_company")),
     path("event/", include("apps.event.urls")),
     path("api/", include("apps.core.urls_internal")),

@@ -94,7 +94,7 @@ def get_dropdown_data(request):
         data["company_size"] = COMPANY_SIZE
 
     if not requested_fields or "on_site_remote" in requested_fields:
-        data[" "] = ON_SITE_REMOTE
+        data["on_site_remote"] = ON_SITE_REMOTE
 
     data["status"] = True
 
