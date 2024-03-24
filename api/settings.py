@@ -39,6 +39,7 @@ ALLOWED_HOSTS = [
     "dashboard.stripe.com",
     "127.0.0.1",
     "127.0.0.1:3000",
+    "127.0.0.1:8001",
     "localhost",
     "localhost:3000",
     "beta.api.techbychoice.org",
@@ -82,7 +83,9 @@ ROOT_URLCONF = "api.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [
+            os.path.join(BASE_DIR, 'apps/core/templates')
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -206,8 +209,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:7001",
     "http://127.0.0.1:7001",
+    "http://127.0.0.1:8001",
+    "http://localhost:8001",
     "https://www.beta.techbychoice.org",
     "https://beta.techbychoice.org",
+    "https://www.opendoors.api.techbychoice.org",
+    "https://opendoors.api.techbychoice.org",
     "https://www.gamma.techbychoice.org",
 ]
 # CSRF_COOKIE_DOMAIN = "localhost:3000"
@@ -285,3 +292,7 @@ TOKEN_EXPIRATION = timedelta(days=7)
 
 # Ensure you don't run collectstatic during deployment if not necessary
 DISABLE_COLLECTSTATIC = 1
+
+# Email setting
+
+EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
