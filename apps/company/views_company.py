@@ -1,4 +1,5 @@
 import logging
+import os
 
 import requests
 from rest_framework.response import Response
@@ -51,7 +52,7 @@ class CompanyView(APIView):
         # Make an external request to get talent choice data
         if company_data.talent_choice_account:
             try:
-                response = requests.get(f'http://127.0.0.1:8001/core/api/company/details/?company_id={pk}', verify=False)
+                response = requests.get(f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={pk}', verify=False)
                 response.raise_for_status()
                 talent_choice_jobs = response.json()
             except requests.exceptions.HTTPError as http_err:

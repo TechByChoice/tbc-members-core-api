@@ -184,7 +184,7 @@ def get_user_data(request):
 
         # Make an external request for additional company details
         company_id = company_account_details.id
-        full_company_details_url = f'http://127.0.0.1:8001/core/api/company/details/?company_id={company_id}'
+        full_company_details_url = f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={company_id}'
         response = requests.get(full_company_details_url)
         if response.status_code == 200:
             company_account_data = response.json()

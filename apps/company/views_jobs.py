@@ -189,7 +189,6 @@ class JobViewSet(viewsets.ViewSet):
         """
         Mark job as pending by its ID.
         """
-        print(request.user)
         try:
             job = Job.objects.get(pk=pk)
             job.status = "pause"
@@ -221,7 +220,6 @@ class JobViewSet(viewsets.ViewSet):
         """
         Mark job as pending by its ID.
         """
-        print(request.user)
         try:
             job = Job.objects.get(pk=pk)
             job.status = "closed"
