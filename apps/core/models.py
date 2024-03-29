@@ -92,7 +92,7 @@ class CustomUser(AbstractBaseUser):
     # Reviews
     is_company_review_access_active = models.BooleanField(default=False)
     company_review_tokens = models.IntegerField(
-        default=0,
+        default=3,
     )
     ip_address = models.CharField(blank=True, null=True, max_length=280)
     is_superuser = models.BooleanField(default=False)
