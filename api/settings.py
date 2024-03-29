@@ -76,6 +76,8 @@ MIDDLEWARE = [
     # cross domain
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # firewall
+    "core.firewall_middleware.FirewallMiddleware",
 ]
 
 ROOT_URLCONF = "api.urls"
