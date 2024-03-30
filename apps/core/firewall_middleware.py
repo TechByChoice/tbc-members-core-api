@@ -8,7 +8,7 @@ class FirewallMiddleware:
     # List of allowed IP addresses
     ALLOWED_IPS = [
         '127.0.0.1', '24.184.47.80', '75.223.174.33', '108.54.16.186',
-        '75.225.110.112', '97.133.52.183'
+        '75.225.110.112', '97.133.52.183', '97.133.164.124'
     ]
 
     def __init__(self, get_response):
