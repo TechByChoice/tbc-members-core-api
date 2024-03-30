@@ -113,6 +113,7 @@ def login_api(request):
                 "is_community_recruiter": user.is_community_recruiter,
                 "is_company_account": user.is_company_account,
                 "is_partnership": user.is_partnership,
+                "is_company_review_access_active": user.is_company_review_access_active,
             },
             "token": token,
         }
@@ -153,7 +154,7 @@ def get_user_data(request):
             "is_mentor_interviewing", "is_mentor_profile_paused",
             "is_mentor_profile_approved", "is_mentor_application_submitted",
             "is_speaker", "is_volunteer", "is_team", "is_community_recruiter",
-            "is_company_account", "is_partnership",
+            "is_company_account", "is_partnership", "is_company_review_access_active"
         ]},
         "mentor_details": mentor_data,
         "mentee_details": mentee_data,

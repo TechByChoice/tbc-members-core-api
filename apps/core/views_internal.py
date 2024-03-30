@@ -1,6 +1,7 @@
 # views.py
 from django.db.models import F
 from rest_framework import permissions, status
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import UserProfile  # Assuming you have a UserProfile model
@@ -55,3 +56,20 @@ class ExternalView(APIView):
                 {"error": "An unexpected error occurred"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
+    @api_view(["POST"])
+    def update_review_token_total(request):
+        # update/review-token/
+        user = request.user
+        direction = request.data.get('direction', True)
+
+        token_change = 1 if direction else -1
+        user.company_review_tokens += token_change
+
+        if user.company_review_tokens == 0:
+            user.is_company_review_access_active = False
+
+        user.save()
+
+        return Response({"data": user.company_review_tokens}, status=status.HTTP_200_OK)
+
