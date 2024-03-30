@@ -15,8 +15,8 @@ class FirewallMiddleware:
 
     def __call__(self, request):
         # Check if the request IP is allowed
-        if request.META['REMOTE_ADDR'] not in self.ALLOWED_IPS:
-            return HttpResponseForbidden("Access Denied")
+        if request.META.get('REMOTE_ADDR') not in self.ALLOWED_IPS:
+            return HttpResponseForbidden('Forbidden')
 
         response = self.get_response(request)
         return response
