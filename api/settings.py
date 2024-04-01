@@ -36,12 +36,8 @@ SECRET_KEY = os.getenv("DJANGO_SECRET")
 DEBUG = os.getenv("DEBUG")
 
 ALLOWED_HOSTS = [
-    "dashboard.stripe.com",
     "127.0.0.1",
-    "127.0.0.1:3000",
-    "127.0.0.1:8001",
     "localhost",
-    "localhost:3000",
     "beta.api.techbychoice.org",
 ]
 
@@ -66,6 +62,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # cross domain
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -73,9 +71,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    # cross domain
-    "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.common.CommonMiddleware",
     # firewall
     "apps.core.firewall_middleware.FirewallMiddleware",
 ]
@@ -298,3 +293,20 @@ DISABLE_COLLECTSTATIC = 1
 # Email setting
 
 EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
+
+# If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
+# Otherwise, you can set it based on another condition or default to True.
+if DEBUG:
+    SESSION_COOKIE_SECURE = False
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+    SECURE_HSTS_PRELOAD = False
+    SECURE_SSL_REDIRECT = False
+    CSRF_COOKIE_SECURE = False
+else:
+    # Example of setting based on another environment variable, or default to True
+    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
+    SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True
+    CSRF_COOKIE_SECURE = True

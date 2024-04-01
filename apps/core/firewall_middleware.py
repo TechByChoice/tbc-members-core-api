@@ -1,13 +1,14 @@
 import os
 from django.http import HttpResponseForbidden
 
+
 class FirewallMiddleware:
     """
-    Middleware to restrict access to the application based on whitelisted IPs.
+    Middleware to restrict access to the application based on allow listed IPs.
     """
 
     # List of allowed IP addresses, loaded from ALLOWED_IPS environment variable and split by comma:
-    ALLOWED_IPS = os.environ.get('ALLOWED_IPS', '').split(',')
+    ALLOWED_IPS = os.environ.get('ALLOWED_IPS', '127.0.0.1').split(',')
 
     def __init__(self, get_response):
         self.get_response = get_response
