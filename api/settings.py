@@ -72,7 +72,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # firewall
-    "apps.core.firewall_middleware.FirewallMiddleware",
+    # "apps.core.firewall_middleware.FirewallMiddleware",
 ]
 
 ROOT_URLCONF = "api.urls"
