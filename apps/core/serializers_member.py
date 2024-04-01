@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import CustomUser, UserProfile
+from .util import get_current_company_data
 from ..member.models import MemberProfile
 
 
@@ -10,6 +11,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    identity_pronouns = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name'
+    )
     class Meta:
         model = UserProfile
         fields = "__all__"
@@ -42,6 +48,23 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 
 class TalentProfileSerializer(serializers.ModelSerializer):
+    skills = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name'
+    )
+    department = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name'
+    )
+    role = serializers.SlugRelatedField(
+        many=True,
+        read_only=True,
+        slug_field='name'
+    )
+    tech_journey_display = serializers.CharField(source='get_tech_journey_display', read_only=True)
+
     class Meta:
         model = MemberProfile
         fields = "__all__"
@@ -51,17 +74,19 @@ class FullTalentProfileSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
     talent_profile = serializers.SerializerMethodField(read_only=True)
     user_profile = serializers.SerializerMethodField(read_only=True)
+    company_details = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = MemberProfile
         fields = "__all__"
 
     def get_talent_profile(self, obj):
-        # Assuming that there is a reverse relationship from CustomUser to MemberProfile named 'talentprofile'
         talent_profile = MemberProfile.objects.filter(user=obj.user).first()
         return TalentProfileSerializer(talent_profile).data if talent_profile else None
 
     def get_user_profile(self, obj):
-        # Assuming that there is a reverse relationship from CustomUser to MemberProfile named 'talentprofile'
         user_profile = UserProfile.objects.filter(user=obj.user).first()
         return UserProfileSerializer(user_profile).data if user_profile else None
+
+    def get_company_details(selfself, obj):
+        return get_current_company_data(user=obj.user)
