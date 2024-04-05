@@ -31,12 +31,14 @@ class SendGridPasswordResetEmailBackend(BaseEmailBackend):
                     'token': default_token_generator.make_token(user),
                 }
             else:
+                token = default_token_generator.make_token(user),
                 context = {
                     'username': message_dict['username'],
                     'activation_link': message_dict['activation_link'],
                     'uidb64': urlsafe_base64_encode(force_bytes(user.pk)),
-                    'token': default_token_generator.make_token(user),
+                    'token': token,
                 }
+                print(f"EMAIL TOKEN: {token,}")
             template_path = message.extra_headers.get('email_template', 'core/new/password_reset_email.html')
             html_content = render_to_string(template_path, context)
             mail = Mail(

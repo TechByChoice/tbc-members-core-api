@@ -269,7 +269,7 @@ class JobViewSet(viewsets.ViewSet):
         paginator = CustomPagination()
 
         # Get and paginate all active jobs
-        all_active_jobs = Job.objects.all()
+        all_active_jobs = Job.objects.filter(status="active")
 
         paginated_active_jobs = paginate_items(all_active_jobs, request, paginator, JobSerializer)
 
