@@ -9,7 +9,8 @@ from rest_framework.views import APIView
 from apps.company.models import CompanyProfile
 from apps.core.models import CustomUser, UserProfile
 from apps.core.serializers import TalentProfileSerializer
-from apps.core.serializers_member import CustomUserSerializer, UserProfileSerializer
+from apps.core.serializers_member import CustomUserSerializer, UserProfileSerializer, ReadOnlyCustomUserSerializer, \
+    ReadOnlyUserProfileSerializer, ReadOnlyTalentProfileSerializer
 from apps.core.util import get_current_company_data
 from apps.mentorship.models import (
     MentorProfile,
@@ -54,9 +55,9 @@ class MemberDetailsView(APIView):
         mentor_program = self.get_profile(MentorshipProgramProfile, user)
         current_company_data = get_current_company_data(user)
 
-        user_serializer = CustomUserSerializer(user)
-        user_profile_serializer = UserProfileSerializer(user_profile)
-        talent_profile_serializer = TalentProfileSerializer(talent_profile)
+        user_serializer = ReadOnlyCustomUserSerializer(user)
+        user_profile_serializer = ReadOnlyUserProfileSerializer(user_profile)
+        talent_profile_serializer = ReadOnlyTalentProfileSerializer(talent_profile)
         mentor_program_serializer = None
         if mentor_program and user.is_mentor_profile_active:
             mentor_program_serializer = MentorshipProgramProfileSerializer(

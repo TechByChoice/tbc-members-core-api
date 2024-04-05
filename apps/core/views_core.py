@@ -110,7 +110,7 @@ def get_all_members(request):
 
     requested_fields = request.query_params.getlist("fields", [])
 
-    members = MemberProfile.objects.order_by("created_at")
+    members = MemberProfile.objects.filter(user__is_active=True).order_by("created_at")
     paginated_members = paginate_items(members, request, paginator, FullTalentProfileSerializer)
 
     data["members"] = paginated_members
