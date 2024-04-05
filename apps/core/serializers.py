@@ -49,12 +49,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             "email": {
                 "required": True,
                 "allow_blank": False,
-                "validators": {
+                "validators": [
                     validators.UniqueValidator(
                         CustomUser.objects.all(),
                         "A user with that email already exists",
                     )
-                },
+                ],
             },
         }
 

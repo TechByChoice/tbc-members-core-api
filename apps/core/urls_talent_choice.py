@@ -7,6 +7,9 @@ urlpatterns = [
     path("confirm-agreement/", CompanyViewSet.as_view({
         'post': 'service_agreement'
     }), name="service-agreement"),
+    path("complete-onboarding/", CompanyViewSet.as_view({
+        'post': 'complete_onboarding'
+    }), name="complete-onboarding"),
     path("onboarding/create/profile/", CompanyViewSet.as_view({
         'post': 'create_onboarding'
     }), name="create-onboarding"),
