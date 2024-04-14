@@ -202,19 +202,25 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 # CORS_EXPOSE_HEADERS = ["Date"]
-CORS_ALLOWED_ORIGINS = [
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:7001",
         "http://127.0.0.1:7001",
         "http://127.0.0.1:8001",
         "http://localhost:8001",
-    "https://www.beta.techbychoice.org",
-    "https://beta.techbychoice.org",
-    "https://www.opendoors.api.techbychoice.org",
-    "https://opendoors.api.techbychoice.org",
-    "https://www.gamma.techbychoice.org",
-]
+    ]
+else:
+    CORS_ALLOWED_ORIGINS = [
+
+        "https://www.beta.techbychoice.org",
+        "https://beta.techbychoice.org",
+        "https://www.opendoors.api.techbychoice.org",
+        "https://opendoors.api.techbychoice.org",
+        "https://www.gamma.techbychoice.org",
+    ]
+
 # CSRF_COOKIE_DOMAIN = "localhost:3000"
 # X_FRAME_OPTIONS = "DENY"
 # CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE")
@@ -314,5 +320,3 @@ else:
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
-
-print(DEBUG)
