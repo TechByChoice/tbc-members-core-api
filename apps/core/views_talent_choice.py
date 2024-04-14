@@ -5,6 +5,7 @@ import requests
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
+from django.views.decorators.csrf import csrf_exempt
 from rest_framework import viewsets, status
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
@@ -43,7 +44,8 @@ class CompanyViewSet(viewsets.ViewSet):
             "message": "Welcome to Talent Choice."
         }, status=status.HTTP_200_OK)
 
-    @action(detail=False, methods=['post'], url_path='service-agreement')
+    @csrf_exempt
+    @action(detail=False, methods=['cpost'], url_path='service-agreement')
     def service_agreement(self, request):
         if request.data.get('confirm_service_agreement'):
             user = request.user

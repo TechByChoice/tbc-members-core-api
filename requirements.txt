@@ -11,10 +11,10 @@ certifi==2023.7.22
 cffi==1.15.1
 cryptography==42.0.4
 distlib==0.3.7
-Django==4.1.13
+Django~=4.2.11
 django-rest-knox==4.2.0
 django-quill-editor==0.1.40
-djangorestframework==3.14.0
+djangorestframework~=3.15.1
 filelock
 google-api-python-client==2.111.0
 google-auth==2.25.2
@@ -36,7 +36,7 @@ pyparsing==3.1.1
 pytest==7.4.2
 pytest-django==4.5.2
 python-dotenv==0.21.0
-pytz==2023.3
+pytz~=2024.1
 pyjwt
 sendgrid==6.9.7
 sqlparse==0.4.4
@@ -48,3 +48,5 @@ whitenoise==6.5.0
 zipp==3.16.2
 slack_sdk==3.26.1
 eventbrite==3.3.5
+requests~=2.31.0
+django-filter~=24.2
