@@ -15,7 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 import logging.config
 
-from celery.schedules import crontab
+# from celery.schedules import crontab
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "apps.mentorship",
     "corsheaders",
     "storages",
+    "django_filters"
 ]
 
 MIDDLEWARE = [
@@ -72,7 +73,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # firewall
-    # "apps.core.firewall_middleware.FirewallMiddleware",
+    "apps.core.firewall_middleware.FirewallMiddleware",
 ]
 
 ROOT_URLCONF = "api.urls"
@@ -202,12 +203,12 @@ CORS_ALLOW_METHODS = [
 ]
 # CORS_EXPOSE_HEADERS = ["Date"]
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:7001",
-    "http://127.0.0.1:7001",
-    "http://127.0.0.1:8001",
-    "http://localhost:8001",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:7001",
+        "http://127.0.0.1:7001",
+        "http://127.0.0.1:8001",
+        "http://localhost:8001",
     "https://www.beta.techbychoice.org",
     "https://beta.techbychoice.org",
     "https://www.opendoors.api.techbychoice.org",
@@ -259,16 +260,16 @@ CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_BROKER_URL = os.getenv("REDIS_URL")
 
 # Celery Schedule
-CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
-    "run-my-task-every-day-at-9am": {
-        "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
-        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-    },
-    "close-old-jobs": {
-        "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
-        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-    },
-}
+# CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
+#     "run-my-task-every-day-at-9am": {
+#         "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
+#         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+#     },
+#     "close-old-jobs": {
+#         "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
+#         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+#     },
+# }
 
 AUTH_USER_MODEL = "core.CustomUser"
 
@@ -296,6 +297,9 @@ EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
 
 # If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
 # Otherwise, you can set it based on another condition or default to True.
+
+# If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
+# Otherwise, you can set it based on another condition or default to True.
 if DEBUG:
     SESSION_COOKIE_SECURE = False
     SECURE_HSTS_INCLUDE_SUBDOMAINS = False
@@ -310,3 +314,5 @@ else:
     SECURE_HSTS_PRELOAD = True
     SECURE_SSL_REDIRECT = True
     CSRF_COOKIE_SECURE = True
+
+print(DEBUG)
