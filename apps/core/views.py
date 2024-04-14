@@ -149,8 +149,8 @@ def get_user_data(request):
         },
         "account_info": {field: getattr(user, field) for field in [
             "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
-            "is_mentor", "is_mentee", "is_mentor_profile_active",
-            "is_mentor_profile_removed", "is_mentor_training_complete",
+            "is_mentor", "is_mentee", "is_mentor_profile_active", "is_open_doors",
+            "is_open_doors_onboarding_complete", "is_mentor_profile_removed", "is_mentor_training_complete",
             "is_mentor_interviewing", "is_mentor_profile_paused",
             "is_community_recruiter", "is_company_account", "is_email_confirmation_sent",
             "is_email_confirmed", "is_company_onboarding_complete",
@@ -805,7 +805,7 @@ def send_welcome_email(email, first_name, company_name=None, user=None, current_
 
         # Create the email
         mail_subject = 'Activate your account.'
-        activation_link = f'{os.environ["FRONTEND_URL"]}new/company/confirm-account/{urlsafe_base64_encode(force_bytes(user.pk))}/{token}/'
+        activation_link = f'{os.environ["FRONTEND_URL"]}new/confirm-account/{urlsafe_base64_encode(force_bytes(user.pk))}/{token}/'
 
         context = {
             'username': first_name,

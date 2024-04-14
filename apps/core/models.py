@@ -1,3 +1,4 @@
+import datetime
 import json
 from datetime import date
 
@@ -65,6 +66,9 @@ class CustomUser(AbstractBaseUser):
     is_talent_choice = models.BooleanField(default=False)
     is_member_onboarding_complete = models.BooleanField(default=False)
     is_slack_invite_sent = models.BooleanField(default=False)
+    # Open Doors
+    is_open_doors = models.BooleanField(default=False)
+    is_open_doors_onboarding_complete = models.BooleanField(default=False)
     # mentorship program
     is_mentor = models.BooleanField(default=False)
     is_mentee = models.BooleanField(default=False)
@@ -122,6 +126,16 @@ class CustomUser(AbstractBaseUser):
         return self.is_active and (
             self.is_superuser or self.user_permissions.filter(codename=perm).exists()
         )
+
+
+class UserVerificationToken(models.Model):
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    token = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def is_expired(self):
+        return self.created_at < (datetime.datetime.now() - datetime.timedelta(days=1))
 
 
 class SexualIdentities(models.Model):
