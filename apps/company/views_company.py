@@ -88,8 +88,9 @@ class CompanyView(ViewSet):
         This view returns a paginated and filterable list of all company profiles.
         """
         paginator = PageNumberPagination()
-        paginator.page_size = request.query_params.get('page_size', 10)
-        paginator.page_size_query_param = 'page_size'
+        paginator.page_size = request.query_params.get('page_size',
+                                                       10)  # Allows clients to specify or use default page size
+        paginator.page_size_query_param = 'page_size'  # Allows client to set page size in request
 
         try:
             company_data = CompanyProfile.objects.all()
@@ -103,7 +104,7 @@ class CompanyView(ViewSet):
                                     status=status.HTTP_404_NOT_FOUND)
 
                 result_page = paginator.paginate_queryset(filtered_data.qs, request)
-                serializer = CompanyProfileSerializer(result_page, many=True, context={'request': request})
+                serializer = CompanyProfileSerializer(result_page, many=True)
                 return paginator.get_paginated_response(serializer.data)
             else:
                 return Response({"status": False, "error": "No companies found."},
