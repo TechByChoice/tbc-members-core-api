@@ -1,3 +1,4 @@
+import requests
 from rest_framework import serializers
 
 from apps.company.models import (
@@ -6,7 +7,7 @@ from apps.company.models import (
     Department,
     Skill,
     Roles,
-    SalaryRange,
+    SalaryRange, Industries,
 )
 from apps.core.models import CustomUser, UserProfile
 
@@ -88,6 +89,12 @@ class SkillSerializer(serializers.ModelSerializer):
         fields = ("id", "name", "skill_type")
 
 
+class IndustriesSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Industries
+        fields = ("id", "name")
+
+
 class RoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Roles
@@ -95,9 +102,43 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
+    industries = IndustriesSerializer(read_only=True, many=True)
+    reviews = serializers.SerializerMethodField()
+    jobs = serializers.SerializerMethodField()
+
     class Meta:
         model = CompanyProfile
-        fields = ("id", "company_name", "company_url", "logo", "industries")
+        exclude = [
+            "talent_choice_account",
+            "account_creator",
+            "unclaimed_account_creator",
+            "is_unclaimed_account",
+            "billing_team",
+            "hiring_team",
+            "account_owner",
+            "current_employees",
+            "past_employees",
+            "internal_account_manager",
+            "internal_recruiting_team",
+            "referral_employees",
+            "created_at",
+            "updated_at",
+        ]
+        # fields = ("id", "company_name", "company_url", "logo", "industries", "reviews", "jobs")
+
+    def get_jobs(self, obj):
+        jobs = Job.objects.filter(parent_company=obj.id, status="active")
+        return JobSimpleSerializer(jobs, many=True).data
+
+    def get_reviews(self, obj):
+        reviews_url = f'http://127.0.0.1:7000/api/reviews/company/{obj.id}/'
+        try:
+            response = requests.get(reviews_url, timeout=3)  # Set a reasonable timeout
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            # Handle exceptions or log them
+            return {"error": str(e)}
 
 
 class SalaryRangeSerializer(serializers.ModelSerializer):
@@ -161,7 +202,53 @@ class JobSerializer(serializers.ModelSerializer):
 
 
 class JobSimpleSerializer(serializers.ModelSerializer):
+    department = DepartmentSerializer(many=True, read_only=True)
+    skills = SkillSerializer(many=True, read_only=True)
+    role = RoleSerializer(read_only=True)
+    min_compensation = SalaryRangeSerializer(read_only=True)
+    max_compensation = SalaryRangeSerializer(read_only=True)
 
     class Meta:
         model = Job
-        fields = "__all__"
+        fields = [
+            "id",
+            "job_title",
+            "external_description",
+            "level",
+            "url",
+            "external_interview_process",
+            "job_type",
+            "department",
+            "skills",
+            "on_site_remote",
+            "status",
+            "compensation_range",
+            "min_compensation",
+            "max_compensation",
+            "role",
+            "experience",
+            "years_of_experience",
+            "location",
+            "team_size",
+            "female_team_size_total",
+            "poc_team_size_total",
+            "black_team_size_total",
+            "indigenous_team_size_total",
+            "lgbtqia_team_size_total",
+            "disabled_team_size_total",
+            "department_size",
+            "female_department_size_total",
+            "poc_department_size_total",
+            "black_department_size_total",
+            "indigenous_department_size_total",
+            "lgbtqia_department_size_total",
+            "disabled_department_size_total",
+            "is_paid",
+            "parent_company",
+            "is_remote",
+            "is_referral_job",
+            "created_by",
+            "created_by_id",
+            "created_at",
+            "updated_at",
+        ]
