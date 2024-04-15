@@ -4,7 +4,6 @@ from .views_jobs import JobViewSet
 
 router = DefaultRouter()
 router.register(r"jobs", JobViewSet, basename="jobs")
-# router.register(r"company", CompanyView, basename="company")
 
 urlpatterns = [
     path("new/", include(router.urls))
