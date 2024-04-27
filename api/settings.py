@@ -37,6 +37,7 @@ DEBUG = os.getenv("DEBUG")
 
 ALLOWED_HOSTS = [
     "beta.api.techbychoice.org",
+    "beta.api.dev.techbychoice.org"
 ]
 
 # Application definition
