@@ -101,13 +101,13 @@ WSGI_APPLICATION = "api.wsgi.application"
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': os.getenv('PGDATABASE'),
-        'USER': os.getenv('PGUSER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('PGHOST'),
-        'PORT': os.getenv('PGPORT'),
+    "default": {
+        "ENGINE": "django.db.backends.postgresql_psycopg2",
+        "NAME": os.getenv("PGDATABASE"),
+        "USER": os.getenv("PGUSER"),
+        "PASSWORD": os.getenv("PGPASSWORD"),
+        "HOST": os.getenv("PGHOST"),
+        "PORT": os.getenv("PGPORT"),
     }
 }
 
@@ -203,12 +203,10 @@ CORS_ALLOW_METHODS = [
 # CORS_EXPOSE_HEADERS = ["Date"]
 
 CORS_ALLOWED_ORIGINS = [
-
     "https://www.beta.techbychoice.org",
     "https://beta.techbychoice.org",
     "https://www.opendoors.api.techbychoice.org",
     "https://opendoors.api.techbychoice.org",
-    "https://www.gamma.techbychoice.org",
 ]
 
 # CSRF_COOKIE_DOMAIN = "localhost:3000"
@@ -228,8 +226,8 @@ CORS_ALLOWED_ORIGINS = [
 # SESSION_COOKIE_DOMAIN = "localhost:3000"
 
 # Allow cookies
-# SESSION_COOKIE_SAMESITE = None
-# SESSION_COOKIE_SECURE = False  # Set this to True in production with HTTPS
+SESSION_COOKIE_SAMESITE = None
+SESSION_COOKIE_SECURE = True
 
 
 LOGGING = {
