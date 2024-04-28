@@ -190,7 +190,7 @@ REST_FRAMEWORK = {
 
 # Security settings
 
-CORS_ORIGIN_ALLOW_ALL = False
+CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     "DELETE",
@@ -200,6 +200,7 @@ CORS_ALLOW_METHODS = [
     "POST",
     "PUT",
 ]
+CORS_ALLOW_HEADERS = '*'
 # CORS_ALLOW_HEADERS = [
 #     'accept',
 #     'accept-encoding',
