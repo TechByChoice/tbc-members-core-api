@@ -64,6 +64,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # cross domain
     "corsheaders.middleware.CorsMiddleware",
+    "api.restrict_origin_middleware.RestrictOriginMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -74,7 +75,6 @@ MIDDLEWARE = [
     # firewall
     # "apps.core.firewall_middleware.FirewallMiddleware",
     # CORS Rules
-    "api.restrict_origin_middleware.RestrictOriginMiddleware"
 ]
 
 ROOT_URLCONF = "api.urls"

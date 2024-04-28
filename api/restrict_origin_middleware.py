@@ -5,8 +5,10 @@ class RestrictOriginMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
         self.allowed_origins = [
-            'https://www.beta.techbychoice.org',
-            'https://beta.techbychoice.org'
+            "https://www.beta.techbychoice.org",
+            "https://beta.techbychoice.org",
+            "https://www.opendoors.api.techbychoice.org",
+            "https://opendoors.api.techbychoice.org",
         ]
 
     def __call__(self, request):
