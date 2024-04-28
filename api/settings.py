@@ -33,8 +33,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# DEBUG = os.getenv("DEBUG")
-DEBUG = True
+DEBUG = os.getenv("DEBUG")
 
 ALLOWED_HOSTS = [
     "beta.api.techbychoice.org",
@@ -73,7 +72,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # firewall
-    "apps.core.firewall_middleware.FirewallMiddleware",
+    # "apps.core.firewall_middleware.FirewallMiddleware",
 ]
 
 ROOT_URLCONF = "api.urls"
