@@ -218,7 +218,6 @@ CORS_ALLOWED_ORIGINS = [
     "https://beta.techbychoice.org",
     "https://www.opendoors.api.techbychoice.org",
     "https://opendoors.api.techbychoice.org",
-    "https://beta.api.dev.techbychoice.org",
 ]
 
 # Allow cookies
