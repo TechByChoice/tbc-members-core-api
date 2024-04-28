@@ -1,10 +1,10 @@
 # TBC Membership App
 One stop shop for all of Tech by Choice site
 
-##Requirements
+## Requirements
 Python 3.8.0
 
-#Getting Started 
+# Getting Started 
 This is a repo containing both a Django Rest Framework backend and a React frontend.
 ## Structure
 ```
@@ -72,6 +72,8 @@ This is a repo containing both a Django Rest Framework backend and a React front
 ├── manage.py
 ├── pytest.ini
 ├── requirements.txt
+
+```
 
 ## Backend Setup (Django & DRF)
 
