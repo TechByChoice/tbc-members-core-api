@@ -61,9 +61,9 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
     # cross domain
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -285,9 +285,9 @@ EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
 
 
 # Example of setting based on another environment variable, or default to True
-SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
-SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = True
-CSRF_COOKIE_SECURE = True
+# SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
+# SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+# SECURE_SSL_REDIRECT = True
+# CSRF_COOKIE_SECURE = True
