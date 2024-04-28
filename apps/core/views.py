@@ -121,7 +121,7 @@ def login_api(request):
 
     # Set secure cookie
     response.set_cookie(
-        "auth_token", token, secure=False, httponly=True, domain="localhost"
+        "auth_token", token, secure=False, httponly=True, domain=os.environ["FRONTEND_URL"]
     )  # httponly=True to prevent access by JavaScript
 
     return response
