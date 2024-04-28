@@ -73,6 +73,8 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # firewall
     # "apps.core.firewall_middleware.FirewallMiddleware",
+    # CORS Rules
+    "api.restrict_origin_middleware.RestrictOriginMiddleware"
 ]
 
 ROOT_URLCONF = "api.urls"
