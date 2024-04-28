@@ -190,7 +190,7 @@ REST_FRAMEWORK = {
 
 # Security settings
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     "DELETE",
@@ -207,23 +207,8 @@ CORS_ALLOWED_ORIGINS = [
     "https://beta.techbychoice.org",
     "https://www.opendoors.api.techbychoice.org",
     "https://opendoors.api.techbychoice.org",
+    "https://beta.api.dev.techbychoice.org",
 ]
-
-# CSRF_COOKIE_DOMAIN = "localhost:3000"
-# X_FRAME_OPTIONS = "DENY"
-# CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE")
-# SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE")
-# SECURE_BROWSER_XSS_FILTER = os.getenv("SESSION_COOKIE")
-# SECURE_CONTENT_TYPE_NOSNIFF = os.getenv("SESSION_COOKIE")
-# SECURE_HSTS_SECONDS = 31536000  # 1 year
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SESSION_COOKIE")
-# SECURE_HSTS_PRELOAD = os.getenv("SESSION_COOKIE")
-# SECURE_SSL_REDIRECT = os.getenv("SESSION_COOKIE")
-# SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE")
-# CSRF_COOKIE_HTTPONLY = True
-
-# SESSION_COOKIE_SECURE = False  # Set to True in production
-# SESSION_COOKIE_DOMAIN = "localhost:3000"
 
 # Allow cookies
 SESSION_COOKIE_SAMESITE = None
@@ -288,22 +273,11 @@ DISABLE_COLLECTSTATIC = 1
 
 EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
 
-# If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
-# Otherwise, you can set it based on another condition or default to True.
 
-# If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
-# Otherwise, you can set it based on another condition or default to True.
-if DEBUG:
-    SESSION_COOKIE_SECURE = False
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-    SECURE_HSTS_PRELOAD = False
-    SECURE_SSL_REDIRECT = False
-    CSRF_COOKIE_SECURE = False
-else:
-    # Example of setting based on another environment variable, or default to True
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
-    SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
-    CSRF_COOKIE_SECURE = True
+# Example of setting based on another environment variable, or default to True
+SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
+SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_SSL_REDIRECT = True
+CSRF_COOKIE_SECURE = True
