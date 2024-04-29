@@ -260,6 +260,7 @@ def create_new_member(request):
                 print(e)
 
         request.user.is_member_onboarding_complete = True
+        request.user.is_company_review_access_active = True
         request.user.save()
 
         return Response(
