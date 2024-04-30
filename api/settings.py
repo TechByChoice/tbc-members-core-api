@@ -64,7 +64,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # cross domain
     "corsheaders.middleware.CorsMiddleware",
-    "api.restrict_origin_middleware.RestrictOriginMiddleware",
+    # "api.restrict_origin_middleware.RestrictOriginMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
