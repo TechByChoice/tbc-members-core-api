@@ -35,11 +35,16 @@ SECRET_KEY = os.getenv("DJANGO_SECRET")
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    "beta.api.techbychoice.org",
-    "beta.api.dev.techbychoice.org"
-]
-
+if DEBUG:
+    ALLOWED_HOSTS = [
+        "localhost",
+        "127.0.0.1"
+    ]
+else:
+    ALLOWED_HOSTS = [
+        "beta.api.techbychoice.org",
+        "beta.api.dev.techbychoice.org"
+    ]
 # Application definition
 
 INSTALLED_APPS = [
@@ -202,7 +207,7 @@ CORS_ALLOW_METHODS = [
     "POST",
     "PUT",
 ]
-# CORS_ALLOW_HEADERS = '*'
+
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -215,12 +220,18 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "https://www.beta.techbychoice.org",
-    "https://beta.techbychoice.org",
-    "https://www.opendoors.api.techbychoice.org",
-    "https://opendoors.api.techbychoice.org",
-]
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:7000",
+    ]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "https://www.beta.techbychoice.org",
+        "https://beta.techbychoice.org",
+        "https://www.opendoors.api.techbychoice.org",
+        "https://opendoors.api.techbychoice.org",
+    ]
 
 # Allow cookies
 SESSION_COOKIE_SAMESITE = None
