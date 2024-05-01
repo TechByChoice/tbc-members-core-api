@@ -7,8 +7,11 @@ class RestrictOriginMiddleware:
         self.allowed_origins = [
             "https://www.beta.techbychoice.org",
             "https://beta.techbychoice.org",
+            "https://beta.api.dev.techbychoice.org",
+            "https://www.beta.api.dev.techbychoice.org",
             "https://www.opendoors.api.techbychoice.org",
             "https://opendoors.api.techbychoice.org",
+
         ]
 
     def __call__(self, request):
