@@ -27,7 +27,7 @@ class CompanyViewSet(viewsets.ViewSet):
         try:
             response = requests.post(f'{os.environ["TC_API_URL"]}company/new/onboarding/open-roles/',
                                      data=json.dumps(request.data),
-                                     headers={'Content-Type': 'application/json'}, verify=False)
+                                     headers={'Content-Type': 'application/json'}, verify=True)
             response.raise_for_status()
             talent_choice_jobs = response.json()
         except requests.exceptions.HTTPError as http_err:
@@ -53,7 +53,7 @@ class CompanyViewSet(viewsets.ViewSet):
 
             try:
                 response = requests.post(f'{os.environ["TC_API_URL"]}company/new/onboarding/confirm-terms/',
-                                         data={'companyId': company_profile.id}, verify=False)
+                                         data={'companyId': company_profile.id}, verify=True)
                 response.raise_for_status()
                 talent_choice_jobs = response.json()
             except requests.exceptions.HTTPError as http_err:

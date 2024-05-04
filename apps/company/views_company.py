@@ -15,7 +15,7 @@ from apps.company.serializers import CompanyProfileSerializer, JobSimpleSerializ
 
 logger = logging.getLogger(__name__)
 
-REVIEWS_URL = 'http://127.0.0.1:7000/'
+REVIEWS_URL = os.getenv("OD_API_URL")
 
 
 class CompanyView(ViewSet):
@@ -40,7 +40,7 @@ class CompanyView(ViewSet):
         serializer_job_list = JobSimpleSerializer(job_list, many=True).data
         # Make an external request to get company reviews
         try:
-            response = requests.get(f'http://127.0.0.1:7000/api/reviews/company/{pk}/', verify=False)
+            response = requests.get(f'{os.getenv("OD_API_URL")}/api/reviews/company/{pk}/', verify=True)
             response.raise_for_status()
             reviews = response.json()
         except requests.exceptions.HTTPError as http_err:

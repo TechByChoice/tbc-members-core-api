@@ -751,7 +751,7 @@ def create_new_company(request):
                     f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
                     data=json.dumps({"companyId": company_profile.id}),
                     headers={'Content-Type': 'application/json'},
-                    verify=False)
+                    verify=True)
                 response.raise_for_status()
             except requests.RequestException as e:
                 logger.error("Failed to create external accounts: %s", str(e))
