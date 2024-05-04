@@ -711,7 +711,12 @@ def create_new_company(request):
             {"status": False, "error": "Invalid request method"}, status=405
         )
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError as e:
+        logger.error("Error decoding JSON data: %s", str(e))
+        return JsonResponse({"status": False, "error": "Invalid JSON data"}, status=400)
+
     first_name, last_name, email, password, company_name = (
         data.get("first_name"),
         data.get("last_name"),
@@ -731,37 +736,45 @@ def create_new_company(request):
         )
 
     try:
-        user, token = create_user_account(first_name, last_name, email, password, is_company=True)
-        # Create company profile logic here
-        company_profile = CompanyProfile(
-            account_creator=user,
-            company_name=company_name
-        )
-        company_profile.save()
-        company_profile.account_owner.add(user)
-        company_profile.hiring_team.add(user)
-        company_profile.save()
-        current_site = get_current_site(request)
-
-        # create account_details_profile
-        try:
-            response = requests.post(
-                f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
-                data=json.dumps({"companyId": company_profile.id}),
-                headers={'Content-Type': 'application/json'},
-                verify=False)
-            response.raise_for_status()
-            talent_choice_jobs = response.json()
-        except requests.exceptions.HTTPError as http_err:
-            return Response(
-                {"status": False, "error": f"HTTP error occurred: {http_err}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        with transaction.atomic():
+            user, token = create_user_account(first_name, last_name, email, password, is_company=True)
+            company_profile = CompanyProfile(
+                account_creator=user,
+                company_name=company_name
             )
-        send_welcome_email(user.email, user.first_name, company_name, user, current_site, request)
+            company_profile.save()
+            company_profile.account_owner.add(user)
+            company_profile.hiring_team.add(user)
 
-        return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+            try:
+                response = requests.post(
+                    f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
+                    data=json.dumps({"companyId": company_profile.id}),
+                    headers={'Content-Type': 'application/json'},
+                    verify=False)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                logger.error("Failed to create external accounts: %s", str(e))
+                transaction.set_rollback(True)
+                return JsonResponse(
+                    {"status": False, "error": "Failed to communicate with external service"},
+                    status=502  # Bad Gateway indicates issues with external service
+                )
+
+            try:
+                send_welcome_email(user.email, user.first_name, company_name, user, get_current_site(request), request)
+            except Exception as e:
+                logger.error("Failed to send welcome email: %s", str(e))
+                transaction.set_rollback(True)
+                return JsonResponse(
+                    {"status": False, "error": "Failed to send welcome email"},
+                    status=500
+                )
+
+            return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+
     except Exception as e:
-        print("Error while saving user: ", str(e))
+        logger.error("Error while creating user: %s", str(e))
         return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
 
 
