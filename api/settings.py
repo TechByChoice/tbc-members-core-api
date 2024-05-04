@@ -36,8 +36,8 @@ SECRET_KEY = os.getenv("DJANGO_SECRET")
 DEBUG = os.getenv("DEBUG")
 
 ALLOWED_HOSTS = [
-    "beta.api.techbychoice.org",
-    "beta.api.dev.techbychoice.org"
+    "beta-api.techbychoice.org",
+    "beta-api-dev.techbychoice.org"
 ]
 
 # Application definition
