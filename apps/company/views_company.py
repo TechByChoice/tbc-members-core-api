@@ -39,8 +39,10 @@ class CompanyView(ViewSet):
         job_list = Job.objects.filter(parent_company=pk, status="active")
         serializer_job_list = JobSimpleSerializer(job_list, many=True).data
         # Make an external request to get company reviews
+        header_token = request.headers.get("Authorization", None)
         try:
-            response = requests.get(f'{os.getenv("OD_API_URL")}/api/reviews/company/{pk}/', verify=True)
+            response = requests.get(f'{os.getenv("OD_API_URL")}/api/reviews/company/{pk}/',
+                                    headers={'Authorization': header_token}, verify=True)
             response.raise_for_status()
             reviews = response.json()
         except requests.exceptions.HTTPError as http_err:

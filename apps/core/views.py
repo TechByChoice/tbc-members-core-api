@@ -745,12 +745,13 @@ def create_new_company(request):
             company_profile.save()
             company_profile.account_owner.add(user)
             company_profile.hiring_team.add(user)
+            header_token = request.headers.get("Authorization", None)
 
             try:
                 response = requests.post(
                     f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
                     data=json.dumps({"companyId": company_profile.id}),
-                    headers={'Content-Type': 'application/json'},
+                    headers={'Content-Type': 'application/json', 'Authorization': header_token},
                     verify=True)
                 response.raise_for_status()
             except requests.RequestException as e:
