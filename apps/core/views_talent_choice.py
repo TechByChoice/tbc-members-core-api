@@ -45,16 +45,21 @@ class CompanyViewSet(viewsets.ViewSet):
         }, status=status.HTTP_200_OK)
 
     @csrf_exempt
-    @action(detail=False, methods=['cpost'], url_path='service-agreement')
+    @action(detail=False, methods=['post'], url_path='service-agreement')
     def service_agreement(self, request):
         if request.data.get('confirm_service_agreement'):
             user = request.user
             company_profile = CompanyProfile.objects.get(account_creator=user)
-            token = request.headers.get('Authorization').split()[1]
+            token = request.headers.get('Authorization', None)
+            if token:
+                clean_token = token.split()[1]
+            else:
+                clean_token = request.auth
+            print(clean_token)
 
             try:
                 response = requests.post(f'{os.environ["TC_API_URL"]}company/new/onboarding/confirm-terms/',
-                                         data={'companyId': company_profile.id, 'token': token}, verify=True)
+                                         data={'companyId': company_profile.id, 'token': clean_token}, verify=True)
                 response.raise_for_status()
                 talent_choice_jobs = response.json()
             except requests.exceptions.HTTPError as http_err:
