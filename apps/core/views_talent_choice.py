@@ -21,13 +21,16 @@ class CompanyViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['post'], url_path='complete-onboarding')
     def complete_onboarding(self, request):
-            company_id = request.query_params.get('company_id')
+            company_profile = CompanyProfile.objects.get(account_creator=user)
+            company_id = company_profile.id
+        
             user_data = request.user
     
             # Prepare the data to include the token
             data_to_send = request.data.copy()
             if request.auth:
                 data_to_send['token'] = str(request.auth)
+                data_to_send['companyId'] = company_id
     
             try:
                 response = requests.post(
