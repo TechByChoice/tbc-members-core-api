@@ -21,28 +21,37 @@ class CompanyViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['post'], url_path='complete-onboarding')
     def complete_onboarding(self, request):
-        company_id = request.query_params.get('company_id')
-        user_data = request.user
-
-        try:
-            response = requests.post(f'{os.environ["TC_API_URL"]}company/new/onboarding/open-roles/',
-                                     data=json.dumps(request.data),
-                                     headers={'Content-Type': 'application/json'}, verify=True)
-            response.raise_for_status()
-            talent_choice_jobs = response.json()
-        except requests.exceptions.HTTPError as http_err:
-            return Response(
-                {"status": False, "error": f"HTTP error occurred: {http_err}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-        user_data.is_company_onboarding_complete = True
-        user_data.save()
-
-        return Response({
-            "status": True,
-            "message": "Welcome to Talent Choice."
-        }, status=status.HTTP_200_OK)
+            company_id = request.query_params.get('company_id')
+            user_data = request.user
+    
+            # Prepare the data to include the token
+            data_to_send = request.data.copy()
+            if request.auth:
+                data_to_send['token'] = str(request.auth)
+    
+            try:
+                response = requests.post(
+                    f'{os.environ["TC_API_URL"]}company/new/onboarding/open-roles/',
+                    data=json.dumps(data_to_send),
+                    headers={'Content-Type': 'application/json'},
+                    verify=True
+                )
+                response.raise_for_status()
+                talent_choice_jobs = response.json()
+            except requests.exceptions.HTTPError as http_err:
+                return Response(
+                    {"status": False, "error": f"HTTP error occurred: {http_err}"},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+    
+            # Update user data to indicate onboarding completion
+            user_data.is_company_onboarding_complete = True
+            user_data.save()
+    
+            return Response({
+                "status": True,
+                "message": "Welcome to Talent Choice."
+            }, status=status.HTTP_200_OK)
 
     @csrf_exempt
     @action(detail=False, methods=['post'], url_path='service-agreement')
