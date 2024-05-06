@@ -21,7 +21,7 @@ class CompanyViewSet(viewsets.ViewSet):
 
     @action(detail=True, methods=['post'], url_path='complete-onboarding')
     def complete_onboarding(self, request):
-            company_profile = CompanyProfile.objects.get(account_creator=user)
+            company_profile = CompanyProfile.objects.get(account_creator=request.user)
             company_id = company_profile.id
         
             user_data = request.user
