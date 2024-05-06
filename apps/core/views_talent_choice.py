@@ -50,10 +50,11 @@ class CompanyViewSet(viewsets.ViewSet):
         if request.data.get('confirm_service_agreement'):
             user = request.user
             company_profile = CompanyProfile.objects.get(account_creator=user)
+            token = request.headers.get('Authorization').split()[1]
 
             try:
                 response = requests.post(f'{os.environ["TC_API_URL"]}company/new/onboarding/confirm-terms/',
-                                         data={'companyId': company_profile.id}, verify=True)
+                                         data={'companyId': company_profile.id, 'token': token}, verify=True)
                 response.raise_for_status()
                 talent_choice_jobs = response.json()
             except requests.exceptions.HTTPError as http_err:
