@@ -33,7 +33,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG")
+DEBUG = False
 
 if DEBUG:
     ALLOWED_HOSTS = [
@@ -274,8 +274,8 @@ CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
     # },
     "close-old-jobs": {
         "task": "apps.company.tasks.close_old_jobs",
-        # "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-        "schedule": crontab(minute='*/1'),
+        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+        # "schedule": crontab(minute='*/1'),
     },
 }
 
