@@ -15,8 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 import logging.config
 
-import crontab
-# from celery.schedules import crontab
+from celery.schedules import crontab
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
@@ -275,7 +274,7 @@ CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
     # },
     "close-old-jobs": {
         "task": "apps.company.tasks.close_old_jobs",
-        "schedule": crontab.CronTab(hour=9, minute=0, day_of_week="mon-fri"),
+        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
     },
 }
 
