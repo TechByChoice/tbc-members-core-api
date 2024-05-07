@@ -4,7 +4,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from apps.company.models import Job
-from api.celery import app
+from api.celery_config import app
 
 # Create a logger instance for the tasks
 logger = logging.getLogger(__name__)
