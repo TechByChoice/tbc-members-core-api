@@ -274,8 +274,8 @@ CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
     # },
     "close-old-jobs": {
         "task": "apps.company.tasks.close_old_jobs",
-        # "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-        "schedule": crontab(minute='*/1'),
+        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+        # "schedule": crontab(minute='*/1'),
     },
 }
 
