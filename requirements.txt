@@ -52,3 +52,4 @@ slack_sdk==3.26.1
 eventbrite==3.3.5
 requests~=2.31.0
 django-filter~=24.2
+crontab~=1.0.1

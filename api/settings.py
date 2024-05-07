@@ -15,6 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 import logging.config
 
+import crontab
 # from celery.schedules import crontab
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
@@ -33,7 +34,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.getenv("DJANGO_SECRET")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.getenv("DEBUG")
 
 if DEBUG:
     ALLOWED_HOSTS = [
@@ -259,18 +260,24 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 # Celery Broker - Redis
 CELERY_BROKER_URL = os.getenv("REDIS_URL")
+CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
+CELERY_REDIS_DB = '0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_DEFAULT_QUEUE = 'core-api'
 
 # Celery Schedule
-# CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
-#     "run-my-task-every-day-at-9am": {
-#         "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
-#         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-#     },
-#     "close-old-jobs": {
-#         "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
-#         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-#     },
-# }
+CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
+    # "run-my-task-every-day-at-9am": {
+    #     "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
+    #     "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+    # },
+    "close-old-jobs": {
+        "task": "apps.company.tasks.close_old_jobs",
+        "schedule": crontab.CronTab(hour=9, minute=0, day_of_week="mon-fri"),
+    },
+}
 
 AUTH_USER_MODEL = "core.CustomUser"
 
