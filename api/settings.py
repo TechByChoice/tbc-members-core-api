@@ -258,8 +258,8 @@ LOGGING = {
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 # Celery Broker - Redis
-CELERY_BROKER_URL = os.getenv("REDIS_URL")
-CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
+# CELERY_BROKER_URL = os.getenv("REDIS_URL")
+# CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
 CELERY_REDIS_DB = '0'
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -274,8 +274,8 @@ CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
     # },
     "close-old-jobs": {
         "task": "apps.company.tasks.close_old_jobs",
-        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-        # "schedule": crontab(minute='*/1'),
+        # "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+        "schedule": crontab(minute='*/1'),
     },
 }
 
