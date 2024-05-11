@@ -251,17 +251,17 @@ def create_new_member(request):
 
             if user_data["is_mentee"] or user_data["is_mentor"]:
                 MentorshipProgramProfile.objects.create(user=user)
+            request.user.is_member_onboarding_complete = True
+            request.user.is_company_review_access_active = True
+            request.user.save()
             # send slack invite
             try:
                 send_invite(user.email)
                 request.user.is_slack_invite_sent = True
+                request.user.save()
             except Exception as e:
                 request.user.is_slack_invite_sent = False
                 print(e)
-
-        request.user.is_member_onboarding_complete = True
-        request.user.is_company_review_access_active = True
-        request.user.save()
 
         return Response(
             {
