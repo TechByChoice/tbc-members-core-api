@@ -3,9 +3,11 @@ import os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
+from api.settings import STATIC_URL
+
 # Constants
 SCOPES = ["https://www.googleapis.com/auth/admin.directory.user"]
-SERVICE_ACCOUNT_FILE = os.environ["GOOGLE_CERT_PATH"]
+SERVICE_ACCOUNT_FILE = STATIC_URL + 'tbc-member-platform.json'
 
 
 def get_admin_sdk_service():
