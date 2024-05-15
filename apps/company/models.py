@@ -210,12 +210,12 @@ class CompanyProfile(models.Model):
         CompanyTypes, related_name="company_types", blank=True
     )
 
-    company_name = models.CharField(max_length=200)
+    company_name = models.CharField(max_length=400)
     industries = models.ManyToManyField(Industries, blank=True)
 
     tag_line = models.CharField(max_length=3000, blank=True, null=True)
-    mission = models.CharField(max_length=3000, blank=True, null=True)
-    vision = models.CharField(max_length=3000, blank=True, null=True)
+    mission = models.CharField(max_length=7000, blank=True, null=True)
+    vision = models.CharField(max_length=7000, blank=True, null=True)
     company_highlights = models.CharField(max_length=3000, blank=True, null=True)
     company_diversity_statement = models.CharField(max_length=3000, blank=True, null=True)
     company_benefits = models.CharField(max_length=3000, blank=True, null=True)
@@ -237,12 +237,12 @@ class CompanyProfile(models.Model):
     )
     ethics_statement = models.CharField(max_length=3000, blank=True, null=True)
     logo = models.ImageField(default="default-logo.jpeg", upload_to="logo_pics")
-    logo_url = models.URLField(max_length=200, blank=True, null=True)
+    logo_url = models.URLField(max_length=400, blank=True, null=True)
     background_img = models.ImageField(
         default="company_backgrounds/default-background.png",
         upload_to="company_backgrounds",
     )
-    company_url = models.URLField(max_length=200, blank=True, null=True)
+    company_url = models.URLField(max_length=400, blank=True, null=True)
     linkedin = models.URLField(blank=True, null=True, max_length=200)
     twitter = models.URLField(blank=True, null=True, max_length=200)
     youtube = models.URLField(blank=True, null=True, max_length=200)
@@ -252,6 +252,7 @@ class CompanyProfile(models.Model):
     state = models.CharField(blank=True, null=True, max_length=200)
     city = models.CharField(blank=True, null=True, max_length=200)
     postal_code = models.CharField(blank=True, null=True, max_length=200)
+    coresignal_id = models.CharField(blank=True, null=True, max_length=60)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)

@@ -284,12 +284,12 @@ def create_or_update_company_connection(user, company_data):
         company_profile.current_employees.add(user)
     else:
         # The company doesn't exist, create a new one and set user as unclaimed_account_creator and in current_employees
-        if company_name and company_url and company_logo:
+        if company_name and company_url:
             company_profile = CompanyProfile.objects.create(
                 unclaimed_account_creator=user,
                 is_unclaimed_account=True,
                 company_name=company_name,
-                logo=company_logo,
+                # logo=company_logo,
                 company_url=company_url,
             )
             company_profile.current_employees.add(user)
