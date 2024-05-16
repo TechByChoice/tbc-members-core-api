@@ -144,6 +144,7 @@ class CompanyViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['get'], url_path='confirm-email/(?P<id>[^/]+)/(?P<token>[^/]+)')
     def confirm_account_email(self, request, id=None, token=None):
+        print("starting email confirmation flow")
         try:
             print(f"VALIDATE TOKEN: {token}")
             uid = force_str(urlsafe_base64_decode(id))
