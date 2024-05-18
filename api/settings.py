@@ -40,10 +40,20 @@ if DEBUG:
         "localhost",
         "127.0.0.1"
     ]
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:7000"
+    ]
 else:
     ALLOWED_HOSTS = [
         "beta-api.techbychoice.org",
         "beta-api-dev.techbychoice.org"
+    ]
+    CSRF_TRUSTED_ORIGINS = [
+        "https://www.beta.techbychoice.org",
+        "https://beta.techbychoice.org",
+        "https://www.opendoors.api.techbychoice.org",
+        "https://opendoors.api.techbychoice.org",
     ]
 # Application definition
 
@@ -193,6 +203,14 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.AnonRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'user': '10/minute',
+        'anon': '5/minute',
+    }
 }
 
 # Security settings
@@ -302,12 +320,3 @@ DISABLE_COLLECTSTATIC = 1
 # Email setting
 
 EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
-
-
-# Example of setting based on another environment variable, or default to True
-# SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
-# SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-# SECURE_HSTS_PRELOAD = True
-# SECURE_SSL_REDIRECT = True
-# CSRF_COOKIE_SECURE = True

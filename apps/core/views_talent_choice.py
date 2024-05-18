@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import requests
@@ -6,15 +7,19 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from django.views.decorators.csrf import csrf_exempt
+from knox.models import AuthToken
 from rest_framework import viewsets, status
 from rest_framework.generics import get_object_or_404
+from rest_framework.decorators import action, permission_classes
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-
-from rest_framework.decorators import action
+from rest_framework.views import APIView
 
 from utils.helper import prepend_https_if_not_empty
 from .models import CustomUser
 from ..company.models import CompanyProfile
+
+logger = logging.getLogger(__name__)
 
 
 class CompanyViewSet(viewsets.ViewSet):
@@ -142,34 +147,50 @@ class CompanyViewSet(viewsets.ViewSet):
                 "message": "Issue saving account data",
             }, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=['get'], url_path='confirm-email/(?P<id>[^/]+)/(?P<token>[^/]+)')
-    def confirm_account_email(self, request, id=None, token=None):
+
+class ConfirmEmailAPIView(APIView):
+    permission_classes = [AllowAny]
+    def get(self, request, id=None, token=None):
         print("starting email confirmation flow")
         try:
-            print(f"VALIDATE TOKEN: {token}")
+            # Decode the user ID
             uid = force_str(urlsafe_base64_decode(id))
             user = get_object_or_404(CustomUser, id=uid)
-            is_email_confirmed = user.is_email_confirmed
+
+            if user.is_email_confirmed:
+                return Response({
+                    "status": True,
+                    "message": "Email already confirmed!"
+                }, status=status.HTTP_208_ALREADY_REPORTED)
+            # Validate the token
             is_token_valid = default_token_generator.check_token(user, token)
+
             if is_token_valid:
-                if is_email_confirmed:
-                    return Response({
-                        "status": True,
-                        "message": "Email already confirmed!"
-                    }, status=status.HTTP_208_ALREADY_REPORTED)
+
+                # Confirm the email
                 user.is_active = True
                 user.is_email_confirmed = True
                 user.save()
+
+                _, token = AuthToken.objects.create(user)
+
                 return Response({
                     "status": True,
+                    "token": token,
                     "message": "Email confirmed! Please complete your account."
                 }, status=status.HTTP_200_OK)
             else:
-                return Response({"status": False, "message": "Invalid email token."},
+                return Response({"status": False, "message": "Invalid email token. Please contact support."},
                                 status=status.HTTP_400_BAD_REQUEST)
 
-        except CustomUser.DoesNotExist as e:
-            print(f"Can't find user Error: {e}")
+        except CustomUser.DoesNotExist:
+            logger.warning(f"User does not exist for id: {id}")
+            return Response({"status": False, "message": "Invalid email token or user does not exist."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Unhandled error: {e}")
+            return Response({"status": False, "message": "An unexpected error occurred."},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         # except jwt.DecodeError:
         #     return Response({"status": False, "error": "Invalid token."}, status=status.HTTP_400_BAD_REQUEST)

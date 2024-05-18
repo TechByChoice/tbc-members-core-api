@@ -694,10 +694,10 @@ def create_new_user(request):
             return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
         except Exception as e:
             print("Error while saving user: ", str(e))
-            return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+            return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
     except Exception as e:
         print("Error while saving user: ", str(e))
-        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+        return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 
 @csrf_exempt
@@ -775,7 +775,7 @@ def create_new_company(request):
 
     except Exception as e:
         logger.error("Error while creating user: %s", str(e))
-        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+        return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 
 class LogoutView(APIView):
