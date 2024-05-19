@@ -14,8 +14,10 @@ import os
 from datetime import timedelta
 from pathlib import Path
 import logging.config
+import logging
 
 from celery.schedules import crontab
+from corsheaders.middleware import CorsMiddleware
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
@@ -320,3 +322,19 @@ DISABLE_COLLECTSTATIC = 1
 # Email setting
 
 EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
+
+CORS_EXPOSE_HEADERS = [
+    'access-control-allow-origin',
+    'content-type',
+    'x-csrftoken',
+]
+
+logger = logging.getLogger(__name__)
+
+
+class LoggingCorsMiddleware(CorsMiddleware):
+    def process_request(self, request):
+        response = super().process_request(request)
+        logger.info(f"CORS request to {request.path} with origin {request.META.get('HTTP_ORIGIN')}")
+        return response
+

@@ -14,6 +14,7 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.viewsets import ViewSet
 
 from utils.helper import prepend_https_if_not_empty
 from .models import CustomUser
@@ -22,7 +23,7 @@ from ..company.models import CompanyProfile
 logger = logging.getLogger(__name__)
 
 
-class CompanyViewSet(viewsets.ViewSet):
+class CompanyViewSet(ViewSet):
 
     @action(detail=True, methods=['post'], url_path='complete-onboarding')
     def complete_onboarding(self, request):
