@@ -251,6 +251,8 @@ def create_new_member(request):
 
             if user_data["is_mentee"] or user_data["is_mentor"]:
                 MentorshipProgramProfile.objects.create(user=user)
+                request.user.is_mentee = user_data["is_mentee"]
+                request.user.is_mentor = user_data["is_mentor"]
             request.user.is_member_onboarding_complete = True
             request.user.is_company_review_access_active = True
             request.user.save()
