@@ -531,9 +531,9 @@ def update_profile_skills_roles(request):
 def update_profile_social_accounts(request):
     userprofile = request.user.userprofile
     userprofile.linkedin = prepend_https_if_not_empty(request.data.get("linkedin"))
-    userprofile.instagram = prepend_https_if_not_empty(f'www.instagram.com/{request.data.get("instagram")}')
+    userprofile.instagram = request.data.get("instagram", None)
     userprofile.github = prepend_https_if_not_empty(request.data.get("github"))
-    userprofile.twitter = prepend_https_if_not_empty(f'www.twitter.com/{request.data.get("twitter")}')
+    userprofile.twitter = request.data.get("twitter", None)
     userprofile.youtube = prepend_https_if_not_empty(request.data.get("youtube"))
     userprofile.personal = prepend_https_if_not_empty(request.data.get("personal"))
     userprofile.save()
