@@ -61,6 +61,7 @@ from apps.mentorship.serializer import (
 )
 from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
+from utils.helper import prepend_https_if_not_empty
 from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
@@ -529,12 +530,12 @@ def update_profile_skills_roles(request):
 @api_view(["POST"])
 def update_profile_social_accounts(request):
     userprofile = request.user.userprofile
-    userprofile.linkedin = "https://" + request.data.get("linkedin")
-    userprofile.instagram = request.data.get("instagram")
-    userprofile.github = "https://" + request.data.get("github")
-    userprofile.twitter = request.data.get("twitter")
-    userprofile.youtube = "https://" + request.data.get("youtube")
-    userprofile.personal = "https://" + request.data.get("personal")
+    userprofile.linkedin = prepend_https_if_not_empty(request.data.get("linkedin"))
+    userprofile.instagram = prepend_https_if_not_empty(f'www.instagram.com/{request.data.get("instagram")}')
+    userprofile.github = prepend_https_if_not_empty(request.data.get("github"))
+    userprofile.twitter = prepend_https_if_not_empty(f'www.twitter.com/{request.data.get("twitter")}')
+    userprofile.youtube = prepend_https_if_not_empty(request.data.get("youtube"))
+    userprofile.personal = prepend_https_if_not_empty(request.data.get("personal"))
     userprofile.save()
 
     return Response(
