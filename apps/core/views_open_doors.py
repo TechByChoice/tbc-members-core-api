@@ -110,13 +110,17 @@ class UserManagementView(ViewSet):
 
         # Make the 3rd party API request
         try:
-            response = requests.post(third_party_url, data=mutable_data)
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": header_token
+            }
+            response = requests.post(third_party_url, json=mutable_data, headers=headers)
             response.raise_for_status()
             # Process the response from the 3rd party API
             result_data = response.json()
             return Response(result_data, status=status.HTTP_200_OK)
         except requests.RequestException as e:
-            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"status": False, "message": "No data saved"})
 
         return Response(data={"status": True}, status=status.HTTP_201_CREATED)
 
