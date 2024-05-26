@@ -158,7 +158,7 @@ def create_or_update_mentorship_profile(request):
     data = request.data
 
     # Update or create MentorshipProgramProfile
-    program_profile, created = MentorshipProgramProfile.objects.update_or_create(
+    program_profile, created = MentorshipProgramProfile.objects.update(
         user=user,
         defaults={
             "biggest_strengths": data.get("biggest_strengths"),
@@ -166,16 +166,14 @@ def create_or_update_mentorship_profile(request):
             "career_milestones": data.get("career_milestones"),
             "career_goals": data.get("career_goals"),
             "work_motivation": data.get("work_motivation"),
-            # Include other fields as necessary
         },
     )
 
     # Update or create MentorProfile
-    mentor_profile, created = MentorProfile.objects.update_or_create(
+    mentor_profile = MentorProfile.objects.update(
         user=user,
         defaults={
             "commitment_level": data.get("commitment_level"),
-            # Include other fields as necessary
         },
     )
     if created:
@@ -195,11 +193,10 @@ def create_or_update_mentorship_profile(request):
             print(f"Did not send mentor application submitted for user id: {user.id}")
 
     # Update or create MenteeProfile
-    mentee_profile, created = MenteeProfile.objects.update_or_create(
+    mentee_profile, created = MenteeProfile.objects.update(
         user=user,
         defaults={
             "mentee_support_areas": data.get("mentee_support_areas"),
-            # Include other fields as necessary
         },
     )
 
@@ -221,11 +218,7 @@ def update_support_type(request):
     data = request.data
 
     # Retrieve or create MentorshipProgramProfile instance
-    program_profile, create = MentorshipProgramProfile.objects.get_or_create(user=user)
-    if program_profile:
-        user.is_mentor_application_submitted = True
-        user.is_mentor = True
-        user.save()
+    program_profile = MentorshipProgramProfile.objects.get(user=user)
 
     # Update CommitmentLevel - ManyToManyField
     commitment_data = data.get("commitment_level_id")
@@ -236,7 +229,7 @@ def update_support_type(request):
         program_profile.save()
 
     if user.is_mentor:
-        mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
+        mentor_profile = MentorProfile.objects.get(user=user)
         support_area_ids = data.get("mentor_support_areas_id", [])
 
         if commitment_data is not None:
@@ -248,7 +241,7 @@ def update_support_type(request):
         mentor_profile.save()
 
     if user.is_mentee:
-        mentee_profile, _ = MenteeProfile.objects.get_or_create(user=user)
+        mentee_profile = MenteeProfile.objects.get(user=user)
         if mentee_profile:
             mentee_support_area_ids = data.get("mentee_support_areas_id", [])
             if mentee_support_area_ids is not None:
@@ -274,10 +267,9 @@ def update_career_questions(request):
     user = request.user
     data = request.data
 
-    # Retrieve or create MentorshipProgramProfile instance
-    program_profile, created = MentorshipProgramProfile.objects.get_or_create(
-        user=user,
-        defaults={},  # You can set default values for other fields if required
+    # Retrieve MentorshipProgramProfile instance
+    program_profile = MentorshipProgramProfile.objects.get(
+        user=user
     )
 
     # Update fields with data from request
@@ -314,9 +306,8 @@ def update_profile_questions(request):
     data = request.data
 
     # Retrieve or create MentorshipProgramProfile instance
-    program_profile, created = MentorProfile.objects.get_or_create(
-        user=user,
-        defaults={},  # You can set default values for other fields if required
+    program_profile = MentorProfile.objects.get(
+        user=user
     )
 
     # Update fields with data from request
@@ -328,6 +319,8 @@ def update_profile_questions(request):
     )
 
     # Save the updated profile
+    user.is_mentor_application_submitted = True
+    user.save()
     program_profile.save()
 
     return Response(
@@ -355,16 +348,16 @@ def update_values_questions(request):
         )
 
     # Update the values
-    program_profile.value_power = data.get("power")
-    program_profile.value_achievement = data.get("achievement")
-    program_profile.value_hedonism = data.get("hedonism")
-    program_profile.value_stimulation = data.get("stimulation")
-    program_profile.value_self_direction = data.get("self_direction")
-    program_profile.value_universalism = data.get("universalism")
-    program_profile.value_benevolence = data.get("benevolence")
-    program_profile.value_tradition = data.get("tradition")
-    program_profile.value_conformity = data.get("conformity")
-    program_profile.value_security = data.get("security")
+    program_profile.value_power = data.get("power", 0)
+    program_profile.value_achievement = data.get("achievement", 0)
+    program_profile.value_hedonism = data.get("hedonism", 0)
+    program_profile.value_stimulation = data.get("stimulation", 0)
+    program_profile.value_self_direction = data.get("self_direction", 0)
+    program_profile.value_universalism = data.get("universalism", 0)
+    program_profile.value_benevolence = data.get("benevolence", 0)
+    program_profile.value_tradition = data.get("tradition", 0)
+    program_profile.value_conformity = data.get("conformity", 0)
+    program_profile.value_security = data.get("security", 0)
 
     # Save the updates
     program_profile.save()

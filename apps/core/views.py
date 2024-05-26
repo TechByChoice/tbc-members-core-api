@@ -54,7 +54,7 @@ from apps.core.util import (
     update_user_profile,
     create_or_update_company_connection,
 )
-from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
+from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile, MentorProfile
 from apps.mentorship.serializer import (
     MentorRosterSerializer,
     MentorshipProgramProfileSerializer,
@@ -165,15 +165,15 @@ def get_user_data(request):
 
     # Conditional data based on user's roles
     if user.is_mentor_application_submitted:
-        mentor_application = get_object_or_404(MentorshipProgramProfile, user=user)
-        mentor_data = MentorshipProgramProfileSerializer(mentor_application).data
+        mentor_application = MentorshipProgramProfile.objects.get(user=user)
+        response_data["mentor_data"] = MentorshipProgramProfileSerializer(mentor_application).data
 
     if user.is_mentee:
         mentee_profile = get_object_or_404(MenteeProfile, user=user)
         mentee_data = {"id": mentee_profile.id}
         mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profile)
         if mentorship_roster.exists():
-            mentor_roster_data = MentorRosterSerializer(mentorship_roster, many=True).data
+            response_data["mentor_roster_data"] = MentorRosterSerializer(mentorship_roster, many=True).data
 
     talent_profile = MemberProfile.objects.filter(user=user).first()
     if talent_profile:
@@ -250,9 +250,24 @@ def create_new_member(request):
             )
 
             if user_data["is_mentee"] or user_data["is_mentor"]:
-                MentorshipProgramProfile.objects.create(user=user)
+                mentorship_program = MentorshipProgramProfile.objects.create(user=user)
                 request.user.is_mentee = user_data["is_mentee"]
                 request.user.is_mentor = user_data["is_mentor"]
+                if user_data["is_mentor"]:
+                    mentor_profile = MentorProfile.objects.create(user=request.user)
+                    mentorship_program.mentor_profile = mentor_profile
+                    mentorship_program.save()
+
+                template_id = "d-96a6752bd6b74888aa1450ea30f33a06"
+                dynamic_template_data = {"first_name": request.user.first_name}
+
+                email_data = {
+                    "subject": "Welcome to Our Platform",
+                    "recipient_emails": [request.user.email],
+                    "template_id": template_id,
+                    "dynamic_template_data": dynamic_template_data,
+                }
+                send_dynamic_email(email_data)
             request.user.is_member_onboarding_complete = True
             request.user.is_company_review_access_active = True
             request.user.save()

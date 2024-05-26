@@ -49,6 +49,7 @@ class UserManagementView(ViewSet):
         if serializer.is_valid():
             user = serializer.save()
             user.is_open_doors = True
+            user.is_company_review_access_active = True
             user.save()
             _, token = AuthToken.objects.create(user)
             verification_token = str(uuid.uuid4())
