@@ -5,11 +5,9 @@ import boto3
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-from api.settings import STATIC_URL, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_STORAGE_BUCKET_NAME
-
 # Constants
 SCOPES = ["https://www.googleapis.com/auth/admin.directory.user"]
-SERVICE_ACCOUNT_FILE = f"{STATIC_URL}tbc-member-platform.json"
+# SERVICE_ACCOUNT_FILE = f"{STATIC_URL}tbc-member-platform.json"
 SERVICE_ACCOUNT_FILE_KEY = "static/tbc-member-platform.json"
 
 
