@@ -16,8 +16,8 @@ SERVICE_ACCOUNT_FILE_KEY = "static/tbc-member-platform.json"
 def get_s3_file_content(bucket_name, file_key):
     s3 = boto3.client(
         's3',
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY")
     )
     response = s3.get_object(Bucket=bucket_name, Key=file_key)
     content = response['Body'].read().decode('utf-8')
@@ -25,7 +25,7 @@ def get_s3_file_content(bucket_name, file_key):
 
 
 def get_admin_sdk_service():
-    file_content = get_s3_file_content(AWS_STORAGE_BUCKET_NAME, SERVICE_ACCOUNT_FILE_KEY)
+    file_content = get_s3_file_content(os.getenv("AWS_STORAGE_BUCKET_NAME"), SERVICE_ACCOUNT_FILE_KEY)
     service_account_info = json.loads(file_content)
     credentials = service_account.Credentials.from_service_account_info(
         service_account_info, scopes=SCOPES
