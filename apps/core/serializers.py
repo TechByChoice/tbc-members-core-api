@@ -103,10 +103,13 @@ class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source="user.last_name")
     email = serializers.EmailField(source="user.email")
     postal_code = serializers.CharField()
+    location = serializers.CharField()
+    state = serializers.CharField()
+    city = serializers.CharField()
 
     class Meta:
         model = MemberProfile
-        fields = ["first_name", "last_name", "email", "postal_code"]
+        fields = ["first_name", "last_name", "email", "postal_code", "location", "state", "city"]
 
     def update(self, instance, validated_data):
         # Extracting user related data
