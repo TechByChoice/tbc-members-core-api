@@ -39,7 +39,7 @@ class SendGridPasswordResetEmailBackend(BaseEmailBackend):
                     'token': token,
                 }
                 print(f"EMAIL TOKEN: {token,}")
-            template_path = message.extra_headers.get('email_template', 'core/new/password_reset_email.html')
+            template_path = message.extra_headers.get('email_template', 'emails/password_reset_email.html')
             html_content = render_to_string(template_path, context)
             mail = Mail(
                 from_email='notifications@app.techbychoice.org',

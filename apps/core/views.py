@@ -843,7 +843,6 @@ def send_welcome_email(email, first_name, company_name=None, user=None, current_
             'username': first_name,
             'activation_link': activation_link,
         }
-        print(context)
 
         message = render_to_string('emails/acc_active_email.txt', context=context)
         email_msg = EmailMessage(mail_subject, message, 'notifications@app.techbychocie.org', [user.email])
