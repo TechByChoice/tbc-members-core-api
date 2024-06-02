@@ -1,3 +1,5 @@
+import os
+
 import requests
 from rest_framework import serializers
 
@@ -131,7 +133,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         return JobSimpleSerializer(jobs, many=True).data
 
     def get_reviews(self, obj):
-        reviews_url = f'http://127.0.0.1:7000/api/reviews/company/{obj.id}/'
+        reviews_url = f'{os.getenv("OD_API_URL")}api/reviews/company/{obj.id}/'
         try:
             response = requests.get(reviews_url, timeout=3)  # Set a reasonable timeout
             response.raise_for_status()

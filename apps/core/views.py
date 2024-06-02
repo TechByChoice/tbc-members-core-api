@@ -54,13 +54,14 @@ from apps.core.util import (
     update_user_profile,
     create_or_update_company_connection,
 )
-from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
+from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile, MentorProfile
 from apps.mentorship.serializer import (
     MentorRosterSerializer,
     MentorshipProgramProfileSerializer,
 )
 from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
+from utils.helper import prepend_https_if_not_empty
 from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
@@ -121,7 +122,7 @@ def login_api(request):
 
     # Set secure cookie
     response.set_cookie(
-        "auth_token", token, secure=False, httponly=True, domain="localhost"
+        "auth_token", token, secure=False, httponly=True, domain=os.environ["FRONTEND_URL"]
     )  # httponly=True to prevent access by JavaScript
 
     return response
@@ -165,15 +166,15 @@ def get_user_data(request):
 
     # Conditional data based on user's roles
     if user.is_mentor_application_submitted:
-        mentor_application = get_object_or_404(MentorshipProgramProfile, user=user)
-        mentor_data = MentorshipProgramProfileSerializer(mentor_application).data
+        mentor_application = MentorshipProgramProfile.objects.get(user=user)
+        response_data["mentor_data"] = MentorshipProgramProfileSerializer(mentor_application).data
 
     if user.is_mentee:
         mentee_profile = get_object_or_404(MenteeProfile, user=user)
         mentee_data = {"id": mentee_profile.id}
         mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profile)
         if mentorship_roster.exists():
-            mentor_roster_data = MentorRosterSerializer(mentorship_roster, many=True).data
+            response_data["mentor_roster_data"] = MentorRosterSerializer(mentorship_roster, many=True).data
 
     talent_profile = MemberProfile.objects.filter(user=user).first()
     if talent_profile:
@@ -250,17 +251,35 @@ def create_new_member(request):
             )
 
             if user_data["is_mentee"] or user_data["is_mentor"]:
-                MentorshipProgramProfile.objects.create(user=user)
+                mentorship_program = MentorshipProgramProfile.objects.create(user=user)
+                request.user.is_mentee = user_data["is_mentee"]
+                request.user.is_mentor = user_data["is_mentor"]
+                if user_data["is_mentor"]:
+                    mentor_profile = MentorProfile.objects.create(user=request.user)
+                    mentorship_program.mentor_profile = mentor_profile
+                    mentorship_program.save()
+
+                template_id = "d-96a6752bd6b74888aa1450ea30f33a06"
+                dynamic_template_data = {"first_name": request.user.first_name}
+
+                email_data = {
+                    "subject": "Welcome to Our Platform",
+                    "recipient_emails": [request.user.email],
+                    "template_id": template_id,
+                    "dynamic_template_data": dynamic_template_data,
+                }
+                send_dynamic_email(email_data)
+            request.user.is_member_onboarding_complete = True
+            request.user.is_company_review_access_active = True
+            request.user.save()
             # send slack invite
             try:
                 send_invite(user.email)
                 request.user.is_slack_invite_sent = True
+                request.user.save()
             except Exception as e:
                 request.user.is_slack_invite_sent = False
                 print(e)
-
-        request.user.is_member_onboarding_complete = True
-        request.user.save()
 
         return Response(
             {
@@ -511,12 +530,12 @@ def update_profile_skills_roles(request):
 @api_view(["POST"])
 def update_profile_social_accounts(request):
     userprofile = request.user.userprofile
-    userprofile.linkedin = "https://" + request.data.get("linkedin")
-    userprofile.instagram = request.data.get("instagram")
-    userprofile.github = "https://" + request.data.get("github")
-    userprofile.twitter = request.data.get("twitter")
-    userprofile.youtube = "https://" + request.data.get("youtube")
-    userprofile.personal = "https://" + request.data.get("personal")
+    userprofile.linkedin = prepend_https_if_not_empty(request.data.get("linkedin"))
+    userprofile.instagram = request.data.get("instagram", None)
+    userprofile.github = prepend_https_if_not_empty(request.data.get("github"))
+    userprofile.twitter = request.data.get("twitter", None)
+    userprofile.youtube = prepend_https_if_not_empty(request.data.get("youtube"))
+    userprofile.personal = prepend_https_if_not_empty(request.data.get("personal"))
     userprofile.save()
 
     return Response(
@@ -693,10 +712,10 @@ def create_new_user(request):
             return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
         except Exception as e:
             print("Error while saving user: ", str(e))
-            return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+            return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
     except Exception as e:
         print("Error while saving user: ", str(e))
-        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+        return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 
 @csrf_exempt
@@ -710,7 +729,12 @@ def create_new_company(request):
             {"status": False, "error": "Invalid request method"}, status=405
         )
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError as e:
+        logger.error("Error decoding JSON data: %s", str(e))
+        return JsonResponse({"status": False, "error": "Invalid JSON data"}, status=400)
+
     first_name, last_name, email, password, company_name = (
         data.get("first_name"),
         data.get("last_name"),
@@ -730,38 +754,46 @@ def create_new_company(request):
         )
 
     try:
-        user, token = create_user_account(first_name, last_name, email, password, is_company=True)
-        # Create company profile logic here
-        company_profile = CompanyProfile(
-            account_creator=user,
-            company_name=company_name
-        )
-        company_profile.save()
-        company_profile.account_owner.add(user)
-        company_profile.hiring_team.add(user)
-        company_profile.save()
-        current_site = get_current_site(request)
-
-        # create account_details_profile
-        try:
-            response = requests.post(
-                f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
-                data=json.dumps({"companyId": company_profile.id}),
-                headers={'Content-Type': 'application/json'},
-                verify=False)
-            response.raise_for_status()
-            talent_choice_jobs = response.json()
-        except requests.exceptions.HTTPError as http_err:
-            return Response(
-                {"status": False, "error": f"HTTP error occurred: {http_err}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        with transaction.atomic():
+            user, token = create_user_account(first_name, last_name, email, password, is_company=True)
+            company_profile = CompanyProfile(
+                account_creator=user,
+                company_name=company_name
             )
-        send_welcome_email(user.email, user.first_name, company_name, user, current_site, request)
+            company_profile.save()
+            company_profile.account_owner.add(user)
+            company_profile.hiring_team.add(user)
+            header_token = request.headers.get("Authorization", None)
 
-        return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+            try:
+                response = requests.post(
+                    f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
+                    data=json.dumps({"companyId": company_profile.id}),
+                    headers={'Content-Type': 'application/json'}, verify=True)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                logger.error("Failed to create external accounts: %s", str(e))
+                transaction.set_rollback(True)
+                return JsonResponse(
+                    {"status": False, "error": "Failed to communicate with external service"},
+                    status=502  # Bad Gateway indicates issues with external service
+                )
+
+            try:
+                send_welcome_email(user.email, user.first_name, company_name, user, get_current_site(request), request)
+            except Exception as e:
+                logger.error("Failed to send welcome email: %s", str(e))
+                transaction.set_rollback(True)
+                return JsonResponse(
+                    {"status": False, "error": "Failed to send welcome email"},
+                    status=500
+                )
+
+            return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+
     except Exception as e:
-        print("Error while saving user: ", str(e))
-        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+        logger.error("Error while creating user: %s", str(e))
+        return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 
 class LogoutView(APIView):
@@ -811,7 +843,6 @@ def send_welcome_email(email, first_name, company_name=None, user=None, current_
             'username': first_name,
             'activation_link': activation_link,
         }
-        print(context)
 
         message = render_to_string('emails/acc_active_email.txt', context=context)
         email_msg = EmailMessage(mail_subject, message, 'notifications@app.techbychocie.org', [user.email])

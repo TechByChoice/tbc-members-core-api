@@ -109,7 +109,7 @@ class ValuesMatch(models.Model):
 
 
 class MentorProfile(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     MENTORSHIP_STATUS = (
         ("submitted", "Submitted"),
         ("active", "Active"),
@@ -142,7 +142,7 @@ class MentorProfile(models.Model):
 
 
 class MenteeProfile(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     #   Account Status
     # mentorship_status = models.CharField(max_length=18, choices=MENTORSHIP_STATUS, default=1)
     activated_at_date = models.DateTimeField(blank=True, null=True)
@@ -193,7 +193,7 @@ class Session(models.Model):
 
 
 class MentorshipProgramProfile(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, unique=True)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
     calendar_link = models.URLField(null=True, blank=True, max_length=200)
     tbc_email = models.EmailField(null=True, blank=True, max_length=50)
     # Value based questions

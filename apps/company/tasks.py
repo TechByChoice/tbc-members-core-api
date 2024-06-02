@@ -1,17 +1,10 @@
 import logging
 from datetime import timedelta
-from time import sleep
 
 from django.utils import timezone
 
 from apps.company.models import Job
-from apps.core.models import CustomUser
-from apps.job.models import CompanyInitialHiringNeeds
-from apps.quizzes.models import QuizResult
-from apps.utils.bannerbear import create_social_media_quiz_assets
-from apps.utils.email import send_career_quiz_results
-from apps.utils.tbc_slack_api import daily_reminder_talent_choice_company_update
-from job_board.celery import app
+from api.celery_config import app
 
 # Create a logger instance for the tasks
 logger = logging.getLogger(__name__)

@@ -103,6 +103,10 @@ class Migration(migrations.Migration):
                     "interview_reminder_date",
                     models.DateTimeField(blank=True, null=True),
                 ),
+                (
+                    "commitment_level",
+                    models.ManyToManyField(blank=True, to="mentorship.commitmentlevel"),
+                ),
             ],
         ),
         migrations.CreateModel(
@@ -158,6 +162,10 @@ class Migration(migrations.Migration):
                 (
                     "mentorship_goals",
                     models.CharField(blank=True, max_length=3000, null=True),
+                ),
+                (
+                    "mentor_commitment_level",
+                    models.ManyToManyField(blank=True, to="mentorship.commitmentlevel"),
                 ),
                 (
                     "user",
@@ -389,12 +397,28 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
+                    "mentee_support_areas",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="mentee_support_areas",
+                        to="mentorship.mentorsupportareas",
+                    ),
+                ),
+                (
                     "mentor_profile",
                     models.ForeignKey(
                         blank=True,
                         null=True,
                         on_delete=django.db.models.deletion.CASCADE,
                         to="mentorship.mentorprofile",
+                    ),
+                ),
+                (
+                    "mentor_support_areas",
+                    models.ManyToManyField(
+                        blank=True,
+                        related_name="mentor_support_areas",
+                        to="mentorship.mentorsupportareas",
                     ),
                 ),
                 (
@@ -430,6 +454,13 @@ class Migration(migrations.Migration):
             name="sessions",
             field=models.ManyToManyField(
                 related_name="mentor_roster_sessions", to="mentorship.session"
+            ),
+        ),
+        migrations.AddField(
+            model_name="menteeprofile",
+            name="mentee_support_areas",
+            field=models.ManyToManyField(
+                blank=True, to="mentorship.mentorsupportareas"
             ),
         ),
         migrations.AddField(

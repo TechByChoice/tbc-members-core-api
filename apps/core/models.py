@@ -284,6 +284,9 @@ class UserProfile(models.Model):
     )
     tbc_program_interest = models.TextField(max_length=37, blank=True, null=True)
     # location based info
+    location = models.CharField(blank=True, null=True, max_length=200)
+    state = models.CharField(blank=True, null=True, max_length=200)
+    city = models.CharField(blank=True, null=True, max_length=200)
     postal_code = models.CharField(max_length=10, null=True, blank=True)
     is_current_member_spotlight = models.BooleanField(default=False)
     member_spotlight = models.ManyToManyField(MembersSpotlight, blank=True)

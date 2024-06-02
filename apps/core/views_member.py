@@ -58,20 +58,14 @@ class MemberDetailsView(APIView):
         user_serializer = ReadOnlyCustomUserSerializer(user)
         user_profile_serializer = ReadOnlyUserProfileSerializer(user_profile)
         talent_profile_serializer = ReadOnlyTalentProfileSerializer(talent_profile)
-        mentor_program_serializer = None
-        if mentor_program and user.is_mentor_profile_active:
-            mentor_program_serializer = MentorshipProgramProfileSerializer(
-                mentor_program
-            )
+        mentor_program_serializer = MentorshipProgramProfileSerializer(mentor_program).data
 
         data = {
             "user": user_serializer.data,
             "user_profile": user_profile_serializer.data,
             "talent_profile": talent_profile_serializer.data,
             "current_company": current_company_data,
-            "mentorship_program": mentor_program_serializer.data
-            if mentor_program_serializer
-            else None,
+            "mentorship_program": mentor_program_serializer
         }
 
         return Response(
