@@ -282,7 +282,7 @@ class UserProfile(models.Model):
         ("Our Paid Open Source Program", "Our Paid Open Source Program"),
         ("Not Sure at the Moment", "Not Sure at the Moment"),
     )
-    tbc_program_interest = models.TextField(max_length=37, blank=True, null=True)
+    tbc_program_interest = models.ManyToManyField(CommunityNeeds)
     # location based info
     location = models.CharField(blank=True, null=True, max_length=200)
     state = models.CharField(blank=True, null=True, max_length=200)

@@ -6,7 +6,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 
 from apps.company.models import CompanyProfile, Roles, Department
 from apps.company.serializers import RoleSerializer, SkillSerializer
-from apps.core.models import UserProfile, CustomUser
+from apps.core.models import UserProfile, CustomUser, CommunityNeeds
 from apps.member.models import MemberProfile
 
 
@@ -92,7 +92,15 @@ class UpdateCustomUserSerializer(serializers.ModelSerializer):
         )
 
 
+class CommunityNeedsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunityNeeds
+        fields = '__all__'
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    tbc_program_interest = CommunityNeedsSerializer(many=True, read_only=True)
+
     class Meta:
         model = UserProfile
         fields = "__all__"
@@ -128,7 +136,6 @@ class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
         member_profile.location = validated_data.get("location", instance.location)
         member_profile.state = validated_data.get("state", instance.state)
         member_profile.city = validated_data.get("city", instance.city)
-
 
         user_instance.save()
         instance.save()
