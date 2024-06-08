@@ -66,6 +66,7 @@ class CustomUser(AbstractBaseUser):
     is_talent_choice = models.BooleanField(default=False)
     is_member_onboarding_complete = models.BooleanField(default=False)
     is_slack_invite_sent = models.BooleanField(default=False)
+    is_migrated_account = models.BooleanField(default=False)
     # Open Doors
     is_open_doors = models.BooleanField(default=False)
     is_open_doors_onboarding_complete = models.BooleanField(default=False)
@@ -204,7 +205,7 @@ class MembersSpotlight(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    photo = models.FileField(null=True, blank=True, upload_to="users")
+    photo = models.FileField(null=True, blank=True, upload_to="users", max_length=400)
     # timezone = models.CharField(max_length=50, choices=[(tz, tz) for tz in pytz.all_timezones])
     access_token = models.CharField(max_length=255, null=True)
     # Marketing
