@@ -249,6 +249,8 @@ else:
     CORS_ALLOWED_ORIGINS = [
         "https://www.beta.techbychoice.org",
         "https://beta.techbychoice.org",
+        "https://www.dev.beta.techbychoice.org",
+        "https://dev.beta.techbychoice.org",
         "https://www.opendoors-api-dev.techbychoice.org",
         "https://opendoors-api-dev.techbychoice.org",
         "https://www.opendoors-api.techbychoice.org",
