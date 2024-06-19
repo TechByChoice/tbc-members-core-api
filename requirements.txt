@@ -53,3 +53,4 @@ eventbrite==3.3.5
 requests~=2.31.0
 django-filter~=24.2
 redis==5.0.4
+urllib3>=2.2.2 # not directly required, pinned by Snyk to avoid a vulnerability
