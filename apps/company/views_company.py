@@ -41,7 +41,7 @@ class CompanyView(ViewSet):
         # Make an external request to get company reviews
         header_token = request.headers.get("Authorization", None)
         try:
-            response = requests.get(f'{os.getenv("OD_API_URL")}/api/reviews/company/{pk}/',
+            response = requests.get(f'{os.getenv("OD_API_URL")}api/reviews/company/{pk}/',
                                     headers={'Authorization': header_token}, verify=True)
             response.raise_for_status()
             reviews = response.json()
