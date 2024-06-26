@@ -1,6 +1,9 @@
+import json
 import os
 
+import requests
 from django.db.models import Q, Count
+from django.core.cache import cache
 
 from rest_framework import viewsets, status
 from rest_framework.pagination import PageNumberPagination
@@ -13,7 +16,14 @@ from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
 
+from ..core.serializers_member import TalentProfileSerializer
 from ..member.models import MemberProfile
+
+
+class JobPagination(PageNumberPagination):
+    page_size = 10  # Set default page display
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 
 
 class JobViewSet(viewsets.ViewSet):
@@ -263,27 +273,76 @@ class JobViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="all-jobs")
     def get_all_jobs(self, request):
         """
-        Retrieve all job postings.
+        Retrieve all job postings base on user profile
+
         """
-        # Initialize the paginator
-        paginator = CustomPagination()
+        url = f"{os.getenv('IT_API_URL')}api/v1/matches/jobs/"
+        header_token = request.headers.get("Authorization", None)
+        user_profile = MemberProfile.objects.get(user=request.user.id)
+        serializer = TalentProfileSerializer(user_profile)
+
+        user_posted_jobs = Job.objects.filter(created_by=request.user)
+        user_posted_jobs_serializer = JobSerializer(user_posted_jobs, many=True)
+
+        data_dump = {
+            "user_profile": serializer.data,
+            "department": serializer.data["department"],
+            "user_role": serializer.data["role"],
+            "user_level": serializer.data["tech_journey"],
+            "user_skills": serializer.data["skills"],
+            "header_token": header_token,
+        }
+        try:
+            response = requests.post(
+                url,
+                data=json.dumps(data_dump),
+                headers={'Content-Type': 'application/json'},
+            )
+            if response:
+                response_json = response.json()
+                if len(response_json) > 0:
+                    data = {
+                        "all_jobs": response_json,
+                        "posted_jobs": []
+                    }
+                    return Response(data)
+                else:
+                    data = {
+                        "all_jobs": False,
+                        "message": "We currently don't have any jobs that match your profile at this time",
+                        "posted_jobs": []
+                    }
+                    return Response(data)
+        except requests.exceptions.RequestException as error:
+            return Response(status=status.HTTP_400_BAD_REQUEST, data={"message": "error"})
+            print(f"Error: {error}")
+
+    @action(detail=False, methods=["get"], url_path="pull-jobs")
+    def pull_all_job(self, request):
+        #
+        cache_key = "all_active_jobs"
+        cached_jobs = cache.get(cache_key)
+
+        if cached_jobs is not None:
+            return Response(cached_jobs, status=status.HTTP_200_OK)
 
         # Get and paginate all active jobs
-        all_active_jobs = Job.objects.filter(status="active")
+        all_active_jobs = Job.objects.filter(status="active").only(
+            "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
+        )
 
-        paginated_active_jobs = paginate_items(all_active_jobs, request, paginator, JobSerializer)
+        # Serialize jobs
+        jobs = []
+        chunk_size = 100  # Adjust based on your memory and performance requirements
+        for i in range(0, all_active_jobs.count(), chunk_size):
+            chunk = all_active_jobs[i:i + chunk_size]
+            serializer = JobSerializer(chunk, many=True)
+            jobs.extend(serializer.data)
 
-        # Get and paginate jobs posted by the user
-        user_posted_jobs = Job.objects.filter(created_by=request.user)
-        paginated_posted_jobs = paginate_items(user_posted_jobs, request, paginator, JobSerializer)
+        # Cache the result
+        cache.set(cache_key, jobs, timeout=2592000)  # Cache for 1 month
 
-        # Combine data from both queries
-        data = {
-            "all_jobs": paginated_active_jobs,
-            "posted_jobs": paginated_posted_jobs
-        }
-
-        return Response(data)
+        return Response(jobs, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="job-match")
     def get_top_job_match(self, request):

@@ -55,7 +55,19 @@ class Skill(models.Model):
 
 class Industries(models.Model):
     name = models.CharField(max_length=300)
-    webflow_item_id = models.CharField(max_length=400)
+    webflow_item_id = models.CharField(max_length=400, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # @property
+    def __str__(self):
+        return self.name
+
+
+class Certs(models.Model):
+    name = models.CharField(max_length=300)
+    details = models.CharField(max_length=800, blank=True, null=True)
+    roles = models.CharField(max_length=800, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -267,9 +279,10 @@ class CompanyProfile(models.Model):
 
 class Job(models.Model):
     # post_title = models.CharField(max_length=300)
+    external_id = models.CharField(max_length=140, blank=True, null=True)
     job_title = models.CharField(max_length=140, blank=False, null=False)
     description = QuillField(blank=True, null=True)
-    external_description = models.CharField(max_length=3000, blank=True, null=True)
+    external_description = models.CharField(max_length=20000, blank=True, null=True)
     level = models.ForeignKey(JobLevel, on_delete=models.CASCADE, blank=True, null=True)
     url = models.CharField(max_length=300)
     interview_process = QuillField(blank=True, null=True)
@@ -319,6 +332,8 @@ class Job(models.Model):
     )
     department = models.ManyToManyField(Department, blank=True)
     skills = models.ManyToManyField(Skill, blank=True)
+    certs = models.ManyToManyField(Certs, blank=True)
+    nice_to_have_skills = models.ManyToManyField(Skill, blank=True, related_name="nice_to_have_skills")
 
     status = models.CharField(max_length=23, choices=STATUS_CHOICE, default=DRAFT)
 
@@ -388,7 +403,7 @@ class Job(models.Model):
     is_remote = models.BooleanField(default=False, null=False)
     location = models.CharField(max_length=100, null=True, blank=True)
 
-    created_by = models.ForeignKey(
+    created_by = models.OneToOneField(
         CustomUser, on_delete=models.CASCADE, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -398,6 +413,11 @@ class Job(models.Model):
     lever_id = models.CharField(max_length=200, null=True, blank=True)
     lever_api_key = models.CharField(max_length=200, null=True, blank=True)
     is_pull_remoteio = models.BooleanField(default=False, null=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['status']),
+        ]
 
     def __str__(self):
         return self.job_title + " at " + self.parent_company.company_name
