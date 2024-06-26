@@ -52,5 +52,6 @@ slack_sdk==3.26.1
 eventbrite==3.3.5
 requests~=2.31.0
 django-filter~=24.2
+django_redis==3.1.6
 redis==5.0.4
 fuzzywuzzy~=0.18.0
