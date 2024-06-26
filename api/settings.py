@@ -44,6 +44,7 @@ if DEBUG:
     ]
     CSRF_TRUSTED_ORIGINS = [
         "http://localhost:3000",
+        "http://localhost:8003",
         "http://localhost:7000"
     ]
 else:
@@ -243,6 +244,7 @@ CORS_ALLOW_HEADERS = [
 if DEBUG:
     CORS_ALLOWED_ORIGINS = [
         "http://localhost:3000",
+        "http://localhost:8003",
         "http://localhost:7000",
     ]
 else:
@@ -255,6 +257,10 @@ else:
         "https://opendoors-api-dev.techbychoice.org",
         "https://www.opendoors-api.techbychoice.org",
         "https://opendoors-api.techbychoice.org",
+        "https://www.internal-dev-api.techbychoice.org",
+        "https://internal-dev-api.techbychoice.org",
+        "https://www.internal-api.techbychoice.org",
+        "https://internal-api.techbychoice.org",
     ]
 
 # Allow cookies
@@ -301,6 +307,19 @@ CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
         # "schedule": crontab(minute='*/1'),
     },
+}
+
+# Redis
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "KEY_PREFIX": "core-api",
+    }
 }
 
 AUTH_USER_MODEL = "core.CustomUser"
