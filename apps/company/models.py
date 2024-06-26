@@ -414,5 +414,10 @@ class Job(models.Model):
     lever_api_key = models.CharField(max_length=200, null=True, blank=True)
     is_pull_remoteio = models.BooleanField(default=False, null=False)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['status']),
+        ]
+
     def __str__(self):
         return self.job_title + " at " + self.parent_company.company_name
