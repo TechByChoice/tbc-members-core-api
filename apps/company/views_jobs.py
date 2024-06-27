@@ -1,5 +1,6 @@
-import json
 import os
+import logging
+import json
 
 import requests
 from django.db.models import Q, Count
@@ -18,6 +19,10 @@ from rest_framework.decorators import action
 
 from ..core.serializers_member import TalentProfileSerializer
 from ..member.models import MemberProfile
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class JobPagination(PageNumberPagination):
@@ -276,9 +281,18 @@ class JobViewSet(viewsets.ViewSet):
         Retrieve all job postings base on user profile
 
         """
+        logger.info("Starting get_all_jobs function")
+
         url = f"{os.getenv('IT_API_URL')}api/v1/matches/jobs/"
         header_token = request.headers.get("Authorization", None)
-        user_profile = MemberProfile.objects.get(user=request.user.id)
+
+        try:
+            user_profile = MemberProfile.objects.get(user=request.user.id)
+            logger.info(f"Retrieved user profile for user ID: {request.user.id}")
+        except MemberProfile.DoesNotExist:
+            logger.error(f"User profile not found for user ID: {request.user.id}")
+            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = TalentProfileSerializer(user_profile)
 
         user_posted_jobs = Job.objects.filter(created_by=request.user)
@@ -292,54 +306,65 @@ class JobViewSet(viewsets.ViewSet):
             "user_skills": serializer.data["skills"],
             "header_token": header_token,
         }
+
         try:
+            logger.info(f"Sending POST request to {url}")
             response = requests.post(
                 url,
                 data=json.dumps(data_dump),
                 headers={'Content-Type': 'application/json'},
             )
-            if response:
-                response_json = response.json()
-                if len(response_json) > 0:
-                    data = {
-                        "all_jobs": response_json,
-                        "posted_jobs": []
-                    }
-                    return Response(data)
-                else:
-                    data = {
-                        "all_jobs": False,
-                        "message": "We currently don't have any jobs that match your profile at this time",
-                        "posted_jobs": []
-                    }
-                    return Response(data)
+            response.raise_for_status()  # Raises an HTTPError for bad responses
+
+            response_json = response.json()
+            logger.info(f"Received response with {len(response_json)} jobs")
+
+            if len(response_json) > 0:
+                data = {
+                    "all_jobs": response_json,
+                    "posted_jobs": []
+                }
+                return Response(data)
+            else:
+                data = {
+                    "all_jobs": False,
+                    "message": "We currently don't have any jobs that match your profile at this time",
+                    "posted_jobs": []
+                }
+                return Response(data)
+
         except requests.exceptions.RequestException as error:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"message": "error"})
-            print(f"Error: {error}")
+            logger.error(f"Error in API request: {error}")
+            return Response({"message": "API request error"}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=["get"], url_path="pull-jobs")
     def pull_all_job(self, request):
-        #
+        logger.info("Starting pull_all_job function")
+
         cache_key = "all_active_jobs"
         cached_jobs = cache.get(cache_key)
 
         if cached_jobs is not None:
+            logger.info("Returning cached jobs")
             return Response(cached_jobs, status=status.HTTP_200_OK)
 
-        # Get and paginate all active jobs
+        logger.info("Cache miss. Fetching active jobs from database")
         all_active_jobs = Job.objects.filter(status="active").only(
             "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
         )
 
-        # Serialize jobs
         jobs = []
-        chunk_size = 100  # Adjust based on your memory and performance requirements
-        for i in range(0, all_active_jobs.count(), chunk_size):
+        chunk_size = 100
+        total_jobs = all_active_jobs.count()
+        logger.info(f"Processing {total_jobs} active jobs in chunks of {chunk_size}")
+
+        for i in range(0, total_jobs, chunk_size):
             chunk = all_active_jobs[i:i + chunk_size]
             serializer = JobSerializer(chunk, many=True)
             jobs.extend(serializer.data)
+            logger.info(f"Processed {min(i + chunk_size, total_jobs)} out of {total_jobs} jobs")
 
-        # Cache the result
+        logger.info(f"Caching {len(jobs)} jobs for 1 month")
         cache.set(cache_key, jobs, timeout=2592000)  # Cache for 1 month
 
         return Response(jobs, status=status.HTTP_200_OK)
