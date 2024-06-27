@@ -39,14 +39,18 @@ DEBUG = True
 
 if DEBUG:
     ALLOWED_HOSTS = [
-        "localhost",
-        "127.0.0.1"
+        "beta-api.techbychoice.org",
+        "beta-api-dev.techbychoice.org"
     ]
-    CSRF_TRUSTED_ORIGINS = [
-        "http://localhost:3000",
-        "http://localhost:8003",
-        "http://localhost:7000"
-    ]
+    # ALLOWED_HOSTS = [
+    #     "localhost",
+    #     "127.0.0.1"
+    # ]
+    # CSRF_TRUSTED_ORIGINS = [
+    #     "http://localhost:3000",
+    #     "http://localhost:8003",
+    #     "http://localhost:7000"
+    # ]
 else:
     ALLOWED_HOSTS = [
         "beta-api.techbychoice.org",
