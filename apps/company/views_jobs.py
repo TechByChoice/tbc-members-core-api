@@ -7,6 +7,7 @@ from django.db.models import Q, Count
 from django.core.cache import cache
 
 from rest_framework import viewsets, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
@@ -339,47 +340,41 @@ class JobViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=["get"], url_path="pull-jobs")
     def pull_all_job(self, request):
+        #
         logger.info("Starting pull_all_job function")
-        # Check permissions
-        if not request.user.has_perm('your_app.can_pull_jobs'):
-            logger.warning(f"Permission denied for user {request.user.id}")
-            raise PermissionDenied("You don't have permission to pull jobs.")
 
-            cache_key = "all_active_jobs"
-            cached_jobs = cache.get(cache_key)
+        cache_key = "all_active_jobs"
+        cached_jobs = cache.get(cache_key)
 
-            if cached_jobs is not None:
-                logger.info("Returning cached jobs")
-                return Response(cached_jobs, status=status.HTTP_200_OK)
+        if cached_jobs is not None:
+            logger.info("Returning cached jobs")
+            return Response(cached_jobs, status=status.HTTP_200_OK)
 
-            logger.info("Cache miss. Fetching active jobs from database")
-        try:
-            all_active_jobs = Job.objects.filter(status="active").only(
-                "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
-            )
+        # Get and paginate all active jobs
+        logger.info("Cache miss. Fetching active jobs from database")
+        all_active_jobs = Job.objects.filter(status="active").only(
+            "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
+        )
 
-            jobs = []
+        # Serialize jobs
+        jobs = []
+        chunk_size = 100  # Adjust based on your memory and performance requirements
+        for i in range(0, all_active_jobs.count(), chunk_size):
             chunk_size = 100
-            total_jobs = all_active_jobs.count()
-            logger.info(f"Processing {total_jobs} active jobs in chunks of {chunk_size}")
+        total_jobs = all_active_jobs.count()
+        logger.info(f"Processing {total_jobs} active jobs in chunks of {chunk_size}")
 
-            for i in range(0, total_jobs, chunk_size):
-                chunk = all_active_jobs[i:i + chunk_size]
-                serializer = JobSerializer(chunk, many=True)
-                jobs.extend(serializer.data)
-                logger.info(f"Processed {min(i + chunk_size, total_jobs)} out of {total_jobs} jobs")
+        for i in range(0, total_jobs, chunk_size):
+            chunk = all_active_jobs[i:i + chunk_size]
+            serializer = JobSerializer(chunk, many=True)
+            jobs.extend(serializer.data)
+            logger.info(f"Processed {min(i + chunk_size, total_jobs)} out of {total_jobs} jobs")
 
-            logger.info(f"Caching {len(jobs)} jobs for 1 month")
-            cache.set(cache_key, jobs, timeout=2592000)  # Cache for 1 month
+        # Cache the result
+        logger.info(f"Caching {len(jobs)} jobs for 1 month")
+        cache.set(cache_key, jobs, timeout=2592000)  # Cache for 1 month
 
-            return Response(jobs, status=status.HTTP_200_OK)
-
-        except PermissionDenied as e:
-            logger.error(f"Permission denied: {str(e)}")
-            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
-        except Exception as e:
-            logger.error(f"Unexpected error in pull_all_job: {str(e)}")
-            return Response({"error": "An unexpected error occurred"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(jobs, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="job-match")
     def get_top_job_match(self, request):
