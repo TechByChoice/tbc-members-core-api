@@ -1,11 +1,16 @@
-import json
+import operator
 import os
+import logging
+import json
+from functools import reduce
 
 import requests
+from django.core.paginator import Paginator
 from django.db.models import Q, Count
 from django.core.cache import cache
 
 from rest_framework import viewsets, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
@@ -16,14 +21,57 @@ from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
 from rest_framework.decorators import action
 
-from ..core.serializers_member import TalentProfileSerializer
+from ..core.serializers_member import TalentProfileSerializer, FullTalentProfileSerializer
 from ..member.models import MemberProfile
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 class JobPagination(PageNumberPagination):
     page_size = 10  # Set default page display
     page_size_query_param = 'page_size'
     max_page_size = 100
+
+
+def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=100):
+    """
+    Filter jobs based on user profile and paginate the results.
+    """
+    department = talent_profile.data["department"]
+    role = talent_profile.data["role"]
+    tech_journey = talent_profile.data["tech_journey"]
+    skills = talent_profile.data["skills"]
+
+    # Build the filter conditions
+    filter_conditions = []
+
+    if department:
+        filter_conditions.append(Q(department=department[0]))
+    if role:
+        filter_conditions.append(Q(role=role[0]))
+    if tech_journey:
+        filter_conditions.append(Q(level=tech_journey))
+    if skills:
+        filter_conditions.append(Q(skills__id__in=skills) |
+                                 Q(nice_to_have_skills__id__in=skills))
+
+    # Combine all conditions with OR
+    combined_filter = reduce(operator.or_, filter_conditions) if filter_conditions else Q()
+
+    # Apply the filter to the queryset
+    filtered_jobs = Job.objects.filter(status="active").filter(combined_filter).select_related(
+        'parent_company', 'role'
+    ).distinct().only(
+        "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
+    )
+
+    # Paginate the results
+    paginator = Paginator(filtered_jobs, page_size)
+    current_page = paginator.page(page)
+
+    return current_page, paginator
 
 
 class JobViewSet(viewsets.ViewSet):
@@ -273,13 +321,29 @@ class JobViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="all-jobs")
     def get_all_jobs(self, request):
         """
-        Retrieve all job postings base on user profile
-
+        Retrieve all job postings based on user profile
         """
+        logger.info("Starting get_all_jobs function")
+
         url = f"{os.getenv('IT_API_URL')}api/v1/matches/jobs/"
         header_token = request.headers.get("Authorization", None)
-        user_profile = MemberProfile.objects.get(user=request.user.id)
-        serializer = TalentProfileSerializer(user_profile)
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 100))
+
+        try:
+            user_profile = MemberProfile.objects.get(user=request.user.id)
+            logger.info(f"Retrieved user profile for user ID: {request.user.id}")
+        except MemberProfile.DoesNotExist:
+            logger.error(f"User profile not found for user ID: {request.user.id}")
+            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = FullTalentProfileSerializer(user_profile)
+
+        # Get filtered and paginated jobs
+        current_page, paginator = filter_and_paginate_jobs(user_profile, serializer, page, page_size)
+
+        # Serialize the paginated jobs
+        filtered_jobs_serializer = JobSerializer(current_page, many=True)
 
         user_posted_jobs = Job.objects.filter(created_by=request.user)
         user_posted_jobs_serializer = JobSerializer(user_posted_jobs, many=True)
@@ -291,58 +355,76 @@ class JobViewSet(viewsets.ViewSet):
             "user_level": serializer.data["tech_journey"],
             "user_skills": serializer.data["skills"],
             "header_token": header_token,
+            "filtered_jobs": filtered_jobs_serializer.data,
+            "page": page,
+            "total_pages": paginator.num_pages,
         }
+
         try:
+            logger.info(f"Sending POST request to {url}")
             response = requests.post(
                 url,
                 data=json.dumps(data_dump),
                 headers={'Content-Type': 'application/json'},
             )
-            if response:
-                response_json = response.json()
-                if len(response_json) > 0:
-                    data = {
-                        "all_jobs": response_json,
-                        "posted_jobs": []
-                    }
-                    return Response(data)
-                else:
-                    data = {
-                        "all_jobs": False,
-                        "message": "We currently don't have any jobs that match your profile at this time",
-                        "posted_jobs": []
-                    }
-                    return Response(data)
+            response.raise_for_status()  # Raises an HTTPError for bad responses
+
+            response_json = response.json()
+            logger.info(f"Received response with {len(response_json)} jobs")
+
+            if len(response_json) > 0:
+                data = {
+                    "all_jobs": response_json,
+                    "posted_jobs": user_posted_jobs_serializer.data,
+                    "current_page": page,
+                    "total_pages": paginator.num_pages,
+                    "has_next": current_page.has_next(),
+                    "has_previous": current_page.has_previous(),
+                }
+                return Response(data)
+            else:
+                data = {
+                    "all_jobs": False,
+                    "message": "We currently don't have any jobs that match your profile at this time",
+                    "posted_jobs": user_posted_jobs_serializer.data,
+                    "current_page": page,
+                    "total_pages": paginator.num_pages,
+                    "has_next": current_page.has_next(),
+                    "has_previous": current_page.has_previous(),
+                }
+                return Response(data, status=status.HTTP_200_OK)
+
         except requests.exceptions.RequestException as error:
-            return Response(status=status.HTTP_400_BAD_REQUEST, data={"message": "error"})
-            print(f"Error: {error}")
+            logger.error(f"Error in API request: {error}")
+            return Response({"message": "API request error"}, status=status.HTTP_400_BAD_REQUEST)
 
-    @action(detail=False, methods=["get"], url_path="pull-jobs")
-    def pull_all_job(self, request):
-        #
-        cache_key = "all_active_jobs"
-        cached_jobs = cache.get(cache_key)
+    @action(detail=False, methods=["get"], url_path="next-page")
+    def get_next_page(self, request):
+        """
+        Retrieve the next page of job postings
+        """
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 100))
 
-        if cached_jobs is not None:
-            return Response(cached_jobs, status=status.HTTP_200_OK)
+        try:
+            user_profile = MemberProfile.objects.get(user=request.user.id)
+        except MemberProfile.DoesNotExist:
+            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get and paginate all active jobs
-        all_active_jobs = Job.objects.filter(status="active").only(
-            "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
-        )
+        current_page, paginator = filter_and_paginate_jobs(user_profile, page, page_size)
+        filtered_jobs_serializer = JobSerializer(current_page, many=True)
 
-        # Serialize jobs
-        jobs = []
-        chunk_size = 100  # Adjust based on your memory and performance requirements
-        for i in range(0, all_active_jobs.count(), chunk_size):
-            chunk = all_active_jobs[i:i + chunk_size]
-            serializer = JobSerializer(chunk, many=True)
-            jobs.extend(serializer.data)
+        data = {
+            "jobs": filtered_jobs_serializer.data,
+            "current_page": page,
+            "total_pages": paginator.num_pages,
+            "has_next": current_page.has_next(),
+            "has_previous": current_page.has_previous(),
+        }
 
-        # Cache the result
-        cache.set(cache_key, jobs, timeout=2592000)  # Cache for 1 month
+        return Response(data)
 
-        return Response(jobs, status=status.HTTP_200_OK)
+
 
     @action(detail=False, methods=["get"], url_path="job-match")
     def get_top_job_match(self, request):
