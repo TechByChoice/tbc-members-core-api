@@ -392,7 +392,7 @@ class JobViewSet(viewsets.ViewSet):
                     "has_next": current_page.has_next(),
                     "has_previous": current_page.has_previous(),
                 }
-                return Response(data)
+                return Response(data, status=status.HTTP_200_OK)
 
         except requests.exceptions.RequestException as error:
             logger.error(f"Error in API request: {error}")
