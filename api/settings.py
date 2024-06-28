@@ -39,18 +39,14 @@ DEBUG = True
 
 if DEBUG:
     ALLOWED_HOSTS = [
-        "beta-api.techbychoice.org",
-        "beta-api-dev.techbychoice.org"
+        "localhost",
+        "127.0.0.1"
     ]
-    # ALLOWED_HOSTS = [
-    #     "localhost",
-    #     "127.0.0.1"
-    # ]
-    # CSRF_TRUSTED_ORIGINS = [
-    #     "http://localhost:3000",
-    #     "http://localhost:8003",
-    #     "http://localhost:7000"
-    # ]
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:8003",
+        "http://localhost:7000"
+    ]
 else:
     ALLOWED_HOSTS = [
         "beta-api.techbychoice.org",
@@ -247,24 +243,10 @@ CORS_ALLOW_HEADERS = [
 
 if DEBUG:
     CORS_ALLOWED_ORIGINS = [
-        "https://www.beta.techbychoice.org",
-        "https://beta.techbychoice.org",
-        "https://www.dev.techbychoice.org",
-        "https://dev.techbychoice.org",
-        "https://www.opendoors-api-dev.techbychoice.org",
-        "https://opendoors-api-dev.techbychoice.org",
-        "https://www.opendoors-api.techbychoice.org",
-        "https://opendoors-api.techbychoice.org",
-        "https://www.internal-dev-api.techbychoice.org",
-        "https://internal-dev-api.techbychoice.org",
-        "https://www.internal-api.techbychoice.org",
-        "https://internal-api.techbychoice.org",
+        "http://localhost:3000",
+        "http://localhost:8003",
+        "http://localhost:7000",
     ]
-    # CORS_ALLOWED_ORIGINS = [
-    #     "http://localhost:3000",
-    #     "http://localhost:8003",
-    #     "http://localhost:7000",
-    # ]
 else:
     CORS_ALLOWED_ORIGINS = [
         "https://www.beta.techbychoice.org",
