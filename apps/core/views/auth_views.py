@@ -13,7 +13,7 @@ from apps.core.serialiizers.password_reset import SetNewPasswordSerializer, Pass
 from apps.core.serializers.user_serializers import CustomAuthTokenSerializer, CustomUserSerializer, \
     UserAccountInfoSerializer, BaseUserSerializer
 from utils.logging_helper import get_logger, log_exception, timed_function
-from utils.emails import send_dynamic_email
+from utils.emails import send_dynamic_email, send_password_email
 from utils.api_helpers import api_response
 
 logger = get_logger(__name__)
@@ -60,6 +60,9 @@ class PasswordResetRequestView(APIView):
     @log_exception(logger)
     @timed_function(logger)
     def post(self, request):
+        """
+        Send a password reset request to the user via email
+        """
         serializer = PasswordResetSerializer(data=request.data)
         if serializer.is_valid():
             user = CustomUser.objects.get(email=serializer.validated_data['email'])
@@ -75,7 +78,7 @@ class PasswordResetRequestView(APIView):
                     "reset_link": reset_link,
                 },
             }
-            send_dynamic_email(email_data)
+            send_password_email(user.email, user.first_name, user, reset_link)
 
             return api_response(message="Password reset link sent.")
         return api_response(errors=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
@@ -87,7 +90,10 @@ class PasswordResetConfirmView(APIView):
     @log_exception(logger)
     @timed_function(logger)
     def post(self, request, uidb64, token):
+        """
+        Update user password if token is valid
+        """
         serializer = SetNewPasswordSerializer(data=request.data, context={'uidb64': uidb64, 'token': token})
         if serializer.is_valid():
             return api_response(message="Password has been reset.")
-        return api_response(errors=serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
+        return api_response(errors=serializer.errors, message="Error: We could not update your password.",status_code=status.HTTP_400_BAD_REQUEST)
