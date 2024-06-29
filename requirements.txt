@@ -55,3 +55,5 @@ django-filter~=24.2
 django-redis==5.4.0
 redis==5.0.4
 fuzzywuzzy~=0.18.0
+
+APScheduler~=3.10.4

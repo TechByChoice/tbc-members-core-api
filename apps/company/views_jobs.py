@@ -35,7 +35,7 @@ class JobPagination(PageNumberPagination):
     max_page_size = 15
 
 
-def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=100):
+def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=15):
     """
     Filter jobs based on user profile and paginate the results.
     """
