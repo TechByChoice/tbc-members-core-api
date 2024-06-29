@@ -2,6 +2,7 @@ import os
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from knox.models import AuthToken
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -9,7 +10,8 @@ from rest_framework.views import APIView
 
 from apps.core.models import CustomUser
 from apps.core.serialiizers.password_reset import SetNewPasswordSerializer, PasswordResetSerializer
-from apps.core.serializers.user_serializers import CustomAuthTokenSerializer
+from apps.core.serializers.user_serializers import CustomAuthTokenSerializer, CustomUserSerializer, \
+    UserAccountInfoSerializer, BaseUserSerializer
 from utils.logging_helper import get_logger, log_exception, timed_function
 from utils.emails import send_dynamic_email
 from utils.api_helpers import api_response
@@ -36,16 +38,17 @@ class LoginView(APIView):
         serializer = CustomAuthTokenSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
-        token = user.auth_token.key
+
+        _, token = AuthToken.objects.create(user)
+
+        user_serializer = BaseUserSerializer(user)
+        account_info_serializer = UserAccountInfoSerializer(user)
+
         return api_response(
             data={
                 "token": token,
-                "user": {
-                    "id": user.id,
-                    "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                }
+                "user_info": user_serializer.data,
+                "account_info": account_info_serializer.data,
             },
             message="Login successful"
         )

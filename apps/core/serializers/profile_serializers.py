@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from apps.core.models import UserProfile, CommunityNeeds
+from apps.core.models import UserProfile
+from apps.core.serializers.misc_serializers import CommunityNeedsSerializer
 from apps.member.models import MemberProfile
 
 

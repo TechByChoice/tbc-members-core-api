@@ -1,6 +1,7 @@
-from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import gettext_lazy as _
+from rest_framework import serializers
+from rest_framework.validators import UniqueValidator
 
 User = get_user_model()
 
@@ -70,7 +71,7 @@ class RegisterSerializer(serializers.ModelSerializer):
                 "required": True,
                 "allow_blank": False,
                 "validators": [
-                    serializers.UniqueValidator(
+                    UniqueValidator(
                         User.objects.all(),
                         "A user with that email already exists",
                     )
@@ -95,3 +96,20 @@ class UpdateCustomUserSerializer(serializers.ModelSerializer):
             "is_talent_source_beta", "is_speaker", "is_volunteer", "is_team", "is_community_recruiter",
             "is_company_account", "is_partnership",
         )
+
+
+class UserAccountInfoSerializer(serializers.ModelSerializer):
+    """
+    Serializer to pull account details from user account.
+    """
+
+    class Meta:
+        model = User
+        fields = [
+            "is_staff", "is_recruiter", "is_member", "is_mentor", "is_mentee",
+            "is_speaker", "is_volunteer", "is_mentor_profile_active",
+            "is_mentor_training_complete", "is_mentor_profile_approved",
+            "is_mentor_application_submitted", "is_talent_source_beta",
+            "is_team", "is_community_recruiter", "is_company_account",
+            "is_partnership", "is_company_review_access_active"
+        ]
