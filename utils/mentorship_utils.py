@@ -1,83 +1,226 @@
-from django.shortcuts import get_object_or_404
+import logging
+from functools import wraps
+from datetime import datetime
+from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 
-from apps.mentorship.models import MentorProfile, MenteeProfile, MentorshipProgramProfile, CommitmentLevel
-from .logging_helper import get_logger, log_exception, timed_function
+from apps.core.models import CustomUser
+from .logging_helper import get_logger, log_exception, timed_function, sanitize_log_data
+from apps.mentorship.models import MentorProfile, MenteeProfile, MentorshipProgramProfile, MentorRoster, Session
+from apps.mentorship.serializer import MentorRosterSerializer, MentorReviewSerializer
 
 logger = get_logger(__name__)
 
 
 @log_exception(logger)
 @timed_function(logger)
-def update_support_type(user, data):
+def create_mentorship_relationship(mentor_id, mentee_user):
     """
-    Update the support type for a mentorship program profile.
+    Create a mentorship relationship between a mentor and a mentee.
 
-    This function updates the commitment level and support areas for mentors and mentees.
+    This function handles the creation of a MentorRoster instance and associated Session.
+    It also ensures that the mentee has a MenteeProfile and updates the user's mentee status.
 
     Args:
-        user (User): The user for whom to update the support type.
-        data (dict): The data containing commitment level and support area IDs.
+        mentor_id (int): The ID of the mentor's MentorProfile.
+        mentee_user (CustomUser): The user object of the mentee.
 
     Returns:
-        None
+        dict: A dictionary containing the status of the operation and any relevant data.
+
+    Raises:
+        ObjectDoesNotExist: If the mentor profile is not found.
+        Exception: For any other unexpected errors during the process.
     """
-    logger.info(f"Updating support type for user: {user.username}")
+    logger.info(f"Attempting to create mentorship relationship: Mentor ID {mentor_id}, Mentee User ID {mentee_user.id}")
 
-    program_profile = get_object_or_404(MentorshipProgramProfile, user=user)
-    commitment_data = data.get("commitment_level_id")
-    if commitment_data:
-        program_profile.commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
-        program_profile.save()
-        logger.info(f"Updated commitment level for user: {user.username}")
+    try:
+        with transaction.atomic():
+            mentor = MentorProfile.objects.get(id=mentor_id)
 
-    if user.is_mentor:
-        mentor_profile = get_object_or_404(MentorProfile, user=user)
-        support_area_ids = data.get("mentor_support_areas_id", [])
-        if commitment_data:
-            mentor_profile.mentor_commitment_level.set(CommitmentLevel.objects.filter(id__in=commitment_data))
-        if support_area_ids:
-            program_profile.mentor_support_areas.set(support_area_ids)
-        mentor_profile.save()
-        logger.info(f"Updated mentor support areas for user: {user.username}")
+            mentee_profile, created = MenteeProfile.objects.get_or_create(user=mentee_user)
+            if created:
+                logger.info(f"Created new MenteeProfile for user {mentee_user.id}")
+                mentee_user.is_mentee = True
+                mentee_user.save()
 
-    if user.is_mentee:
-        mentee_profile = get_object_or_404(MenteeProfile, user=user)
-        mentee_support_area_ids = data.get("mentee_support_areas_id", [])
-        if mentee_support_area_ids:
-            mentee_profile.mentee_support_areas.set(mentee_support_area_ids)
-        mentee_profile.save()
-        logger.info(f"Updated mentee support areas for user: {user.username}")
+            roster_data = {"mentor": mentor.id, "mentee": mentee_profile.id}
+            serializer = MentorRosterSerializer(data=roster_data)
+
+            if serializer.is_valid():
+                mentor_roster = serializer.save()
+                Session.objects.create(mentor_mentee_connection=mentor_roster, created_by=mentee_user)
+                logger.info(f"Created mentorship relationship: Roster ID {mentor_roster.id}")
+                return {"status": True, "message": "Mentorship relationship created successfully",
+                        "data": serializer.data}
+            else:
+                logger.error(f"Serializer validation failed: {serializer.errors}")
+                return {"status": False, "message": "Failed to create mentorship relationship",
+                        "errors": serializer.errors}
+
+    except ObjectDoesNotExist:
+        logger.error(f"Mentor profile not found for ID {mentor_id}")
+        return {"status": False, "message": "Mentor profile not found"}
+    except Exception as e:
+        logger.exception(f"Unexpected error in create_mentorship_relationship: {str(e)}")
+        return {"status": False, "message": "An unexpected error occurred"}
 
 
 @log_exception(logger)
 @timed_function(logger)
-def submit_application(user, data):
+def submit_mentor_review(mentor_id, mentee_user, rating, review_content):
     """
-    Submit an application for a mentorship program.
+    Submit a review for a mentor by a mentee.
 
-    This function updates or creates the mentor and mentee profiles and links them to the mentorship program profile.
+    This function creates a MentorReview instance with the provided data.
 
     Args:
-        user (User): The user submitting the application.
-        data (dict): The data containing support areas for mentor and mentee profiles.
+        mentor_id (int): The ID of the mentor's MentorProfile.
+        mentee_user (CustomUser): The user object of the mentee submitting the review.
+        rating (int): The rating given by the mentee (typically on a scale, e.g., 1-5).
+        review_content (str): The text content of the review.
 
     Returns:
-        None
+        dict: A dictionary containing the status of the operation and any relevant data.
+
+    Raises:
+        ObjectDoesNotExist: If the mentor or mentee profile is not found.
+        Exception: For any other unexpected errors during the process.
     """
-    logger.info(f"Submitting mentorship application for user: {user.username}")
+    logger.info(f"Attempting to submit mentor review: Mentor ID {mentor_id}, Mentee User ID {mentee_user.id}")
 
-    mentor_profile, created = MentorProfile.objects.update_or_create(
-        user=user, defaults={"mentor_support_areas": data.get("mentor_support_areas")}
-    )
-    logger.info(f"Mentor profile {'created' if created else 'updated'} for user: {user.username}")
+    try:
+        mentor = MentorProfile.objects.get(id=mentor_id)
+        mentee = MenteeProfile.objects.get(user=mentee_user)
 
-    mentee_profile, created = MenteeProfile.objects.update_or_create(
-        user=user, defaults={"mentee_support_areas": data.get("mentee_support_areas")}
-    )
-    logger.info(f"Mentee profile {'created' if created else 'updated'} for user: {user.username}")
+        review_data = {
+            "mentor": mentor.id,
+            "mentee": mentee.id,
+            "rating": rating,
+            "review_content": review_content,
+            "review_author": "mentee",
+        }
 
-    program_profile = get_object_or_404(MentorshipProgramProfile, user=user)
-    program_profile.mentor_profile = mentor_profile
-    program_profile.mentee_profile = mentee_profile
+        serializer = MentorReviewSerializer(data=review_data)
+        if serializer.is_valid():
+            serializer.save()
+            logger.info(f"Mentor review submitted successfully: Mentor ID {mentor_id}, Mentee ID {mentee.id}")
+            return {"status": True, "message": "Mentor review submitted successfully", "data": serializer.data}
+        else:
+            logger.error(f"Serializer validation failed: {serializer.errors}")
+            return {"status": False, "message": "Failed to submit mentor review", "errors": serializer.errors}
+
+    except ObjectDoesNotExist as e:
+        logger.error(f"Profile not found: {str(e)}")
+        return {"status": False, "message": "Mentor or mentee profile not found"}
+    except Exception as e:
+        logger.exception(f"Unexpected error in submit_mentor_review: {str(e)}")
+        return {"status": False, "message": "An unexpected error occurred"}
+
+
+@log_exception(logger)
+@timed_function(logger)
+def update_mentor_application_status(mentor_id, new_status, updated_by_user, additional_data=None):
+    """
+    Update the application status of a mentor.
+
+    This function handles various status updates for a mentor's application, including
+    rejection, pausing, approval, and activation. It also manages associated tasks like
+    sending emails and creating necessary accounts.
+
+    Args:
+        mentor_id (int): The ID of the mentor's CustomUser instance.
+        new_status (str): The new status to set for the mentor's application.
+        updated_by_user (CustomUser): The user making the status update.
+        additional_data (dict, optional): Any additional data required for the status update.
+
+    Returns:
+        dict: A dictionary containing the status of the operation and any relevant messages.
+
+    Raises:
+        ObjectDoesNotExist: If the mentor profiles are not found.
+        Exception: For any other unexpected errors during the process.
+    """
+    logger.info(f"Attempting to update mentor application status: Mentor ID {mentor_id}, New Status {new_status}")
+
+    try:
+        with transaction.atomic():
+            mentor_user = CustomUser.objects.get(id=mentor_id)
+            program_profile = MentorshipProgramProfile.objects.get(user=mentor_user)
+            mentor_profile = MentorProfile.objects.get(user=mentor_user)
+
+            if new_status == "rejected":
+                return _handle_mentor_rejection(mentor_user, mentor_profile, program_profile, additional_data)
+            elif new_status == "paused":
+                return _handle_mentor_paused(mentor_user, mentor_profile)
+            elif new_status == "approved":
+                return _handle_mentor_approval(mentor_user, mentor_profile, program_profile)
+            elif new_status == "active":
+                return _handle_mentor_activation(mentor_user, mentor_profile, program_profile)
+            else:
+                logger.warning(f"Invalid status update requested: {new_status}")
+                return {"status": False, "message": "Invalid status update"}
+
+    except ObjectDoesNotExist as e:
+        logger.error(f"Profile not found: {str(e)}")
+        return {"status": False, "message": "Mentor profile not found"}
+    except Exception as e:
+        logger.exception(f"Unexpected error in update_mentor_application_status: {str(e)}")
+        return {"status": False, "message": "An unexpected error occurred"}
+
+
+# Helper functions for update_mentor_application_status
+
+def _handle_mentor_rejection(mentor_user, mentor_profile, program_profile, additional_data):
+    mentor_user.is_mentor_profile_active = False
+    mentor_user.is_mentor_profile_removed = True
+    mentor_user.is_mentor = False
+    mentor_profile.removed_date = datetime.utcnow()
+    mentor_profile.mentor_status = additional_data.get("rejection_reason", "rejected")
+
+    mentor_user.save()
+    mentor_profile.save()
     program_profile.save()
-    logger.info(f"Mentorship program profile updated for user: {user.username}")
+
+    # TODO: Implement email sending logic for rejection
+    logger.info(f"Mentor application rejected: Mentor ID {mentor_user.id}")
+    return {"status": True, "message": "Mentor application rejected successfully"}
+
+
+def _handle_mentor_paused(mentor_user, mentor_profile):
+    mentor_user.is_mentor_active = False
+    mentor_profile.mentor_status = "paused"
+    mentor_profile.paused_date = datetime.utcnow()
+
+    mentor_user.save()
+    mentor_profile.save()
+
+    # TODO: Implement email sending logic for paused status
+    logger.info(f"Mentor application paused: Mentor ID {mentor_user.id}")
+    return {"status": True, "message": "Mentor application paused successfully"}
+
+
+def _handle_mentor_approval(mentor_user, mentor_profile, program_profile):
+    mentor_user.is_mentor_interviewing = False
+    mentor_user.is_mentor_profile_approved = True
+    mentor_profile.mentor_status = "need_cal_info"
+
+    # TODO: Implement logic for creating TBC email and sending approval email
+    logger.info(f"Mentor application approved: Mentor ID {mentor_user.id}")
+    return {"status": True, "message": "Mentor application approved successfully"}
+
+
+def _handle_mentor_activation(mentor_user, mentor_profile, program_profile):
+    mentor_user.is_mentor_profile_active = True
+    mentor_user.is_mentor_profile_paused = False
+    mentor_user.is_mentor_profile_removed = False
+    mentor_profile.activated_at_date = datetime.utcnow()
+    mentor_profile.mentor_status = "active"
+
+    mentor_user.save()
+    mentor_profile.save()
+    program_profile.save()
+
+    # TODO: Implement email sending logic for activation
+    logger.info(f"Mentor activated: Mentor ID {mentor_user.id}")
+    return {"status": True, "message": "Mentor activated successfully"}
