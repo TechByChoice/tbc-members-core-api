@@ -30,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 
 class JobPagination(PageNumberPagination):
-    page_size = 10  # Set default page display
+    page_size = 15  # Set default page display
     page_size_query_param = 'page_size'
-    max_page_size = 100
+    max_page_size = 15
 
 
 def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=100):
@@ -68,7 +68,7 @@ def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=100
     )
 
     # Paginate the results
-    paginator = Paginator(filtered_jobs, page_size)
+    paginator = Paginator(filtered_jobs.order_by('id'), page_size)
     current_page = paginator.page(page)
 
     return current_page, paginator
@@ -328,7 +328,7 @@ class JobViewSet(viewsets.ViewSet):
         url = f"{os.getenv('IT_API_URL')}api/v1/matches/jobs/"
         header_token = request.headers.get("Authorization", None)
         page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 100))
+        page_size = int(request.query_params.get('page_size', 15))
 
         try:
             user_profile = MemberProfile.objects.get(user=request.user.id)
@@ -337,66 +337,80 @@ class JobViewSet(viewsets.ViewSet):
             logger.error(f"User profile not found for user ID: {request.user.id}")
             return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = FullTalentProfileSerializer(user_profile)
-
-        # Get filtered and paginated jobs
-        current_page, paginator = filter_and_paginate_jobs(user_profile, serializer, page, page_size)
-
-        # Serialize the paginated jobs
-        filtered_jobs_serializer = JobSerializer(current_page, many=True)
-
+        print("Pulling jobs you created")
         user_posted_jobs = Job.objects.filter(created_by=request.user)
         user_posted_jobs_serializer = JobSerializer(user_posted_jobs, many=True)
+        print("DONE: Pulling jobs you created")
 
-        data_dump = {
-            "user_profile": serializer.data,
-            "department": serializer.data["department"],
-            "user_role": serializer.data["role"],
-            "user_level": serializer.data["tech_journey"],
-            "user_skills": serializer.data["skills"],
-            "header_token": header_token,
-            "filtered_jobs": filtered_jobs_serializer.data,
-            "page": page,
-            "total_pages": paginator.num_pages,
-        }
+        print("Pulling talent profile")
+        serializer = FullTalentProfileSerializer(user_profile)
+        current_page, paginator = filter_and_paginate_jobs(user_profile, serializer, page, page_size)
+        filtered_jobs_serializer = JobSerializer(current_page, many=True)
 
-        try:
-            logger.info(f"Sending POST request to {url}")
-            response = requests.post(
-                url,
-                data=json.dumps(data_dump),
-                headers={'Content-Type': 'application/json'},
-            )
-            response.raise_for_status()  # Raises an HTTPError for bad responses
+        cache_key = f"job_matches_{request.user.id}"
+        cached_data = cache.get(cache_key)
+        print(f"cached data {cache_key}")
 
-            response_json = response.json()
-            logger.info(f"Received response with {len(response_json)} jobs")
+        if cached_data:
+            logger.info(f"Cache hit for user {request.user.id}. Using cached job matches.")
+            filtered_jobs_list = cached_data
+        else:
+            data_dump = {
+                "user_profile": serializer.data,
+                "department": serializer.data["department"],
+                "user_role": serializer.data["role"],
+                "user_level": serializer.data["tech_journey"],
+                "user_skills": serializer.data["skills"],
+                "header_token": header_token,
+                "filtered_jobs": filtered_jobs_serializer.data,
+                "page": page,
+                "total_pages": paginator.num_pages,
+            }
 
-            if len(response_json) > 0:
-                data = {
-                    "all_jobs": response_json,
-                    "posted_jobs": user_posted_jobs_serializer.data,
-                    "current_page": page,
-                    "total_pages": paginator.num_pages,
-                    "has_next": current_page.has_next(),
-                    "has_previous": current_page.has_previous(),
-                }
-                return Response(data)
-            else:
-                data = {
-                    "all_jobs": False,
-                    "message": "We currently don't have any jobs that match your profile at this time",
-                    "posted_jobs": user_posted_jobs_serializer.data,
-                    "current_page": page,
-                    "total_pages": paginator.num_pages,
-                    "has_next": current_page.has_next(),
-                    "has_previous": current_page.has_previous(),
-                }
-                return Response(data, status=status.HTTP_200_OK)
+            try:
+                logger.info(f"Sending POST request to {url}")
+                response = requests.post(
+                    url,
+                    data=json.dumps(data_dump),
+                    headers={'Content-Type': 'application/json'},
+                )
+                response.raise_for_status()  # Raises an HTTPError for bad responses
 
-        except requests.exceptions.RequestException as error:
-            logger.error(f"Error in API request: {error}")
-            return Response({"message": "API request error"}, status=status.HTTP_400_BAD_REQUEST)
+                response_json = response.json()
+                logger.info(f"Received response with {len(response_json)} jobs")
+
+                filtered_jobs_list = response_json
+                # Cache the result
+                cache.set(cache_key, filtered_jobs_list, timeout=3600)  # Cache for 1 hour
+            except requests.exceptions.RequestException as error:
+                logger.error(f"Error in API request: {error}")
+                return Response({"message": "API request error"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(filtered_jobs_list) > 0:
+            data = {
+                "all_jobs": filtered_jobs_list,
+                "posted_jobs": user_posted_jobs_serializer.data,
+                "current_page": page,
+                "total_pages": paginator.num_pages,
+                "has_next": current_page.has_next(),
+                "has_previous": current_page.has_previous(),
+            }
+            return Response(data)
+        else:
+            data = {
+                "all_jobs": filtered_jobs_list if filtered_jobs_list else False,
+                "message": "We currently don't have any jobs that match your profile at this time",
+                "posted_jobs": user_posted_jobs_serializer.data,
+                "current_page": page,
+                "total_pages": paginator.num_pages,
+                "has_next": current_page.has_next(),
+                "has_previous": current_page.has_previous(),
+            }
+
+            if not filtered_jobs_list:
+                data["message"] = "We currently don't have any jobs that match your profile at this time"
+
+            return Response(data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=["get"], url_path="next-page")
     def get_next_page(self, request):
@@ -404,7 +418,7 @@ class JobViewSet(viewsets.ViewSet):
         Retrieve the next page of job postings
         """
         page = int(request.query_params.get('page', 1))
-        page_size = int(request.query_params.get('page_size', 100))
+        page_size = int(request.query_params.get('page_size', 15))
 
         try:
             user_profile = MemberProfile.objects.get(user=request.user.id)
@@ -423,8 +437,6 @@ class JobViewSet(viewsets.ViewSet):
         }
 
         return Response(data)
-
-
 
     @action(detail=False, methods=["get"], url_path="job-match")
     def get_top_job_match(self, request):
