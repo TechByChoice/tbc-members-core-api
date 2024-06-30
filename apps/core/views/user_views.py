@@ -1,6 +1,10 @@
 # apps/core/user_views.py
+import os
+
+import requests
 from knox.models import AuthToken
 from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
@@ -14,7 +18,8 @@ from apps.core.serializers.talent_serializers import TalentProfileSerializer
 from apps.company.serializers import CompanyProfileSerializer
 from apps.core.models import UserProfile
 from apps.member.models import MemberProfile
-from apps.mentorship.models import MentorshipProgramProfile, MentorProfile
+from apps.mentorship.models import MentorshipProgramProfile, MentorProfile, MenteeProfile, MentorRoster
+from apps.mentorship.serializer import MentorshipProgramProfileSerializer, MentorRosterSerializer
 from utils.company_utils import create_or_update_company_connection
 from utils.data_utils import extract_user_data, extract_company_data, extract_profile_data, extract_talent_data, \
     extract_profile_id_data
@@ -36,14 +41,74 @@ class UserDataView(APIView):
     @cache_decorator(timeout=300)  # Cache for 5 minutes
     def get(self, request):
         user = request.user
-        user_profile = get_user_profile(user.id)
-        user_data = CustomUserSerializer(user).data
-        profile_data = BaseUserSerializer(user).data
-        response_data = {
-            "user_info": user_data,
-            "account_info": profile_data,
-        }
-        return api_response(data=response_data, message="User data retrieved successfully")
+        try:
+            user_profile = get_user_profile(user.id)
+            user_data = CustomUserSerializer(user).data
+            profile_data = UserProfileSerializer(user_profile).data
+
+            response_data = {
+                "user_info": {
+                    **user_data,
+                    "userprofile": profile_data,
+                },
+                "account_info": {field: getattr(user, field) for field in [
+                    "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
+                    "is_mentor", "is_mentee", "is_mentor_profile_active", "is_open_doors",
+                    "is_open_doors_onboarding_complete", "is_mentor_profile_removed", "is_mentor_training_complete",
+                    "is_mentor_interviewing", "is_mentor_profile_paused",
+                    "is_community_recruiter", "is_company_account", "is_email_confirmation_sent",
+                    "is_email_confirmed", "is_company_onboarding_complete",
+                    "is_mentor_profile_approved", "is_mentor_application_submitted",
+                    "is_speaker", "is_volunteer", "is_team", "is_community_recruiter",
+                    "is_company_account", "is_partnership", "is_company_review_access_active"
+                ]},
+                "mentor_details": {},
+                "mentee_details": {},
+                "mentor_roster_data": {},
+            }
+
+            # Mentor application data
+            if user.is_mentor_application_submitted:
+                mentor_application = get_object_or_404(MentorshipProgramProfile, user=user)
+                response_data["mentor_data"] = MentorshipProgramProfileSerializer(mentor_application).data
+
+            # Mentee data
+            if user.is_mentee:
+                mentee_profile = get_object_or_404(MenteeProfile, user=user)
+                response_data["mentee_details"] = {"id": mentee_profile.id}
+                mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profile)
+                if mentorship_roster.exists():
+                    response_data["mentor_roster_data"] = MentorRosterSerializer(mentorship_roster, many=True).data
+
+            # Talent profile data
+            member_profile = MemberProfile.objects.filter(user=user).first()
+            if member_profile:
+                response_data["user_info"]["memberprofile"] = TalentProfileSerializer(member_profile).data
+
+            # Company account data
+            if user.is_company_account:
+                company_account_details = get_object_or_404(CompanyProfile, account_owner=user)
+                local_company_data = CompanyProfileSerializer(company_account_details).data
+
+                # External API call for additional company details
+                company_id = company_account_details.id
+                full_company_details_url = f'{os.environ.get("TC_API_URL")}core/api/company/details/?company_id={company_id}'
+                try:
+                    response = requests.get(full_company_details_url, timeout=5)
+                    response.raise_for_status()
+                    company_account_data = response.json()
+                    company_account_data["company_profile"] = local_company_data
+                except requests.RequestException as e:
+                    logger.error(f"Error fetching company details: {str(e)}")
+                    company_account_data = {"error": "Could not fetch company details"}
+
+                response_data["company_account_data"] = company_account_data
+
+            return api_response(data=response_data, message="User data retrieved successfully")
+
+        except Exception as e:
+            logger.error(f"Error retrieving user data for user {user.id}: {str(e)}")
+            return api_response(message="An error occurred while retrieving user data", status_code=500)
 
 
 class ProfileUpdateView(APIView):
