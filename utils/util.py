@@ -3,15 +3,15 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from utils.errors import CustomException
-from .models import (
+from apps.core.models import (
     UserProfile,
     SexualIdentities,
     GenderIdentities,
     EthicIdentities,
     PronounsIdentities,
 )
-from .serializers import UpdateCustomUserSerializer, UserProfileSerializer
-from ..company.models import (
+from apps.core.serializers import UpdateCustomUserSerializer, UserProfileSerializer
+from apps.company.models import (
     CompanyTypes,
     Department,
     Skill,
@@ -19,7 +19,7 @@ from ..company.models import (
     Roles,
     CompanyProfile,
 )
-from ..member.models import MemberProfile
+from apps.member.models import MemberProfile
 
 User = get_user_model()
 
