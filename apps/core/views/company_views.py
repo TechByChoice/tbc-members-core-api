@@ -6,7 +6,7 @@ from apps.company.models import CompanyProfile
 from apps.core.serializers.company_serializers import CompanyProfileSerializer
 from utils.logging_helper import get_logger, log_exception, timed_function
 from utils.api_helpers import api_response
-from utils.helper import prepend_https_if_not_empty
+from utils.urls_utils import prepend_https_if_not_empty
 
 logger = get_logger(__name__)
 

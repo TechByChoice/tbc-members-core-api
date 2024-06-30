@@ -2,6 +2,7 @@ from rest_framework import serializers
 from apps.core.models import UserProfile
 from apps.core.serializers.misc_serializers import CommunityNeedsSerializer
 from apps.member.models import MemberProfile
+from utils.urls_utils import prepend_https_if_not_empty
 
 
 class BaseUserProfileSerializer(serializers.ModelSerializer):
@@ -31,11 +32,31 @@ class BaseUserProfileSerializer(serializers.ModelSerializer):
         return ret
 
 
+class CustomURLField(serializers.URLField):
+    def to_internal_value(self, data):
+        """
+        Convert the input value to a valid URL format if necessary.
+        """
+        data = prepend_https_if_not_empty(data)
+        return super().to_internal_value(data)
+
+
 class UserProfileSerializer(BaseUserProfileSerializer):
     """
     Serializer for UserProfile model with additional tbc_program_interest field.
     """
     tbc_program_interest = serializers.SerializerMethodField()
+    linkedin = CustomURLField(required=False, allow_blank=True)
+    github = CustomURLField(required=False, allow_blank=True)
+    youtube = CustomURLField(required=False, allow_blank=True)
+    personal = CustomURLField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        url_fields = ['linkedin', 'github', 'youtube', 'personal']
+        for field in url_fields:
+            if field in data:
+                data[field] = prepend_https_if_not_empty(data[field])
+        return data
 
     def get_tbc_program_interest(self, obj):
         return CommunityNeedsSerializer(obj.tbc_program_interest.all(), many=True).data

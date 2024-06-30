@@ -4,7 +4,7 @@ from functools import wraps
 from urllib.parse import urlparse, urlunparse
 
 # Import the custom logging utilities
-from .logging_utils import get_logger, log_exception, timed_function, sanitize_log_data
+from utils.logging_helper import get_logger, log_exception, timed_function, sanitize_log_data
 
 # Get a logger for this module
 logger = get_logger(__name__)
@@ -37,16 +37,8 @@ def prepend_https_if_not_empty(url):
         >>> prepend_https_if_not_empty(None)
         ''
     """
-    logger.info(f"Processing URL: {sanitize_log_data({'url': url})}")
-
-    if not url:
-        logger.debug("Empty URL provided, returning empty string")
-        return ''
-
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
-        logger.debug(f"Prepended 'https://' to URL: {sanitize_log_data({'url': url})}")
-
+    if url and not url.startswith(("http://", "https://")):
+        return f"https://{url}"
     return url
 
 

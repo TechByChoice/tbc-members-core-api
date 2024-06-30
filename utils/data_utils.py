@@ -653,7 +653,8 @@ def extract_profile_data_id(data, files):
         "identity_sexuality": [get_id_or_create(SexualIdentities, si) for si in data.getlist("identity_sexuality", [])],
         "identity_gender": [get_id_or_create(GenderIdentities, gi) for gi in data.getlist("gender_identities", [])],
         "identity_ethic": [get_id_or_create(EthicIdentities, ei) for ei in data.getlist("identity_ethic", [])],
-        "identity_pronouns": [get_id_or_create(PronounsIdentities, pi) for pi in data.getlist("pronouns_identities", [])],
+        "identity_pronouns": [get_id_or_create(PronounsIdentities, pi) for pi in
+                              data.getlist("pronouns_identities", [])],
         "disability": bool(data.get("disability", "")),
         "is_disability_displayed": bool(data.get("is_disability_displayed", "")),
         "care_giver": bool(data.get("care_giver", "")),
@@ -732,18 +733,6 @@ def extract_talent_data(data, files):
         ]
 
     return talent_data
-
-
-def prepend_https_if_not_empty(url):
-    """
-    Prepend 'https://' to the URL if it's not empty and doesn't already start with 'http'.
-
-    :param url: The URL string to process.
-    :return: The processed URL string with 'https://' prepended if applicable.
-    """
-    if url and not url.startswith(("http://", "https://")):
-        return f"https://{url}"
-    return url
 
 
 def process_company_types(company_types):
