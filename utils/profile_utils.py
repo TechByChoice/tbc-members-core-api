@@ -218,3 +218,64 @@ def calculate_profile_completeness(profile):
     total_fields = len(profile._meta.fields)
     filled_fields = sum(1 for f in profile._meta.fields if getattr(profile, f.name) not in [None, ''])
     return (filled_fields / total_fields) * 100
+
+
+def update_talent_profile(user, talent_data):
+    """
+    Create or update the MemberProfile for a given user.
+
+    Args:
+    user (User model instance): The user for whom the MemberProfile needs to be created or updated.
+    talent_data (dict): A dictionary containing all the necessary data to create or update a MemberProfile.
+
+    Returns:
+    MemberProfile: The created or updated MemberProfile instance.
+
+    Raises:
+    ValidationError: If the provided data is not valid to create or update a MemberProfile.
+    """
+    try:
+        # Check if the user already has a MemberProfile
+        talent_profile = MemberProfile.objects.get(user=user)
+
+        # Update or set fields in talent_profile from talent_data
+        talent_profile.tech_journey = talent_data.get(
+            "tech_journey", talent_profile.tech_journey
+        )
+        talent_profile.is_talent_status = talent_data.get(
+            "talent_status", talent_profile.is_talent_status
+        )
+
+        # Handle many-to-many fields like company_types, roles, departments, skills, etc.
+        # TODO: Testing Fix | we can use the process_identity_field() to simplify the code here
+        talent_profile.company_types.set(
+            process_company_types(talent_data.get("company_types", []))
+        )
+        talent_profile.role.set(process_roles(talent_data.get("role", [])))
+        # Department is one that's messed up on prod so it's one I'm checking first
+        talent_profile.department.set(
+            process_departments(talent_data.get("department", []))
+        )
+        talent_profile.skills.set(process_skills(talent_data.get("skills", [])))
+
+        # Handle compensation ranges
+        talent_profile.min_compensation = process_compensation(
+            talent_data.get("min_compensation", [])
+        )
+        talent_profile.max_compensation = process_compensation(
+            talent_data.get("max_compensation", [])
+        )
+
+        # Handle file fields like resume
+        if "resume" in talent_data and talent_data["resume"] is not None:
+            talent_profile.resume = talent_data["resume"]
+
+        # Save the updated profile
+        talent_profile.save()
+        return talent_profile
+
+    except Exception as e:
+        # Log the exception for debugging
+        print(f"Error in update_talent_profile: {str(e)}")
+        # Re-raise the exception to be handled by the caller
+        raise

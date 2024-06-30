@@ -1,20 +1,22 @@
 import os
+
+from django.contrib.auth import user_logged_out
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
+from knox.auth import TokenAuthentication
 from knox.models import AuthToken
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.views import APIView
 
 from apps.core.models import CustomUser
 from apps.core.serialiizers.password_reset import SetNewPasswordSerializer, PasswordResetSerializer
-from apps.core.serializers.user_serializers import CustomAuthTokenSerializer, CustomUserSerializer, \
-    UserAccountInfoSerializer, BaseUserSerializer
-from utils.logging_helper import get_logger, log_exception, timed_function
-from utils.emails import send_dynamic_email, send_password_email
+from apps.core.serializers.user_serializers import UserAccountInfoSerializer, CustomAuthTokenSerializer, \
+    BaseUserSerializer
 from utils.api_helpers import api_response
+from utils.emails import send_password_email
+from utils.logging_helper import get_logger, log_exception, timed_function
 
 logger = get_logger(__name__)
 
@@ -52,6 +54,23 @@ class LoginView(APIView):
             },
             message="Login successful"
         )
+
+
+class LogoutView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+
+    @log_exception(logger)
+    @timed_function(logger)
+    def post(self, request):
+        """
+        Log out the user and delete the authentication token.
+        """
+        request._auth.delete()
+        user_logged_out.send(
+            sender=request.user.__class__, request=request, user=request.user
+        )
+        return api_response(message="Logout successful", status_code=status.HTTP_204_NO_CONTENT)
 
 
 class PasswordResetRequestView(APIView):
@@ -96,4 +115,5 @@ class PasswordResetConfirmView(APIView):
         serializer = SetNewPasswordSerializer(data=request.data, context={'uidb64': uidb64, 'token': token})
         if serializer.is_valid():
             return api_response(message="Password has been reset.")
-        return api_response(errors=serializer.errors, message="Error: We could not update your password.",status_code=status.HTTP_400_BAD_REQUEST)
+        return api_response(errors=serializer.errors, message="Error: We could not update your password.",
+                            status_code=status.HTTP_400_BAD_REQUEST)

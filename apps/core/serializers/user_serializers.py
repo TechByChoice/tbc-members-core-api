@@ -1,6 +1,7 @@
 from django.contrib.auth import authenticate, get_user_model
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
+from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.validators import UniqueValidator
 
 User = get_user_model()
@@ -13,7 +14,44 @@ class BaseUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "last_name"]
+        # fields = ["id", "email", "first_name", "last_name"]
+        fields = [
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "is_staff",
+            "is_recruiter",
+            "is_member",
+            "is_talent_choice",
+            "is_member_onboarding_complete",
+            "is_slack_invite_sent",
+            "is_migrated_account",
+            "is_open_doors",
+            "is_open_doors_onboarding_complete",
+            "is_mentor",
+            "is_mentee",
+            "is_mentor_profile_active",
+            "is_mentor_profile_removed",
+            "is_mentor_training_complete",
+            "is_mentor_interviewing",
+            "is_mentor_profile_paused",
+            "is_mentor_profile_approved",
+            "is_mentor_application_submitted",
+            "is_talent_source_beta",
+            "is_speaker",
+            "is_volunteer",
+            "is_team",
+            "is_community_recruiter",
+            "is_company_account",
+            "is_email_confirmation_sent",
+            "is_email_confirmed",
+            "is_company_onboarding_complete",
+            "is_partnership",
+            "is_company_review_access_active",
+            "company_review_tokens",
+            "joined_at",
+        ]
 
 
 class CustomUserSerializer(BaseUserSerializer):
@@ -22,7 +60,8 @@ class CustomUserSerializer(BaseUserSerializer):
     """
 
     class Meta(BaseUserSerializer.Meta):
-        exclude = ["password"]
+        # exclude = ["password"]
+        fields = ["id", "email", "first_name", "last_name"]
 
 
 class ReadOnlyCustomUserSerializer(BaseUserSerializer):
@@ -39,7 +78,7 @@ class ReadOnlyCustomUserSerializer(BaseUserSerializer):
         ]
 
 
-class CustomAuthTokenSerializer(serializers.Serializer):
+class CustomAuthTokenSerializer(AuthTokenSerializer):
     """
     Serializer for user authentication tokens.
     """
@@ -49,10 +88,16 @@ class CustomAuthTokenSerializer(serializers.Serializer):
     def validate(self, attrs):
         email = attrs.get("email")
         password = attrs.get("password")
-        user = authenticate(request=self.context.get("request"), username=email, password=password)
-        if not user:
-            msg = _("Unable to log in with provided credentials.")
+
+        if email and password:
+            user = authenticate(request=self.context.get("request"), username=email, email=email, password=password)
+            if not user:
+                msg = _("Unable to log in with provided credentials.")
+                raise serializers.ValidationError(msg, code="authorization")
+        else:
+            msg = _('Must include "email" and "password".')
             raise serializers.ValidationError(msg, code="authorization")
+
         attrs["user"] = user
         return attrs
 
@@ -78,6 +123,12 @@ class RegisterSerializer(serializers.ModelSerializer):
                 ],
             },
         }
+
+    def validate_email(self, value):
+        """
+        Ensure the email is always saved in lowercase.
+        """
+        return value.lower()
 
     def create(self, validated_data):
         return User.objects.create_user(**validated_data)

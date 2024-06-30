@@ -2,6 +2,7 @@ from rest_framework import serializers
 from apps.member.models import MemberProfile
 from .user_serializers import ReadOnlyCustomUserSerializer
 from .profile_serializers import ReadOnlyUserProfileSerializer
+from ...company.models import CompanyTypes, Department, Roles, Skill, SalaryRange
 
 
 class BaseTalentProfileSerializer(serializers.ModelSerializer):
@@ -18,11 +19,20 @@ class BaseTalentProfileSerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 
-class TalentProfileSerializer(BaseTalentProfileSerializer):
+class TalentProfileSerializer(serializers.ModelSerializer):
     """
     Serializer for MemberProfile model with all fields.
     """
-    pass
+    company_types = serializers.PrimaryKeyRelatedField(queryset=CompanyTypes.objects.all(), many=True)
+    department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all(), many=True)
+    role = serializers.PrimaryKeyRelatedField(queryset=Roles.objects.all(), many=True)
+    skills = serializers.PrimaryKeyRelatedField(queryset=Skill.objects.all(), many=True)
+    min_compensation = serializers.PrimaryKeyRelatedField(queryset=SalaryRange.objects.all())
+    max_compensation = serializers.PrimaryKeyRelatedField(queryset=SalaryRange.objects.all())
+
+    class Meta:
+        model = MemberProfile
+        fields = "__all__"
 
 
 class ReadOnlyTalentProfileSerializer(BaseTalentProfileSerializer):
@@ -56,5 +66,5 @@ class FullTalentProfileSerializer(serializers.ModelSerializer):
         return ReadOnlyUserProfileSerializer(user_profile).data if user_profile else None
 
     def get_company_details(self, obj):
-        from apps.core.util import get_current_company_data
+        from utils.util import get_current_company_data
         return get_current_company_data(user=obj.user)
