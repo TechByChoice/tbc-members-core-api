@@ -1,6 +1,12 @@
 import os
+
+from django.core.mail import EmailMessage
+from django.template.loader import render_to_string
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+from utils.logging_helper import get_logger
+
+logger = get_logger(__name__)
 
 
 def send_dynamic_email(email_data):
@@ -34,3 +40,28 @@ def send_dynamic_email(email_data):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
+
+def send_password_email(email, first_name, user, reset_link):
+    """
+    Send a password reset email to the user.
+    """
+    mail_subject = 'Password Reset Request'
+
+    context = {
+        'username': first_name,
+        'reset_link': reset_link,
+    }
+
+    message = render_to_string('emails/password_reset_email.txt', context=context)
+    email_msg = EmailMessage(mail_subject, message, 'notifications@app.techbychoice.org', [email])
+    email_msg.extra_headers = {
+        'email_template': 'emails/password_reset_email.html',
+        'username': first_name,
+        'reset_link': reset_link,
+    }
+
+    try:
+        email_msg.send()
+    except Exception as e:
+        logger.error(f"Error while sending password reset email: {str(e)}")

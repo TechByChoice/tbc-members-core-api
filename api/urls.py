@@ -18,7 +18,6 @@ from django.urls import path, include
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("user/", include("apps.core.urls")),
     path("app/", include("apps.core.urls_core")),
     path("member/", include("apps.core.urls_member")),
     path("mentorship/", include("apps.mentorship.urls")),
@@ -28,5 +27,6 @@ urlpatterns = [
     path("company-profile/", include("apps.company.urls_company")),
     path("event/", include("apps.event.urls")),
     path("api/", include("apps.core.urls_internal")),
-    path("auth/", include("apps.core.urls_auth")),
+    path('api/core/', include('apps.core.urls_new')),
+    path('api/member/', include('apps.member.urls')),
 ]
