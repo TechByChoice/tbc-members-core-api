@@ -70,7 +70,6 @@ class JobReferralSerializer(serializers.ModelSerializer):
             "years_of_experience",
             "location",
             "created_by",
-            "created_by_id",
             "referral_note",
         ]
 
@@ -197,7 +196,6 @@ class JobSerializer(serializers.ModelSerializer):
             "is_remote",
             "is_referral_job",
             "created_by",
-            "created_by_id",
             "created_at",
             "updated_at",
         ]
@@ -250,7 +248,6 @@ class JobSimpleSerializer(serializers.ModelSerializer):
             "is_remote",
             "is_referral_job",
             "created_by",
-            "created_by_id",
             "created_at",
             "updated_at",
         ]
