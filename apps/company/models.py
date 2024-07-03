@@ -403,8 +403,8 @@ class Job(models.Model):
     is_remote = models.BooleanField(default=False, null=False)
     location = models.CharField(max_length=100, null=True, blank=True)
 
-    created_by = models.OneToOneField(
-        CustomUser, on_delete=models.CASCADE, null=True, blank=True
+    created_by = models.ManyToManyField(
+        CustomUser, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

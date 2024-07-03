@@ -70,7 +70,6 @@ class JobReferralSerializer(serializers.ModelSerializer):
             "years_of_experience",
             "location",
             "created_by",
-            "created_by_id",
             "referral_note",
         ]
 

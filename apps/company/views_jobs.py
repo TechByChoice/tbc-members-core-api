@@ -120,8 +120,6 @@ class JobViewSet(viewsets.ViewSet):
         data["parent_company"] = company_id
         data["status"] = "draft"
         data["is_referral_job"] = True
-        data["created_by_id"] = request.user.id
-        data["created_by"] = request.user.pk
 
         # Correct on_site_remote field
         if data["on_site_remote"] == "contract":
@@ -135,6 +133,8 @@ class JobViewSet(viewsets.ViewSet):
         serializer = JobReferralSerializer(data=data)
         if serializer.is_valid():
             job = serializer.save()
+            # adding in the user who created the job
+            job.created_by.add(request.user)
 
             # Set Many-to-Many relationships
             job.department.set(Department.objects.filter(id__in=department_ids))
