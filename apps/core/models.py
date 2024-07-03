@@ -303,7 +303,8 @@ class UserProfile(models.Model):
 
     def set_tbc_program_interest(self, interests):
         """Saves the list of interests as a JSON string."""
+        interest_obj = CommunityNeeds.objects.get(name=interests)
         if interests:
-            self.tbc_program_interest = json.dumps(interests)
+            self.tbc_program_interest.add(interest_obj)
         else:
             self.tbc_program_interest = None

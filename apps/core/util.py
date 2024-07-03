@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
@@ -131,85 +132,51 @@ def update_user_profile(user, profile_data):
     Raises:
         CustomException: If there's any issue in creating or updating the UserProfile or related objects.
     """
+    # try:
+    #     user_profile = UserProfile.objects.get(user=user)
+    # except UserProfile.DoesNotExist as e:
+    #     # Log the exception and raise a custom exception for the caller to handle
+    #     print(f"UserProfile does not exist for user {user.id}: {e}")
+    #     raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+
+    identity_fields = {
+        "identity_sexuality": SexualIdentities,
+        "identity_gender": GenderIdentities,
+        "identity_ethic": EthicIdentities,
+        "identity_pronouns": PronounsIdentities,
+    }
+
     try:
-        user_profile = UserProfile.objects.get(user=user)
-    except UserProfile.DoesNotExist as e:
-        # Log the exception and raise a custom exception for the caller to handle
-        print(f"UserProfile does not exist for user {user.id}: {e}")
-        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+        with transaction.atomic():
+            user_profile, created = UserProfile.objects.get_or_create(user=user)
 
-    # Process and set many-to-many fields
-    if "identity_sexuality" in profile_data and not profile_data[
-        "identity_sexuality"
-    ] == [""]:
-        sexuality_instances = process_identity_field(
-            profile_data["identity_sexuality"], SexualIdentities
-        )
-        profile_data["identity_sexuality"] = sexuality_instances
-    else:
-        del profile_data["identity_sexuality"]
+            # Process identity fields
+            for field, model in identity_fields.items():
+                if field in profile_data and profile_data[field] != [""]:
+                    instances = process_identity_field(profile_data[field], model)
+                    getattr(user_profile, field).set(instances)
 
-    if "identity_gender" in profile_data and not profile_data["identity_gender"] == [
-        ""
-    ]:
-        gender_instances = process_identity_field(
-            profile_data["identity_gender"], GenderIdentities
-        )
-        profile_data["identity_gender"] = gender_instances
-    else:
-        del profile_data["identity_gender"]
+            # Update other profile fields
+            for field, value in profile_data.items():
+                if field not in identity_fields and field != "tbc_program_interest":
+                    setattr(user_profile, field, value)
 
-    if "identity_ethic" in profile_data and not profile_data["identity_ethic"] == [""]:
-        ethic_instances = process_identity_field(
-            profile_data["identity_ethic"], EthicIdentities
-        )
-        profile_data["identity_ethic"] = ethic_instances
-    else:
-        del profile_data["identity_ethic"]
+            if "tbc_program_interest" in profile_data:
+                user_profile.tbc_program_interest.clear()
+                for interest in profile_data["tbc_program_interest"]:
+                    user_profile.set_tbc_program_interest(interest)
 
-    if "identity_pronouns" in profile_data and not profile_data[
-        "identity_pronouns"
-    ] == [""]:
-        pronouns_instances = process_identity_field(
-            profile_data["identity_pronouns"], PronounsIdentities
-        )
-        profile_data["identity_pronouns"] = pronouns_instances
-    else:
-        del profile_data["identity_pronouns"]
-
-    # For fields that are not many-to-many relationships, update them directly
-    try:
-        for field, value in profile_data.items():
-            if field not in [
-                "identity_sexuality",
-                "identity_gender",
-                "identity_ethic",
-                "identity_pronouns",
-            ]:
-                setattr(user_profile, field, value)
-            if "photo" in field:
-                user_profile.photo = value
-        try:
-            user_profile.set_tbc_program_interest(profile_data["tbc_program_interest"])
-            user_profile.postal_code = profile_data["postal_code"]
-        except Exception as e:
-            print(f"Error trying to update items: {e}")
-        try:
-            user_profile.save(force_update=True)
-            print("UserProfile saved successfully.")
-        except Exception as e:
-            print(f"Error saving UserProfile: {e}")
-
-        # Verify the save operation by fetching the profile again
-        try:
-            updated_profile = UserProfile.objects.get(user=user)
-            print(f"Updated postal code: {updated_profile.postal_code}")
-        except UserProfile.DoesNotExist:
-            print("UserProfile does not exist.")
+            user_profile.save()
 
         return user_profile
+
+    except IntegrityError as e:
+        print(f"An error occurred in the transaction: {e}")
+        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+
     except Exception as e:
         print(f"Error updating user_profile: {e}")
+        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
 
 
 def process_identity_field(identity_list, model):
