@@ -441,48 +441,79 @@ class JobViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="job-match")
     def get_top_job_match(self, request):
         """
-        Retrieve top job postings.
+        Retrieve the top job posting match for the user.
+
+        This method finds the best matching job based on the user's skills, roles, and departments.
+        It uses caching to improve performance and implements logging for monitoring.
+
+        Returns:
+            Response: A JSON response containing the status and the best matching job.
         """
-        talent_profile = MemberProfile.objects.get(user=request.user.id)
+        try:
+            user_id = request.user.id
+            cache_key = f"job_match_{user_id}"
+            cached_result = cache.get(cache_key)
 
-        # Extract skills, roles, and departments
-        talent_skills = talent_profile.skills.all()
-        talent_roles = talent_profile.role.all()
-        talent_departments = talent_profile.department.all()
+            if cached_result:
+                logger.info(f"Cache hit for user {user_id}")
+                return Response(cached_result, status=status.HTTP_200_OK)
 
-        # Create separate Q objects for each criteria
-        skills_query = Q(skills__in=talent_skills)
-        roles_query = Q(role__in=talent_roles)
-        departments_query = Q(department__in=talent_departments)
+            talent_profile = MemberProfile.objects.select_related('user').prefetch_related(
+                'skills', 'role', 'department'
+            ).get(user_id=user_id)
 
-        # Combine queries using OR logic
-        combined_query = skills_query | roles_query | departments_query
+            matching_job = self._find_best_match(talent_profile)
 
-        # Filter Job instances based on the combined query
-        matching_jobs = Job.objects.filter(combined_query).distinct()
+            if matching_job:
+                result = {
+                    "status": True,
+                    "matching_job": JobSerializer(matching_job).data
+                }
+                cache.set(cache_key, result, timeout=3600)  # Cache for 1 hour
+                logger.info(f"Job match found for user {user_id}")
+                return Response(result, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"No job match found for user {user_id}")
+                return Response(
+                    {"status": False, "message": "No matching job found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-        # Annotate each job with a score based on the number of matching criteria
-        matching_jobs = matching_jobs.annotate(
-            score=Count(
-                "skills",
-                filter=Q(skills__in=talent_skills.values_list("id", flat=True)),
+        except MemberProfile.DoesNotExist:
+            logger.error(f"MemberProfile not found for user {request.user.id}")
+            return Response(
+                {"status": False, "message": "User profile not found"},
+                status=status.HTTP_404_NOT_FOUND
             )
-                  + Count(
-                "role",
-                filter=Q(role__in=talent_profile.role.values_list("id", flat=True)),
+        except Exception as e:
+            logger.exception(f"Error in get_top_job_match: {str(e)}")
+            return Response(
+                {"status": False, "message": "An error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-                  + Count(
-                "department",
-                filter=Q(
-                    department__in=talent_departments.values_list("id", flat=True)
-                ),
+
+    def _find_best_match(self, talent_profile):
+        """
+        Find the best matching job for the given talent profile.
+
+        Args:
+            talent_profile (MemberProfile): The user's talent profile.
+
+        Returns:
+            Job: The best matching job or None if no match is found.
+        """
+        talent_skills = talent_profile.skills.values_list('id', flat=True)
+        talent_roles = talent_profile.role.values_list('id', flat=True)
+        talent_departments = talent_profile.department.values_list('id', flat=True)
+
+        return Job.objects.annotate(
+            score=(
+                Count('skills', filter=Q(skills__in=talent_skills)) +
+                Count('role', filter=Q(role__in=talent_roles)) +
+                Count('department', filter=Q(department__in=talent_departments))
             )
-        ).order_by("-score")
-
-        matching_jobs_serialized = JobSerializer(matching_jobs, many=True).data
-
-        # Render the results in a template
-        return Response(
-            {"status": True, "matching_jobs": matching_jobs_serialized},
-            status=status.HTTP_200_OK,
-        )
+        ).filter(
+            Q(skills__in=talent_skills) |
+            Q(role__in=talent_roles) |
+            Q(department__in=talent_departments)
+        ).order_by('-score').first()

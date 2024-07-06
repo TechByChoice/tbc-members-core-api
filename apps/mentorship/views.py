@@ -1,6 +1,8 @@
+import logging
 from datetime import datetime
 
 from django.db.models import Q, Count
+from django.core.cache import cache
 from django.utils import timezone
 from rest_framework import generics, viewsets, status, mixins
 from rest_framework.decorators import action, api_view, permission_classes
@@ -27,6 +29,8 @@ from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
 from utils.google_admin import create_user
 from utils.helper import generate_random_password
+
+logger = logging.getLogger(__name__)
 
 
 class MentorListView(APIView):
@@ -684,55 +688,67 @@ def update_mentor_application_status(request, mentor_id):
 @permission_classes([IsAuthenticated])
 def get_top_mentor_match(request):
     """
-    Retrieve top mentor profile.
+    Retrieve the top matching mentor profile for the authenticated user.
+
+    This function filters mentor profiles based on shared skills, roles, and departments
+    with the authenticated user's profile. It then scores and ranks the mentors based on
+    the number of matches in these categories.
+
+    Returns:
+        Response: A dictionary containing the status and the top matching mentor's serialized data.
     """
-    talent_profile = MemberProfile.objects.get(user=request.user.id)
+    try:
+        # Use caching to store user profile for 15 minutes
+        cache_key = f'user_profile_{request.user.id}'
+        talent_profile = cache.get(cache_key)
+        if not talent_profile:
+            talent_profile = MemberProfile.objects.select_related('user').prefetch_related(
+                'skills', 'role', 'department'
+            ).get(user=request.user.id)
+            cache.set(cache_key, talent_profile, 60 * 15)
 
-    # Extract skills, roles, and departments
-    talent_skills = talent_profile.skills.all()
-    talent_roles = talent_profile.role.all()
-    talent_departments = talent_profile.department.all()
+        # Extract skills, roles, and departments IDs
+        talent_skills_ids = list(talent_profile.skills.values_list('id', flat=True))
+        talent_roles_ids = list(talent_profile.role.values_list('id', flat=True))
+        talent_departments_ids = list(talent_profile.department.values_list('id', flat=True))
 
-    # Filter only mentor profiles (adjust this according to your model)
-    mentor_profiles = MemberProfile.objects.filter(user__is_mentor=True)
+        # Create a combined query for filtering
+        combined_query = Q(skills__id__in=talent_skills_ids) | \
+                         Q(role__id__in=talent_roles_ids) | \
+                         Q(department__id__in=talent_departments_ids)
 
-    # Create separate Q objects for each criteria
-    skills_query = Q(skills__in=talent_skills)
-    roles_query = Q(role__in=talent_roles)
-    departments_query = Q(department__in=talent_departments)
+        # Filter, annotate, and order mentor profiles
+        top_mentor = MemberProfile.objects.filter(
+            user__is_mentor=True
+        ).filter(combined_query).annotate(
+            score=Count('skills', filter=Q(skills__id__in=talent_skills_ids)) +
+                  Count('role', filter=Q(role__id__in=talent_roles_ids)) +
+                  Count('department', filter=Q(department__id__in=talent_departments_ids))
+        ).order_by('-score').first()
 
-    # Combine queries using OR logic
-    combined_query = skills_query | roles_query | departments_query
-
-    # Filter and annotate mentor instances
-    matching_mentor = (
-        mentor_profiles.filter(combined_query)
-        .distinct()
-        .annotate(
-            score=Count(
-                "skills",
-                filter=Q(skills__in=talent_skills.values_list("id", flat=True)),
+        if top_mentor:
+            serialized_mentor = MentorProfileSerializer(top_mentor).data
+            logger.info(f"Successfully matched mentor for user {request.user.id}")
+            return Response(
+                {"status": True, "matching_mentor": serialized_mentor},
+                status=status.HTTP_200_OK
             )
-                  + Count(
-                "role", filter=Q(role__in=talent_roles.values_list("id", flat=True))
+        else:
+            logger.warning(f"No matching mentor found for user {request.user.id}")
+            return Response(
+                {"status": False, "message": "No matching mentor found"},
+                status=status.HTTP_404_NOT_FOUND
             )
-                  + Count(
-                "department",
-                filter=Q(
-                    department__in=talent_departments.values_list("id", flat=True)
-                ),
-            )
+
+    except MemberProfile.DoesNotExist:
+        logger.error(f"User profile not found for user {request.user.id}")
+        return Response(
+            {"status": False, "message": "User profile not found"},
+            status=status.HTTP_404_NOT_FOUND
         )
-        .order_by("-score")
-    )
-
-    # Serialize the results
-    matching_mentors_serialized = MentorProfileSerializer(
-        matching_mentor, many=True
-    ).data
-
-    # Return the response
-    return Response(
-        {"status": True, "matching_mentors": matching_mentors_serialized},
-        status=status.HTTP_200_OK,
-    )
+    except Exception as e:
+        logger.exception(f"Error in get_top_mentor_match: {str(e)}")
+        return Response(
+            {"status": False, "message": "An error occurred"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
