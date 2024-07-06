@@ -146,7 +146,6 @@ def get_user_data(request):
             "last_name": user.last_name,
             "email": user.email,
             "userprofile": userprofile_json_data,
-            # "talentprofile" and "current_company" will be conditionally added
         },
         "account_info": {field: getattr(user, field) for field in [
             "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
@@ -198,7 +197,11 @@ def get_user_data(request):
             company_account_data = {"error": "Could not fetch company details"}
 
         response_data["company_account_data"] = company_account_data
-
+    current_company = CompanyProfile.objects.filter(current_employees=user).first()
+    if current_company:
+        response_data["user_info"]["current_company"] = {"id": current_company.id,
+                                    "company_name": current_company.company_name,
+                                    "company_url": current_company.company_url}
     return Response(response_data)
 
 
@@ -472,7 +475,7 @@ def update_profile_work_place(request):
     talent_profile.role.set(roles_to_set)
     talent_profile.save()
 
-    return Response({"detail": "Account Details Updated."}, status=status.HTTP_200_OK)
+    return Response({"status": True, "detail": "Account Details Updated."}, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
