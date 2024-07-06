@@ -719,7 +719,8 @@ def get_top_mentor_match(request):
 
         # Filter, annotate, and order mentor profiles
         top_mentor = MemberProfile.objects.filter(
-            user__is_mentor=True
+            user__is_mentor=True,
+            user__is_mentor_profile_active=True
         ).filter(combined_query).annotate(
             score=Count('skills', filter=Q(skills__id__in=talent_skills_ids)) +
                   Count('role', filter=Q(role__id__in=talent_roles_ids)) +
@@ -737,7 +738,7 @@ def get_top_mentor_match(request):
             logger.warning(f"No matching mentor found for user {request.user.id}")
             return Response(
                 {"status": False, "message": "No matching mentor found"},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_200_OK
             )
 
     except MemberProfile.DoesNotExist:

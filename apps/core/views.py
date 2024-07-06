@@ -7,6 +7,7 @@ from django.contrib.auth import user_logged_out
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.cache import cache
 from django.core.mail import EmailMessage
 from django.db import transaction
 from django.http import JsonResponse
@@ -29,6 +30,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from api import settings
 from apps.company.models import Roles, CompanyProfile, Skill, Department
 from apps.core.models import (
     UserProfile,
@@ -65,6 +67,8 @@ from utils.helper import prepend_https_if_not_empty
 from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
+
+CACHE_TIMEOUT = getattr(settings, 'ANNOUNCEMENT_CACHE_TIMEOUT', 300)
 
 
 class LoginThrottle(UserRateThrottle):
@@ -200,8 +204,8 @@ def get_user_data(request):
     current_company = CompanyProfile.objects.filter(current_employees=user).first()
     if current_company:
         response_data["user_info"]["current_company"] = {"id": current_company.id,
-                                    "company_name": current_company.company_name,
-                                    "company_url": current_company.company_url}
+                                                         "company_name": current_company.company_name,
+                                                         "company_url": current_company.company_url}
     return Response(response_data)
 
 
@@ -212,18 +216,40 @@ def get_company_data(user_details):
 
 @api_view(["GET"])
 def get_announcement(request):
+    """
+    Retrieve the latest announcement from Slack.
+
+    This endpoint fetches the most recent post from a specified Slack channel,
+    caches it for improved performance, and returns it as an announcement.
+
+    Returns:
+        Response: A JSON response containing the announcement or an error message.
+    """
     try:
+        # Try to get the cached announcement
+        cached_announcement = cache.get('latest_announcement')
+        if cached_announcement:
+            logger.info("Serving cached announcement")
+            return Response({"announcement": cached_announcement}, status=status.HTTP_200_OK)
+
+        # If not in cache, fetch new posts
         slack_msg = fetch_new_posts("CELK4L5FW", 1)
         if slack_msg:
+            # Cache the new announcement
+            cache.set('latest_announcement', slack_msg, CACHE_TIMEOUT)
+            logger.info("New announcement fetched and cached")
             return Response({"announcement": slack_msg}, status=status.HTTP_200_OK)
         else:
-            print(f"Did not get a new slack message")
+            logger.warning("No new Slack messages found")
             return Response(
                 {"message": "No new messages."}, status=status.HTTP_404_NOT_FOUND
             )
     except Exception as e:
-        print(f"Error pulling slack message: {str(e)}")
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error pulling Slack message: {str(e)}", exc_info=True)
+        return Response(
+            {"error": "An unexpected error occurred."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # @login_required

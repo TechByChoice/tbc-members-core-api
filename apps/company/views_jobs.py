@@ -506,7 +506,7 @@ class JobViewSet(viewsets.ViewSet):
         talent_roles = talent_profile.role.values_list('id', flat=True)
         talent_departments = talent_profile.department.values_list('id', flat=True)
 
-        return Job.objects.annotate(
+        return Job.objects.filter(status='active').annotate(
             score=(
                 Count('skills', filter=Q(skills__in=talent_skills)) +
                 Count('role', filter=Q(role__in=talent_roles)) +
