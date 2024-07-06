@@ -118,11 +118,11 @@ class UserManagementView(ViewSet):
             response.raise_for_status()
             # Process the response from the 3rd party API
             result_data = response.json()
+            print("Successfully submitted data to OD: submit-report")
             return Response(result_data, status=status.HTTP_200_OK)
         except requests.RequestException as e:
+            print(f"Exception occurred will calling OD: submit-report: {e}")
             return Response({"status": False, "message": "No data saved"})
-
-        return Response(data={"status": True}, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['get'], url_path='get-report')
     def get_review_submission(self, request, pk=None):
