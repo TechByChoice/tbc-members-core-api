@@ -64,6 +64,7 @@ from apps.mentorship.serializer import (
 from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
 from utils.helper import prepend_https_if_not_empty
+from utils.profile_utils import update_user_company_association
 from utils.slack import fetch_new_posts, send_invite
 
 logger = logging.getLogger(__name__)
@@ -450,7 +451,9 @@ def update_profile_account_details(request):
 
 @api_view(["POST"])
 def update_profile_work_place(request):
-    # Handling existing company.
+    user = request.user
+
+    # Handling existing or new company
     company_details = request.data.get("select_company", None)
 
     if company_details:
@@ -473,13 +476,17 @@ def update_profile_work_place(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    # Updating the current employee for the company.
-    user = request.user
-    company.current_employees.add(user)
-    company.save()
+    # Update user's company association
+    try:
+        old_company, updated_company = update_user_company_association(user, company)
+    except Exception as e:
+        return Response(
+            {"status": False, "detail": f"Error updating company association: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    # Updating talent profile.
-    talent_profile = get_object_or_404(MemberProfile, user=request.user)
+    # Updating talent profile
+    talent_profile = get_object_or_404(MemberProfile, user=user)
     role_names = request.data.get("job_roles")
 
     roles_to_set = (
@@ -498,6 +505,7 @@ def update_profile_work_place(request):
                 {"detail": f"Invalid role: {role_name}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
     talent_profile.role.set(roles_to_set)
     talent_profile.save()
 

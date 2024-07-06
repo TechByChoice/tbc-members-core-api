@@ -37,6 +37,12 @@ class MemberDetailsView(APIView):
         except model.DoesNotExist:
             return None
 
+    def get_mentorship_profile(self, model, user):
+        try:
+            return model.objects.filter(user=user)[0]
+        except model.DoesNotExist:
+            return None
+
     # @permission_classes([IsAuthenticated])
     def get(self, request, pk, format=None):
         try:
@@ -52,7 +58,7 @@ class MemberDetailsView(APIView):
         if not talent_profile:
             raise Http404("Talent profile not found.")
 
-        mentor_program = self.get_profile(MentorshipProgramProfile, user)
+        mentor_program = self.get_mentorship_profile(MentorshipProgramProfile, user)
         current_company_data = get_current_company_data(user)
 
         user_serializer = ReadOnlyCustomUserSerializer(user)

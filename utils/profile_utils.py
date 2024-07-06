@@ -2,6 +2,8 @@ import logging
 from functools import wraps
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
+
+from apps.company.models import CompanyProfile
 from .logging_helper import get_logger, log_exception, timed_function, sanitize_log_data
 
 logger = get_logger(__name__)
@@ -218,3 +220,52 @@ def calculate_profile_completeness(profile):
     total_fields = len(profile._meta.fields)
     filled_fields = sum(1 for f in profile._meta.fields if getattr(profile, f.name) not in [None, ''])
     return (filled_fields / total_fields) * 100
+
+
+@transaction.atomic
+def update_user_company_association(user, new_company):
+    """
+    Update a user's company association.
+
+    This function removes the user from their old company's current employees,
+    adds them to the old company's past employees, and then adds them to the
+    new company's current employees.
+
+    Args:
+        user (User): The user whose company association is being updated.
+        new_company (CompanyProfile): The new company the user is joining.
+
+    Returns:
+        tuple: A tuple containing the old company (or None) and the new company.
+    """
+    old_company = None
+
+    # Check if user is currently associated with a company
+    try:
+        old_company = CompanyProfile.objects.get(current_employees=user)
+        logger.info(f"User {user.id} is currently associated with company {old_company.id}")
+    except CompanyProfile.DoesNotExist:
+        logger.info(f"User {user.id} is not currently associated with any company")
+
+    # Update company associations
+    if old_company and old_company != new_company:
+        try:
+            old_company.current_employees.remove(user)
+            old_company.past_employees.add(user)
+            old_company.save()
+            logger.info(f"User {user.id} removed from current employees and added to past employees of company {old_company.id}")
+        except Exception as e:
+            logger.error(f"Error updating old company association for user {user.id}: {str(e)}", exc_info=True)
+            raise
+
+    try:
+        new_company.current_employees.add(user)
+        new_company.save()
+        logger.info(f"User {user.id} added to current employees of company {new_company.id}")
+    except Exception as e:
+        logger.error(f"Error adding user {user.id} to new company {new_company.id}: {str(e)}", exc_info=True)
+        raise
+
+    logger.info(f"Company association updated for user {user.id}. Old company: {old_company.id if old_company else 'None'}, New company: {new_company.id}")
+
+    return old_company, new_company
