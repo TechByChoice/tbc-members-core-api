@@ -8,19 +8,19 @@ stripe==6.4.0
 asgiref==3.7.2
 attrs==23.1.0
 boto3~=1.34.75
-certifi==2023.7.22
+certifi==2024.7.4
 cffi==1.15.1
-cryptography==42.0.4
+cryptography==42.0.8
 distlib==0.3.7
 Django~=4.2.11
 django-rest-knox==4.2.0
 django-quill-editor==0.1.40
-djangorestframework~=3.15.1
+djangorestframework~=3.15.2
 filelock
 google-api-python-client==2.111.0
 google-auth==2.25.2
 google-auth-httplib2==0.2.0
-gunicorn==21.2.0
+gunicorn==22.0.0
 importlib-metadata==6.8.0
 iniconfig==2.0.0
 install==1.3.5
@@ -41,7 +41,7 @@ pytz~=2024.1
 pyjwt
 sendgrid==6.9.7
 slack_sdk==3.26.1
-sqlparse==0.4.4
+sqlparse==0.5.0
 tomli==2.0.1
 typing_extensions==4.7.1
 virtualenv==20.24.5
@@ -50,10 +50,11 @@ whitenoise==6.5.0
 zipp==3.16.2
 slack_sdk==3.26.1
 eventbrite==3.3.5
-requests~=2.31.0
+requests~=2.32.2
 django-filter~=24.2
 django-redis==5.4.0
 redis==5.0.4
 fuzzywuzzy~=0.18.0
 
 APScheduler~=3.10.4
+urllib3>=2.2.2 # not directly required, pinned by Snyk to avoid a vulnerability
