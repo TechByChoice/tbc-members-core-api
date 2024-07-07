@@ -19,6 +19,7 @@ from django.contrib.auth import get_user_model
 
 from .serializers_open_doors import UserRegistrationSerializer
 from .views import send_welcome_email
+from ..company.models import CompanyProfile
 
 User = get_user_model()
 
@@ -106,6 +107,14 @@ class UserManagementView(ViewSet):
         mutable_data = request.data.copy()
         mutable_data['user_id'] = user_id
         mutable_data['header_token'] = header_token
+
+        # create new company
+        if mutable_data.get('company_name') and mutable_data['company_url']:
+            print(mutable_data.get('company_name'))
+            new_company = CompanyProfile.objects.create(company_name=mutable_data.get('company_name'), company_url=mutable_data.get('company_url'))
+            mutable_data['company_id'] = new_company.id
+            print(f'Created a new company: {new_company.company_name} ID: {new_company.id}')
+
         third_party_url = f'{os.getenv("OD_API_URL")}reports/submit-report/'
 
         # Make the 3rd party API request
