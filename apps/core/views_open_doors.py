@@ -110,7 +110,7 @@ class UserManagementView(ViewSet):
 
         # create new company
         if mutable_data.get('company_name') and mutable_data['company_url']:
-            print(mutable_data.get('company_name'))
+            print(f"Creating a new company for reviews {mutable_data.get('company_name')}")
             new_company = CompanyProfile.objects.create(company_name=mutable_data.get('company_name'), company_url=mutable_data.get('company_url'))
             mutable_data['company_id'] = new_company.id
             print(f'Created a new company: {new_company.company_name} ID: {new_company.id}')
@@ -118,6 +118,7 @@ class UserManagementView(ViewSet):
         third_party_url = f'{os.getenv("OD_API_URL")}reports/submit-report/'
 
         # Make the 3rd party API request
+        print("Sending report data to Open Doors...")
         try:
             headers = {
                 "Content-Type": "application/json",
