@@ -611,7 +611,11 @@ def update_profile_identity(request):
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            name = SexualIdentities.objects.get(name=role_name.get("name"))
+            if "name" in role_name and role_name["name"]:
+                id_name = role_name["name"]
+            else:
+                id_name = role_name
+            name = SexualIdentities.objects.get(name=id_name)
             sexuality_to_set.append(name)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
