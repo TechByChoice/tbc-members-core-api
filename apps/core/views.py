@@ -524,9 +524,18 @@ def update_profile_skills_roles(request):
     for role_name in roles:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = Department.objects.get(name=role_name["name"])
+
+            # Get the name of the role based on the different datatypes
+            # we can get in the codebase
+            if "name" in role_name and role_name["name"]:
+                dep_name = role_name["name"]
+            else:
+                dep_name = role_name
+
+            role = Department.objects.get(name=dep_name)
             roles_to_set.append(role)
-        except (Department.MultipleObjectsReturned, ValueError):
+        except (Department.MultipleObjectsReturned, ValueError) as e:
+            print(e)
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
