@@ -1,6 +1,8 @@
 import json
+import uuid
 
 from django.db import models
+from django.utils import timezone
 from django_quill.fields import QuillField
 
 from apps.core.models import CustomUser
@@ -181,15 +183,30 @@ class MentorRoster(models.Model):
 
 
 class Session(models.Model):
+    id = models.AutoField(primary_key=True, blank=False, null=False)
     mentor_mentee_connection = models.ForeignKey(
-        MentorRoster, related_name="MenteeMentorConnections", on_delete=models.CASCADE
+        MentorRoster, related_name="mentorsihp_sessions", on_delete=models.CASCADE
     )
     note = models.TextField(blank=True, null=True)
-    reason = models.ManyToManyField(MentorSupportAreas, blank=False)
+    reason = models.ManyToManyField(MentorSupportAreas, blank=True)
     created_by = models.ForeignKey(
-        CustomUser, related_name="MenteeMentorConnections", on_delete=models.CASCADE
+        CustomUser, related_name="created_sessions", on_delete=models.CASCADE
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_completed = models.BooleanField(default=False)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Session: {self.id} - {self.created_at}"
+
+    def mark_as_completed(self):
+        self.is_completed = True
+        self.completed_at = timezone.now()
+        self.save(update_fields=['is_completed', 'completed_at'])
 
 
 class MentorshipProgramProfile(models.Model):
