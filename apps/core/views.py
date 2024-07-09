@@ -495,14 +495,19 @@ def update_profile_work_place(request):
     for role_name in role_names:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role, created = Roles.objects.get_or_create(name=role_name["name"])
+            # Try to get the role by name, and if it doesn't exist, create it.
+            if "name" in role_name and role_name["name"]:
+                _role_name = role_name["name"]
+            else:
+                _role_name = role_name
+            role, created = Roles.objects.get_or_create(name=_role_name)
             roles_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
             return Response(
-                {"detail": f"Invalid role: {role_name}"},
+                {"detail": f"Invalid role: {_role_name}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
