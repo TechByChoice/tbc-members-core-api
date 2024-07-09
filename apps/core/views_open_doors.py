@@ -13,6 +13,7 @@ import uuid
 
 from rest_framework.viewsets import ViewSet
 
+from utils.data_utils import get_user_demo, update_review_token_total
 from .models import UserVerificationToken
 from .serializers import UserProfileSerializer
 from django.contrib.auth import get_user_model
@@ -108,6 +109,8 @@ class UserManagementView(ViewSet):
         mutable_data['user_id'] = user_id
         mutable_data['header_token'] = header_token
 
+        mutable_data['user_demo'] = get_user_demo(request.user)
+
         # create new company
         if mutable_data.get('company_name') and mutable_data['company_url']:
             print(f"Creating a new company for reviews {mutable_data.get('company_name')}")
@@ -129,6 +132,7 @@ class UserManagementView(ViewSet):
             # Process the response from the 3rd party API
             result_data = response.json()
             print("Successfully submitted data to OD: submit-report")
+            update_review_token_total(request.user, False)
             return Response(result_data, status=status.HTTP_200_OK)
         except requests.RequestException as e:
             print(f"Exception occurred will calling OD: submit-report: {e}")

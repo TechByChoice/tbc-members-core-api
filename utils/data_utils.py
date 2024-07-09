@@ -1,10 +1,12 @@
-import json
 import csv
-import logging
-from functools import wraps
-from typing import Any, Dict, List, Union
+import json
 from decimal import Decimal
+from typing import Any, Dict, List, Union
 
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import F
+
+from apps.core.models import UserProfile
 # Import the custom logging utilities
 from .logging_helper import get_logger, log_exception, timed_function, sanitize_log_data
 
@@ -295,3 +297,148 @@ def convert_currency(amount: Union[int, float, Decimal], from_currency: str, to_
     rate = exchange_rates[from_currency][to_currency]
     converted_amount = Decimal(str(amount)) * rate
     return converted_amount.quantize(Decimal('0.01'))
+
+
+def update_review_token_total(user, direction):
+    """
+    Update the user's review token total.
+
+    :param user: User object
+    :param direction: Boolean, True to increase tokens, False to decrease
+    :return: Dict with updated token count or error message
+    """
+    try:
+        token_change = 1 if direction else -1
+
+        # Prevent negative token count
+        if not direction and user.company_review_tokens <= 0:
+            logger.warning(f"Attempted to decrease tokens below zero for user {user.id}")
+            return {"error": "Cannot decrease tokens below zero", "data": user.company_review_tokens}
+
+        user.company_review_tokens += token_change
+
+        # Update review access status
+        if user.company_review_tokens == 0:
+            user.is_company_review_access_active = False
+        elif user.company_review_tokens > 0 and not user.is_company_review_access_active:
+            user.is_company_review_access_active = True
+
+        user.save()
+
+        logger.info(f"Updated review tokens for user {user.id}. New total: {user.company_review_tokens}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error updating review tokens for user {user.id}: {str(e)}")
+        return False
+
+
+class UserDemoService:
+    @staticmethod
+    def get_user_demo(user):
+        """
+        Fetch user demographic data.
+
+        Args:
+            user (User): The user object.
+
+        Returns:
+            dict: A dictionary containing user demographic data or error information.
+        """
+        try:
+            user_demo_data = UserProfile.objects.filter(user=user).annotate(
+                sexuality_name=F('identity_sexuality__name'),
+                gender_name=F('identity_gender__name'),
+                ethic_name=F('identity_ethic__name'),
+                pronouns_name=F('identity_pronouns__name'),
+            ).values(
+                'sexuality_name',
+                'gender_name',
+                'ethic_name',
+                'pronouns_name',
+                "disability",
+                "care_giver",
+                "veteran_status",
+            )
+
+            user_account_data = {
+                "is_company_review_access_active": user.is_company_review_access_active,
+                "company_review_tokens": user.company_review_tokens,
+            }
+
+            user_data = {
+                "user_demo": list(user_demo_data),
+                "user_account": user_account_data,
+                "user_id": user.id,
+                "status": True
+            }
+
+            logger.info(f"Successfully retrieved demo data for user {user.id}")
+            return user_data
+
+        except ObjectDoesNotExist:
+            logger.error(f"UserProfile does not exist for user {user.id}")
+            return {"status": False, "error": "UserProfile not found"}
+        except Exception as e:
+            logger.exception(f"Unexpected error retrieving user data for {user.id}. Error: {str(e)}")
+            return {"status": False, "error": "An unexpected error occurred"}
+
+    @staticmethod
+    def sanitize_user_data(user_data):
+        """
+        Sanitize user data to remove sensitive information.
+
+        Args:
+            user_data (dict): The raw user data.
+
+        Returns:
+            dict: Sanitized user data.
+        """
+        sensitive_fields = ['email', 'phone_number', 'social_security_number']
+
+        for field in sensitive_fields:
+            if field in user_data:
+                del user_data[field]
+
+        return user_data
+
+    @staticmethod
+    def validate_user_data(user_data):
+        """
+        Validate user data to ensure all required fields are present.
+
+        Args:
+            user_data (dict): The user data to validate.
+
+        Returns:
+            bool: True if valid, False otherwise.
+        """
+        required_fields = ['user_id', 'user_demo', 'user_account']
+
+        for field in required_fields:
+            if field not in user_data:
+                logger.error(f"Missing required field: {field}")
+                return False
+
+        return True
+
+
+def get_user_demo(user):
+    """
+    Wrapper function to get user demo data.
+
+    Args:
+        user (User): The user object.
+
+    Returns:
+        dict: A dictionary containing user demographic data or error information.
+    """
+    user_demo_service = UserDemoService()
+    user_data = user_demo_service.get_user_demo(user)
+
+    if user_data['status']:
+        user_data = user_demo_service.sanitize_user_data(user_data)
+        if not user_demo_service.validate_user_data(user_data):
+            return {"status": False, "error": "Invalid user data"}
+
+    return user_data
