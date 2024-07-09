@@ -1,27 +1,23 @@
+import json
+import logging
 import operator
 import os
-import logging
-import json
 from functools import reduce
 
 import requests
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Q, Count
-from django.core.cache import cache
-
 from rest_framework import viewsets, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from utils.emails import send_dynamic_email
-from utils.helper import paginate_items, CustomPagination
 from utils.slack import post_message
 from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
-from rest_framework.decorators import action
-
-from ..core.serializers_member import TalentProfileSerializer, FullTalentProfileSerializer
+from ..core.serializers_member import FullTalentProfileSerializer
 from ..member.models import MemberProfile
 
 # Configure logging
@@ -43,6 +39,11 @@ def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=15)
     role = talent_profile.data["role"]
     tech_journey = talent_profile.data["tech_journey"]
     skills = talent_profile.data["skills"]
+
+    # Check if all profile data is empty or None
+    if not any([department, role, tech_journey, skills]):
+        logger.info("User profile is empty, cannot filter by jobs")
+        return None, None, "No profile data provided"
 
     # Build the filter conditions
     filter_conditions = []
@@ -345,6 +346,11 @@ class JobViewSet(viewsets.ViewSet):
         print("Pulling talent profile")
         serializer = FullTalentProfileSerializer(user_profile)
         current_page, paginator = filter_and_paginate_jobs(user_profile, serializer, page, page_size)
+        if not current_page:
+            logger.error("No jobs returned")
+            return Response(data={"status": False, "error": True,
+                                  "message": "We can't do a job match. Please update your profile to view jobs for you."},
+                            status=status.HTTP_200_OK)
         filtered_jobs_serializer = JobSerializer(current_page, many=True)
 
         cache_key = f"job_matches_{request.user.id}"
@@ -394,6 +400,7 @@ class JobViewSet(viewsets.ViewSet):
                 "total_pages": paginator.num_pages,
                 "has_next": current_page.has_next(),
                 "has_previous": current_page.has_previous(),
+                "status": True
             }
             return Response(data)
         else:
@@ -405,6 +412,7 @@ class JobViewSet(viewsets.ViewSet):
                 "total_pages": paginator.num_pages,
                 "has_next": current_page.has_next(),
                 "has_previous": current_page.has_previous(),
+                "status": False
             }
 
             if not filtered_jobs_list:
@@ -508,9 +516,9 @@ class JobViewSet(viewsets.ViewSet):
 
         return Job.objects.filter(status='active').annotate(
             score=(
-                Count('skills', filter=Q(skills__in=talent_skills)) +
-                Count('role', filter=Q(role__in=talent_roles)) +
-                Count('department', filter=Q(department__in=talent_departments))
+                    Count('skills', filter=Q(skills__in=talent_skills)) +
+                    Count('role', filter=Q(role__in=talent_roles)) +
+                    Count('department', filter=Q(department__in=talent_departments))
             )
         ).filter(
             Q(skills__in=talent_skills) |
