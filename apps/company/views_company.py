@@ -12,6 +12,7 @@ from rest_framework.viewsets import ViewSet
 from apps.company.filters import CompanyProfileFilter
 from apps.company.models import CompanyProfile, Job
 from apps.company.serializers import CompanyProfileSerializer, JobSimpleSerializer
+from utils.company_utils import pull_company_info
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,14 @@ class CompanyView(ViewSet):
                 {"status": False, "error": "Company not found."},
                 status=status.HTTP_404_NOT_FOUND
             )
+
+        # Pull missing company data if not saved
+        if not company_data.mission:
+            updated = pull_company_info(company_data)
+            if updated:
+                company_data.refresh_from_db()
+            else:
+                logger.warning(f"Failed to update company info for company ID: {pk}")
 
         serializer_data = CompanyProfileSerializer(company_data).data
         job_list = Job.objects.filter(parent_company=pk, status="active")

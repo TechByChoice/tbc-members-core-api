@@ -4,7 +4,7 @@ from functools import wraps
 from urllib.parse import urlparse, urlunparse
 
 # Import the custom logging utilities
-from .logging_utils import get_logger, log_exception, timed_function, sanitize_log_data
+from .logging_helper import get_logger, log_exception, timed_function, sanitize_log_data
 
 # Get a logger for this module
 logger = get_logger(__name__)
@@ -221,3 +221,9 @@ def validate_social_media_url(url, platform):
     is_valid = bool(re.match(patterns[platform], url))
     logger.debug(f"URL validation result: {sanitize_log_data({'is_valid': is_valid})}")
     return is_valid
+
+
+def extract_domain(url):
+    parsed_url = urlparse(url)
+    domain = parsed_url.netloc
+    return domain

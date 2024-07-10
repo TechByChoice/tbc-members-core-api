@@ -1,9 +1,16 @@
+import hashlib
+import os
+
+import boto3
+import requests
+from botocore.exceptions import NoCredentialsError
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from utils.errors import CustomException
+from utils.logging_helper import timed_function, get_logger, log_exception
 from .models import (
     UserProfile,
     SexualIdentities,
@@ -11,7 +18,7 @@ from .models import (
     EthicIdentities,
     PronounsIdentities,
 )
-from .serializers import UpdateCustomUserSerializer, UserProfileSerializer
+from .serializers import UserProfileSerializer
 from ..company.models import (
     CompanyTypes,
     Department,
@@ -23,6 +30,7 @@ from ..company.models import (
 from ..member.models import MemberProfile
 
 User = get_user_model()
+logger = get_logger(__name__)
 
 
 def update_user(current_user, user_data):
@@ -696,3 +704,65 @@ def get_current_company_data(user):
         }
     except CompanyProfile.DoesNotExist:
         return None
+
+def generate_unique_filename(original_filename, file_content):
+    """
+    Generate a unique filename based on the original filename and file content.
+
+    :param original_filename: The original filename
+    :param file_content: The content of the file
+    :return: A unique filename
+    """
+    # Get the file extension
+    _, ext = os.path.splitext(original_filename)
+
+    # Generate a hash of the file content
+    content_hash = hashlib.md5(file_content).hexdigest()
+
+    # Create a unique filename using the hash and original extension
+    return f"{content_hash}{ext}"
+
+
+@log_exception(logger)
+@timed_function(logger)
+def upload_image_to_s3(image_url, bucket_name, s3_file_name):
+    """
+    Upload an image from a URL to an S3 bucket with a unique filename.
+
+    :param image_url: URL of the image to upload
+    :param bucket_name: Name of the S3 bucket
+    :param s3_file_name: Desired filename in S3 (may be modified to ensure uniqueness)
+    :return: The S3 key of the uploaded file
+    """
+    try:
+        logger.info(f"Attempting to download image from {image_url}")
+        response = requests.get(image_url)
+        response.raise_for_status()
+        image_content = response.content
+
+        # Generate a unique filename
+        unique_filename = generate_unique_filename(s3_file_name, image_content)
+        s3_key = f"company_logos/{unique_filename}"
+
+        logger.info(f"Uploading image to S3 bucket {bucket_name} with key {s3_key}")
+        s3 = boto3.client('s3')
+
+        # Check if the file already exists
+        try:
+            s3.head_object(Bucket=bucket_name, Key=s3_key)
+            logger.info(f"File {s3_key} already exists in bucket {bucket_name}")
+            return s3_key
+        except:
+            # File doesn't exist, proceed with upload
+            s3.put_object(Bucket=bucket_name, Key=s3_key, Body=image_content)
+            logger.info(f"Image uploaded successfully to {bucket_name}/{s3_key}")
+            return s3_key
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to download image from URL: {e}", exc_info=True)
+    except NoCredentialsError:
+        logger.error("AWS credentials not available", exc_info=True)
+    except Exception as e:
+        logger.error(f"Failed to upload image to S3: {e}", exc_info=True)
+
+    return None
