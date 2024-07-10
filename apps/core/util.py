@@ -699,6 +699,7 @@ def get_current_company_data(user):
             "id": company.id,
             "company_name": company.company_name,
             "logo": company.logo.url,
+            "logo_url": company.logo_url,
             "company_size": company.company_size,
             "industries": [industry.name for industry in company.industries.all()],
         }
