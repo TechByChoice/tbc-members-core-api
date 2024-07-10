@@ -36,6 +36,7 @@ CAREER_JOURNEY = (
 
 class Skill(models.Model):
     name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     webflow_item_id = models.CharField(max_length=400)
     SKILL = "skill"
     TOOL = "tool"
@@ -55,6 +56,7 @@ class Skill(models.Model):
 
 class Industries(models.Model):
     name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     webflow_item_id = models.CharField(max_length=400, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -66,6 +68,7 @@ class Industries(models.Model):
 
 class Certs(models.Model):
     name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     details = models.CharField(max_length=800, blank=True, null=True)
     roles = models.CharField(max_length=800, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -78,6 +81,7 @@ class Certs(models.Model):
 
 class Department(models.Model):
     name = models.CharField(max_length=300, unique=True)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     created_at = models.DateTimeField(auto_now=True)
     changed_at = models.DateTimeField(auto_now_add=True)
 
@@ -88,6 +92,7 @@ class Department(models.Model):
 
 class Roles(models.Model):
     name = models.CharField(max_length=1000, null=True, blank=True)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     is_analytical_heavy = models.BooleanField(default=False)
     is_customer_facing = models.BooleanField(default=False)
     is_travel_common = models.BooleanField(default=False)
@@ -164,6 +169,7 @@ class JobLevel(models.Model):
 
 class CompanyTypes(models.Model):
     name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
 

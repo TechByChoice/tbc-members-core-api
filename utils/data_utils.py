@@ -1,10 +1,12 @@
 import csv
 import json
+import re
 from decimal import Decimal
 from typing import Any, Dict, List, Union
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F
+from django.utils.text import slugify
 
 from apps.core.models import UserProfile
 # Import the custom logging utilities
@@ -442,3 +444,39 @@ def get_user_demo(user):
             return {"status": False, "error": "Invalid user data"}
 
     return user_data
+
+
+def normalize_name(name):
+    """
+    Normalize a given name by removing 'Add "..."' pattern, converting to lowercase,
+    removing spaces and special characters.
+    """
+
+    # Remove 'Add "..."' pattern
+    name = re.sub(r'^Add\s*"(.+)"$', r'\1', name.strip())
+
+    return slugify(name.lower().replace(' ', ''))
+
+
+def get_or_create_normalized(model_class, name, extra_fields=None):
+    """
+    Get or create a model instance with a normalized name.
+
+    :param model_class: The model class to use (e.g., Department, Skill)
+    :param name: The name to normalize and use for get_or_create
+    :param extra_fields: A dictionary of extra fields to use when creating a new instance
+    :return: A tuple (object, created) where object is the retrieved or created instance
+             and created is a boolean specifying whether a new instance was created
+    """
+    normalized_name = normalize_name(name)
+
+    defaults = {'name': name}
+    if extra_fields:
+        defaults.update(extra_fields)
+
+    obj, created = model_class.objects.get_or_create(
+        normalized_name=normalized_name,
+        defaults=defaults
+    )
+
+    return obj, created
