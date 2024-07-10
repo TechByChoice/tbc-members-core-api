@@ -562,10 +562,12 @@ def update_profile_skills_roles(request):
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
             if isinstance(skill, str):
-                name = skill, create = get_or_create_normalized(Skill, skill)
+                name = skill
             else:
-                name = skill, create = get_or_create_normalized(Skill, skill["name"])
-            skills_to_set.append(name.pk)
+                name = skill["name"]
+
+            skill, create = get_or_create_normalized(Skill, name)
+            skills_to_set.append(skill.id)
         except (Skill.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
