@@ -141,6 +141,7 @@ class UserVerificationToken(models.Model):
 
 class SexualIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -150,6 +151,7 @@ class SexualIdentities(models.Model):
 
 class GenderIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -159,6 +161,7 @@ class GenderIdentities(models.Model):
 
 class EthicIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -168,6 +171,7 @@ class EthicIdentities(models.Model):
 
 class PronounsIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -177,6 +181,7 @@ class PronounsIdentities(models.Model):
 
 class CommunityNeeds(models.Model):
     name = models.CharField(null=False, blank=False, max_length=300)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 

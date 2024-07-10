@@ -453,9 +453,10 @@ def normalize_name(name):
     """
 
     # Remove 'Add "..."' pattern
-    name = re.sub(r'^Add\s*"(.+)"$', r'\1', name.strip())
+    cleaned_name = re.sub(r'^Add\s*"(.+)"$', r'\1', name.strip())
+    normalized_name = slugify(cleaned_name.lower().replace(' ', ''))
 
-    return slugify(name.lower().replace(' ', ''))
+    return cleaned_name, normalized_name
 
 
 def get_or_create_normalized(model_class, name, extra_fields=None):
@@ -468,14 +469,15 @@ def get_or_create_normalized(model_class, name, extra_fields=None):
     :return: A tuple (object, created) where object is the retrieved or created instance
              and created is a boolean specifying whether a new instance was created
     """
-    normalized_name = normalize_name(name)
+    # Remove 'Add "..."' pattern
+    clean_name, normalized_name = normalize_name(name)
 
-    defaults = {'name': name}
+    defaults = {'normalized_name': normalized_name}
     if extra_fields:
         defaults.update(extra_fields)
 
     obj, created = model_class.objects.get_or_create(
-        normalized_name=normalized_name,
+        name=clean_name,
         defaults=defaults
     )
 

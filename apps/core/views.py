@@ -62,12 +62,14 @@ from apps.mentorship.serializer import (
     MentorshipProgramProfileSerializer,
 )
 from apps.member.models import MemberProfile
+from utils.data_utils import get_or_create_normalized
 from utils.emails import send_dynamic_email
 from utils.helper import prepend_https_if_not_empty
+from utils.logging_helper import get_logger
 from utils.profile_utils import update_user_company_association
 from utils.slack import fetch_new_posts, send_invite
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 CACHE_TIMEOUT = getattr(settings, 'ANNOUNCEMENT_CACHE_TIMEOUT', 300)
 
@@ -205,6 +207,7 @@ def get_user_data(request):
     current_company = CompanyProfile.objects.filter(current_employees=user).first()
     if current_company:
         response_data["user_info"]["current_company"] = {"id": current_company.id,
+                                                         "logo_url": current_company.logo_url,
                                                          "company_name": current_company.company_name,
                                                          "company_url": current_company.company_url}
     return Response(response_data)
@@ -500,7 +503,9 @@ def update_profile_work_place(request):
                 _role_name = role_name["name"]
             else:
                 _role_name = role_name
-            role, created = Roles.objects.get_or_create(name=_role_name)
+            # role, created = Roles.objects.get_or_create(name=_role_name)
+
+            role, created = get_or_create_normalized(Roles, _role_name)
             roles_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -537,7 +542,8 @@ def update_profile_skills_roles(request):
             else:
                 dep_name = role_name
 
-            role = Department.objects.get(name=dep_name)
+            # role = Department.objects.get_or_create(name=dep_name)
+            role, create = get_or_create_normalized(Department, dep_name)
             roles_to_set.append(role)
         except (Department.MultipleObjectsReturned, ValueError) as e:
             print(e)
@@ -556,9 +562,9 @@ def update_profile_skills_roles(request):
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
             if isinstance(skill, str):
-                name = Skill.objects.get(name=skill)
+                name = skill, create = get_or_create_normalized(Skill, skill)
             else:
-                name = Skill.objects.get(name=skill["name"])
+                name = skill, create = get_or_create_normalized(Skill, skill["name"])
             skills_to_set.append(name.pk)
         except (Skill.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -620,7 +626,7 @@ def update_profile_identity(request):
                 id_name = role_name["name"]
             else:
                 id_name = role_name
-            name = SexualIdentities.objects.get(name=id_name)
+            name, create = get_or_create_normalized(SexualIdentities, id_name)
             sexuality_to_set.append(name)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -637,9 +643,15 @@ def update_profile_identity(request):
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            name = GenderIdentities.objects.get(name=role_name.get("name"))
+            if "name" in role_name and role_name["name"]:
+                id_name = role_name["name"]
+            else:
+                id_name = role_name
+            name, created = get_or_create_normalized(GenderIdentities, id_name)
+            # name, created = GenderIdentities.objects.get(name=id_name)
             gender_to_set.append(name)
         except (Roles.MultipleObjectsReturned, ValueError):
+            logger.error(ValueError)
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
@@ -654,7 +666,11 @@ def update_profile_identity(request):
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = EthicIdentities.objects.get(name=role_name.get("name"))
+            if "name" in role_name and role_name["name"]:
+                id_name = role_name["name"]
+            else:
+                id_name = role_name
+            role, create = get_or_create_normalized(EthicIdentities, id_name)
             ethic_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
