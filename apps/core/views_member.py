@@ -37,6 +37,12 @@ class MemberDetailsView(APIView):
         except model.DoesNotExist:
             return None
 
+    def get_mentorship_profile(self, model, user):
+        try:
+            return model.objects.filter(user=user)[0]
+        except model.DoesNotExist:
+            return None
+
     # @permission_classes([IsAuthenticated])
     def get(self, request, pk, format=None):
         try:
@@ -52,26 +58,20 @@ class MemberDetailsView(APIView):
         if not talent_profile:
             raise Http404("Talent profile not found.")
 
-        mentor_program = self.get_profile(MentorshipProgramProfile, user)
+        mentor_program = self.get_mentorship_profile(MentorshipProgramProfile, user)
         current_company_data = get_current_company_data(user)
 
         user_serializer = ReadOnlyCustomUserSerializer(user)
         user_profile_serializer = ReadOnlyUserProfileSerializer(user_profile)
         talent_profile_serializer = ReadOnlyTalentProfileSerializer(talent_profile)
-        mentor_program_serializer = None
-        if mentor_program and user.is_mentor_profile_active:
-            mentor_program_serializer = MentorshipProgramProfileSerializer(
-                mentor_program
-            )
+        mentor_program_serializer = MentorshipProgramProfileSerializer(mentor_program).data
 
         data = {
             "user": user_serializer.data,
             "user_profile": user_profile_serializer.data,
             "talent_profile": talent_profile_serializer.data,
             "current_company": current_company_data,
-            "mentorship_program": mentor_program_serializer.data
-            if mentor_program_serializer
-            else None,
+            "mentorship_program": mentor_program_serializer
         }
 
         return Response(

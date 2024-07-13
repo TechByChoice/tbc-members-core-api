@@ -13,7 +13,7 @@ from apps.mentorship.models import (
     ApplicationAnswers,
     MentorshipProgramProfile,
     MentorRoster,
-    MentorReview,
+    MentorReview, Session,
 )
 from apps.member.models import MemberProfile
 
@@ -107,6 +107,22 @@ class MentorRosterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         # Additional logic (if needed) before saving the instance
         return MentorRoster.objects.create(**validated_data)
+
+
+class SessionSerializer(serializers.ModelSerializer):
+    reason = MentorSupportAreasSerializer(many=True, read_only=True)
+    created_by = CustomUserSerializer(read_only=True)
+
+    class Meta:
+        model = Session
+        fields = ['id', 'mentor_mentee_connection', 'note', 'reason', 'created_by', 'created_at', 'updated_at', 'is_completed', 'completed_at']
+        read_only_fields = ['created_at', 'updated_at', 'is_completed', 'completed_at', 'id']
+
+    def create(self, validated_data):
+        reason_data = self.context['request'].data.get('reason', [])
+        session = Session.objects.create(**validated_data)
+        session.reason.set(reason_data)
+        return session
 
 
 class MentorReviewSerializer(serializers.ModelSerializer):

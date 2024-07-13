@@ -1,8 +1,16 @@
+import hashlib
+import os
+
+import boto3
+import requests
+from botocore.exceptions import NoCredentialsError
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 
 from utils.errors import CustomException
+from utils.logging_helper import timed_function, get_logger, log_exception
 from .models import (
     UserProfile,
     SexualIdentities,
@@ -10,7 +18,7 @@ from .models import (
     EthicIdentities,
     PronounsIdentities,
 )
-from .serializers import UpdateCustomUserSerializer, UserProfileSerializer
+from .serializers import UserProfileSerializer
 from ..company.models import (
     CompanyTypes,
     Department,
@@ -22,6 +30,7 @@ from ..company.models import (
 from ..member.models import MemberProfile
 
 User = get_user_model()
+logger = get_logger(__name__)
 
 
 def update_user(current_user, user_data):
@@ -131,85 +140,51 @@ def update_user_profile(user, profile_data):
     Raises:
         CustomException: If there's any issue in creating or updating the UserProfile or related objects.
     """
+    # try:
+    #     user_profile = UserProfile.objects.get(user=user)
+    # except UserProfile.DoesNotExist as e:
+    #     # Log the exception and raise a custom exception for the caller to handle
+    #     print(f"UserProfile does not exist for user {user.id}: {e}")
+    #     raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+
+    identity_fields = {
+        "identity_sexuality": SexualIdentities,
+        "identity_gender": GenderIdentities,
+        "identity_ethic": EthicIdentities,
+        "identity_pronouns": PronounsIdentities,
+    }
+
     try:
-        user_profile = UserProfile.objects.get(user=user)
-    except UserProfile.DoesNotExist as e:
-        # Log the exception and raise a custom exception for the caller to handle
-        print(f"UserProfile does not exist for user {user.id}: {e}")
-        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+        with transaction.atomic():
+            user_profile, created = UserProfile.objects.get_or_create(user=user)
 
-    # Process and set many-to-many fields
-    if "identity_sexuality" in profile_data and not profile_data[
-        "identity_sexuality"
-    ] == [""]:
-        sexuality_instances = process_identity_field(
-            profile_data["identity_sexuality"], SexualIdentities
-        )
-        profile_data["identity_sexuality"] = sexuality_instances
-    else:
-        del profile_data["identity_sexuality"]
+            # Process identity fields
+            for field, model in identity_fields.items():
+                if field in profile_data and profile_data[field] != [""]:
+                    instances = process_identity_field(profile_data[field], model)
+                    getattr(user_profile, field).set(instances)
 
-    if "identity_gender" in profile_data and not profile_data["identity_gender"] == [
-        ""
-    ]:
-        gender_instances = process_identity_field(
-            profile_data["identity_gender"], GenderIdentities
-        )
-        profile_data["identity_gender"] = gender_instances
-    else:
-        del profile_data["identity_gender"]
+            # Update other profile fields
+            for field, value in profile_data.items():
+                if field not in identity_fields and field != "tbc_program_interest":
+                    setattr(user_profile, field, value)
 
-    if "identity_ethic" in profile_data and not profile_data["identity_ethic"] == [""]:
-        ethic_instances = process_identity_field(
-            profile_data["identity_ethic"], EthicIdentities
-        )
-        profile_data["identity_ethic"] = ethic_instances
-    else:
-        del profile_data["identity_ethic"]
+            if "tbc_program_interest" in profile_data:
+                user_profile.tbc_program_interest.clear()
+                for interest in profile_data["tbc_program_interest"]:
+                    user_profile.set_tbc_program_interest(interest)
 
-    if "identity_pronouns" in profile_data and not profile_data[
-        "identity_pronouns"
-    ] == [""]:
-        pronouns_instances = process_identity_field(
-            profile_data["identity_pronouns"], PronounsIdentities
-        )
-        profile_data["identity_pronouns"] = pronouns_instances
-    else:
-        del profile_data["identity_pronouns"]
-
-    # For fields that are not many-to-many relationships, update them directly
-    try:
-        for field, value in profile_data.items():
-            if field not in [
-                "identity_sexuality",
-                "identity_gender",
-                "identity_ethic",
-                "identity_pronouns",
-            ]:
-                setattr(user_profile, field, value)
-            if "photo" in field:
-                user_profile.photo = value
-        try:
-            user_profile.set_tbc_program_interest(profile_data["tbc_program_interest"])
-            user_profile.postal_code = profile_data["postal_code"]
-        except Exception as e:
-            print(f"Error trying to update items: {e}")
-        try:
-            user_profile.save(force_update=True)
-            print("UserProfile saved successfully.")
-        except Exception as e:
-            print(f"Error saving UserProfile: {e}")
-
-        # Verify the save operation by fetching the profile again
-        try:
-            updated_profile = UserProfile.objects.get(user=user)
-            print(f"Updated postal code: {updated_profile.postal_code}")
-        except UserProfile.DoesNotExist:
-            print("UserProfile does not exist.")
+            user_profile.save()
 
         return user_profile
+
+    except IntegrityError as e:
+        print(f"An error occurred in the transaction: {e}")
+        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
+
     except Exception as e:
         print(f"Error updating user_profile: {e}")
+        raise CustomException(f"Failed to create or update UserProfile: {str(e)}")
 
 
 def process_identity_field(identity_list, model):
@@ -284,12 +259,12 @@ def create_or_update_company_connection(user, company_data):
         company_profile.current_employees.add(user)
     else:
         # The company doesn't exist, create a new one and set user as unclaimed_account_creator and in current_employees
-        if company_name and company_url and company_logo:
+        if company_name and company_url:
             company_profile = CompanyProfile.objects.create(
                 unclaimed_account_creator=user,
                 is_unclaimed_account=True,
                 company_name=company_name,
-                logo=company_logo,
+                # logo=company_logo,
                 company_url=company_url,
             )
             company_profile.current_employees.add(user)
@@ -724,8 +699,71 @@ def get_current_company_data(user):
             "id": company.id,
             "company_name": company.company_name,
             "logo": company.logo.url,
+            "logo_url": company.logo_url,
             "company_size": company.company_size,
             "industries": [industry.name for industry in company.industries.all()],
         }
     except CompanyProfile.DoesNotExist:
         return None
+
+def generate_unique_filename(original_filename, file_content):
+    """
+    Generate a unique filename based on the original filename and file content.
+
+    :param original_filename: The original filename
+    :param file_content: The content of the file
+    :return: A unique filename
+    """
+    # Get the file extension
+    _, ext = os.path.splitext(original_filename)
+
+    # Generate a hash of the file content
+    content_hash = hashlib.md5(file_content).hexdigest()
+
+    # Create a unique filename using the hash and original extension
+    return f"{content_hash}{ext}"
+
+
+@log_exception(logger)
+@timed_function(logger)
+def upload_image_to_s3(image_url, bucket_name, s3_file_name):
+    """
+    Upload an image from a URL to an S3 bucket with a unique filename.
+
+    :param image_url: URL of the image to upload
+    :param bucket_name: Name of the S3 bucket
+    :param s3_file_name: Desired filename in S3 (may be modified to ensure uniqueness)
+    :return: The S3 key of the uploaded file
+    """
+    try:
+        logger.info(f"Attempting to download image from {image_url}")
+        response = requests.get(image_url)
+        response.raise_for_status()
+        image_content = response.content
+
+        # Generate a unique filename
+        unique_filename = generate_unique_filename(s3_file_name, image_content)
+        s3_key = f"company_logos/{unique_filename}"
+
+        logger.info(f"Uploading image to S3 bucket {bucket_name} with key {s3_key}")
+        s3 = boto3.client('s3')
+
+        # Check if the file already exists
+        try:
+            s3.head_object(Bucket=bucket_name, Key=s3_key)
+            logger.info(f"File {s3_key} already exists in bucket {bucket_name}")
+            return s3_key
+        except:
+            # File doesn't exist, proceed with upload
+            s3.put_object(Bucket=bucket_name, Key=s3_key, Body=image_content)
+            logger.info(f"Image uploaded successfully to {bucket_name}/{s3_key}")
+            return s3_key
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to download image from URL: {e}", exc_info=True)
+    except NoCredentialsError:
+        logger.error("AWS credentials not available", exc_info=True)
+    except Exception as e:
+        logger.error(f"Failed to upload image to S3: {e}", exc_info=True)
+
+    return None

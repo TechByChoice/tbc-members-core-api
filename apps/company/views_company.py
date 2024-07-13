@@ -12,10 +12,11 @@ from rest_framework.viewsets import ViewSet
 from apps.company.filters import CompanyProfileFilter
 from apps.company.models import CompanyProfile, Job
 from apps.company.serializers import CompanyProfileSerializer, JobSimpleSerializer
+from utils.company_utils import pull_company_info
 
 logger = logging.getLogger(__name__)
 
-REVIEWS_URL = 'http://127.0.0.1:7000/'
+REVIEWS_URL = os.getenv("OD_API_URL")
 
 
 class CompanyView(ViewSet):
@@ -35,12 +36,22 @@ class CompanyView(ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        # Pull missing company data if not saved
+        if not company_data.mission:
+            updated = pull_company_info(company_data)
+            if updated:
+                company_data.refresh_from_db()
+            else:
+                logger.warning(f"Failed to update company info for company ID: {pk}")
+
         serializer_data = CompanyProfileSerializer(company_data).data
         job_list = Job.objects.filter(parent_company=pk, status="active")
         serializer_job_list = JobSimpleSerializer(job_list, many=True).data
         # Make an external request to get company reviews
+        header_token = request.headers.get("Authorization", None)
         try:
-            response = requests.get(f'http://127.0.0.1:7000/api/reviews/company/{pk}/', verify=False)
+            response = requests.get(f'{os.getenv("OD_API_URL")}api/reviews/company/{pk}/',
+                                    headers={'Authorization': header_token}, verify=True)
             response.raise_for_status()
             reviews = response.json()
         except requests.exceptions.HTTPError as http_err:

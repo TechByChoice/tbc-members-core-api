@@ -62,8 +62,6 @@ class JobViewSet(viewsets.ViewSet):
         data["parent_company"] = company_id
         data["status"] = "draft"
         data["is_referral_job"] = True
-        data["created_by_id"] = request.user.id
-        data["created_by"] = request.user.pk
 
         # Correct on_site_remote field
         if data["on_site_remote"] == "contract":

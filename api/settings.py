@@ -14,8 +14,10 @@ import os
 from datetime import timedelta
 from pathlib import Path
 import logging.config
+import logging
 
-# from celery.schedules import crontab
+from celery.schedules import crontab
+from corsheaders.middleware import CorsMiddleware
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 
@@ -32,14 +34,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("DJANGO_SECRET")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv("DEBUG")
+DEBUG = os.getenv("DEBUG") == 'True'
 
-ALLOWED_HOSTS = [
-    "beta.api.techbychoice.org",
-    "beta.api.dev.techbychoice.org"
-]
-
+if DEBUG:
+    ALLOWED_HOSTS = [
+        "localhost",
+        "127.0.0.1"
+    ]
+    CSRF_TRUSTED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:8003",
+        "http://localhost:7000"
+    ]
+else:
+    ALLOWED_HOSTS = [
+        "beta-api.techbychoice.org",
+        "beta-api-dev.techbychoice.org"
+    ]
+# CSRF_TRUSTED_ORIGINS = [
+#     "https://www.beta.techbychoice.org",
+#     "https://beta.techbychoice.org",
+#     "https://www.opendoors.api.techbychoice.org",
+#     "https://opendoors.api.techbychoice.org",
+# ]
 # Application definition
 
 INSTALLED_APPS = [
@@ -64,6 +81,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # cross domain
     "corsheaders.middleware.CorsMiddleware",
+    # "api.restrict_origin_middleware.RestrictOriginMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -72,7 +90,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     # firewall
-    "apps.core.firewall_middleware.FirewallMiddleware",
+    # "apps.core.firewall_middleware.FirewallMiddleware",
+    # CORS Rules
 ]
 
 ROOT_URLCONF = "api.urls"
@@ -186,11 +205,19 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    # 'DEFAULT_THROTTLE_CLASSES': [
+    #     'rest_framework.throttling.UserRateThrottle',
+    #     'rest_framework.throttling.AnonRateThrottle',
+    # ],
+    # 'DEFAULT_THROTTLE_RATES': {
+    #     'user': '10/minute',
+    #     'anon': '5/minute',
+    # }
 }
 
 # Security settings
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     "DELETE",
@@ -200,30 +227,40 @@ CORS_ALLOW_METHODS = [
     "POST",
     "PUT",
 ]
-# CORS_EXPOSE_HEADERS = ["Date"]
 
-CORS_ALLOWED_ORIGINS = [
-    "https://www.beta.techbychoice.org",
-    "https://beta.techbychoice.org",
-    "https://www.opendoors.api.techbychoice.org",
-    "https://opendoors.api.techbychoice.org",
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
 ]
 
-# CSRF_COOKIE_DOMAIN = "localhost:3000"
-# X_FRAME_OPTIONS = "DENY"
-# CSRF_COOKIE_SECURE = os.getenv("CSRF_COOKIE")
-# SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE")
-# SECURE_BROWSER_XSS_FILTER = os.getenv("SESSION_COOKIE")
-# SECURE_CONTENT_TYPE_NOSNIFF = os.getenv("SESSION_COOKIE")
-# SECURE_HSTS_SECONDS = 31536000  # 1 year
-# SECURE_HSTS_INCLUDE_SUBDOMAINS = os.getenv("SESSION_COOKIE")
-# SECURE_HSTS_PRELOAD = os.getenv("SESSION_COOKIE")
-# SECURE_SSL_REDIRECT = os.getenv("SESSION_COOKIE")
-# SESSION_COOKIE_HTTPONLY = os.getenv("SESSION_COOKIE")
-# CSRF_COOKIE_HTTPONLY = True
-
-# SESSION_COOKIE_SECURE = False  # Set to True in production
-# SESSION_COOKIE_DOMAIN = "localhost:3000"
+if DEBUG:
+    CORS_ALLOWED_ORIGINS = [
+        "http://localhost:3000",
+        "http://localhost:8003",
+        "http://localhost:7000",
+    ]
+else:
+    CORS_ALLOWED_ORIGINS = [
+        "https://www.beta.techbychoice.org",
+        "https://beta.techbychoice.org",
+        "https://www.dev.techbychoice.org",
+        "https://dev.techbychoice.org",
+        "https://www.opendoors-api-dev.techbychoice.org",
+        "https://opendoors-api-dev.techbychoice.org",
+        "https://www.opendoors-api.techbychoice.org",
+        "https://opendoors-api.techbychoice.org",
+        "https://www.internal-dev-api.techbychoice.org",
+        "https://internal-dev-api.techbychoice.org",
+        "https://www.internal-api.techbychoice.org",
+        "https://internal-api.techbychoice.org",
+    ]
 
 # Allow cookies
 SESSION_COOKIE_SAMESITE = None
@@ -250,19 +287,39 @@ LOGGING = {
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 # Celery Broker - Redis
-CELERY_BROKER_URL = os.getenv("REDIS_URL")
+# CELERY_BROKER_URL = os.getenv("REDIS_URL")
+# CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
+CELERY_REDIS_DB = '0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TASK_DEFAULT_QUEUE = 'core-api'
 
 # Celery Schedule
-# CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
-#     "run-my-task-every-day-at-9am": {
-#         "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
-#         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-#     },
-#     "close-old-jobs": {
-#         "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
-#         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
-#     },
-# }
+CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
+    # "run-my-task-every-day-at-9am": {
+    #     "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
+    #     "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+    # },
+    "close-old-jobs": {
+        "task": "apps.company.tasks.close_old_jobs",
+        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+        # "schedule": crontab(minute='*/1'),
+    },
+}
+
+# Redis
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": os.getenv("REDIS_URL", "redis://localhost:6379/0"),
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "KEY_PREFIX": "core-api",
+    }
+}
 
 AUTH_USER_MODEL = "core.CustomUser"
 
@@ -288,22 +345,18 @@ DISABLE_COLLECTSTATIC = 1
 
 EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
 
-# If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
-# Otherwise, you can set it based on another condition or default to True.
+CORS_EXPOSE_HEADERS = [
+    'access-control-allow-origin',
+    'content-type',
+    'x-csrftoken',
+]
 
-# If DEBUG is True, then set SESSION_COOKIE_SECURE to False.
-# Otherwise, you can set it based on another condition or default to True.
-if DEBUG:
-    SESSION_COOKIE_SECURE = False
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = False
-    SECURE_HSTS_PRELOAD = False
-    SECURE_SSL_REDIRECT = False
-    CSRF_COOKIE_SECURE = False
-else:
-    # Example of setting based on another environment variable, or default to True
-    SESSION_COOKIE_SECURE = os.getenv("SESSION_COOKIE_SECURE", "True") == "True"
-    SECURE_HSTS_SECONDS = 31536000  # Be careful with this setting
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
-    CSRF_COOKIE_SECURE = True
+logger = logging.getLogger(__name__)
+
+
+class LoggingCorsMiddleware(CorsMiddleware):
+    def process_request(self, request):
+        response = super().process_request(request)
+        logger.info(f"CORS request to {request.path} with origin {request.META.get('HTTP_ORIGIN')}")
+        return response
+

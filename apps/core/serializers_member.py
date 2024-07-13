@@ -14,8 +14,9 @@ class ReadOnlyCustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["first_name", "last_name", "is_community_recruiter", "is_member", "is_mentee", "is_mentor",
-                  "is_mentor_profile_active", "is_mentor_profile_approved", "is_speaker", "is_team", "is_volunteer",
-                  "joined_at", "is_active", "id"]
+                  "is_mentor_profile_active", "is_mentor_profile_removed", "is_mentor_training_complete",
+                  "is_mentor_profile_approved", "is_speaker", "is_team", "is_volunteer", "is_mentor_interviewing",
+                  "is_mentor_profile_paused", "joined_at", "is_active", "id"]
 
 
 class UserProfileSerializer(serializers.ModelSerializer):

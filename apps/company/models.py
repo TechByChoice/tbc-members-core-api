@@ -36,6 +36,7 @@ CAREER_JOURNEY = (
 
 class Skill(models.Model):
     name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     webflow_item_id = models.CharField(max_length=400)
     SKILL = "skill"
     TOOL = "tool"
@@ -55,7 +56,21 @@ class Skill(models.Model):
 
 class Industries(models.Model):
     name = models.CharField(max_length=300)
-    webflow_item_id = models.CharField(max_length=400)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
+    webflow_item_id = models.CharField(max_length=400, blank=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # @property
+    def __str__(self):
+        return self.name
+
+
+class Certs(models.Model):
+    name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
+    details = models.CharField(max_length=800, blank=True, null=True)
+    roles = models.CharField(max_length=800, blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -66,6 +81,7 @@ class Industries(models.Model):
 
 class Department(models.Model):
     name = models.CharField(max_length=300, unique=True)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     created_at = models.DateTimeField(auto_now=True)
     changed_at = models.DateTimeField(auto_now_add=True)
 
@@ -76,6 +92,7 @@ class Department(models.Model):
 
 class Roles(models.Model):
     name = models.CharField(max_length=1000, null=True, blank=True)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     is_analytical_heavy = models.BooleanField(default=False)
     is_customer_facing = models.BooleanField(default=False)
     is_travel_common = models.BooleanField(default=False)
@@ -152,6 +169,7 @@ class JobLevel(models.Model):
 
 class CompanyTypes(models.Model):
     name = models.CharField(max_length=300)
+    normalized_name = models.CharField(max_length=300, blank=True, null=True)
     created_at = models.DateTimeField(auto_now=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -210,12 +228,12 @@ class CompanyProfile(models.Model):
         CompanyTypes, related_name="company_types", blank=True
     )
 
-    company_name = models.CharField(max_length=200)
+    company_name = models.CharField(max_length=400)
     industries = models.ManyToManyField(Industries, blank=True)
 
     tag_line = models.CharField(max_length=3000, blank=True, null=True)
-    mission = models.CharField(max_length=3000, blank=True, null=True)
-    vision = models.CharField(max_length=3000, blank=True, null=True)
+    mission = models.CharField(max_length=7000, blank=True, null=True)
+    vision = models.CharField(max_length=7000, blank=True, null=True)
     company_highlights = models.CharField(max_length=3000, blank=True, null=True)
     company_diversity_statement = models.CharField(max_length=3000, blank=True, null=True)
     company_benefits = models.CharField(max_length=3000, blank=True, null=True)
@@ -237,12 +255,12 @@ class CompanyProfile(models.Model):
     )
     ethics_statement = models.CharField(max_length=3000, blank=True, null=True)
     logo = models.ImageField(default="default-logo.jpeg", upload_to="logo_pics")
-    logo_url = models.URLField(max_length=200, blank=True, null=True)
+    logo_url = models.URLField(max_length=400, blank=True, null=True)
     background_img = models.ImageField(
         default="company_backgrounds/default-background.png",
         upload_to="company_backgrounds",
     )
-    company_url = models.URLField(max_length=200, blank=True, null=True)
+    company_url = models.URLField(max_length=400, blank=True, null=True)
     linkedin = models.URLField(blank=True, null=True, max_length=200)
     twitter = models.URLField(blank=True, null=True, max_length=200)
     youtube = models.URLField(blank=True, null=True, max_length=200)
@@ -252,6 +270,7 @@ class CompanyProfile(models.Model):
     state = models.CharField(blank=True, null=True, max_length=200)
     city = models.CharField(blank=True, null=True, max_length=200)
     postal_code = models.CharField(blank=True, null=True, max_length=200)
+    coresignal_id = models.CharField(blank=True, null=True, max_length=60)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
@@ -266,9 +285,10 @@ class CompanyProfile(models.Model):
 
 class Job(models.Model):
     # post_title = models.CharField(max_length=300)
+    external_id = models.CharField(max_length=140, blank=True, null=True)
     job_title = models.CharField(max_length=140, blank=False, null=False)
     description = QuillField(blank=True, null=True)
-    external_description = models.CharField(max_length=3000, blank=True, null=True)
+    external_description = models.CharField(max_length=20000, blank=True, null=True)
     level = models.ForeignKey(JobLevel, on_delete=models.CASCADE, blank=True, null=True)
     url = models.CharField(max_length=300)
     interview_process = QuillField(blank=True, null=True)
@@ -318,6 +338,8 @@ class Job(models.Model):
     )
     department = models.ManyToManyField(Department, blank=True)
     skills = models.ManyToManyField(Skill, blank=True)
+    certs = models.ManyToManyField(Certs, blank=True)
+    nice_to_have_skills = models.ManyToManyField(Skill, blank=True, related_name="nice_to_have_skills")
 
     status = models.CharField(max_length=23, choices=STATUS_CHOICE, default=DRAFT)
 
@@ -387,8 +409,8 @@ class Job(models.Model):
     is_remote = models.BooleanField(default=False, null=False)
     location = models.CharField(max_length=100, null=True, blank=True)
 
-    created_by = models.ForeignKey(
-        CustomUser, on_delete=models.CASCADE, null=True, blank=True
+    created_by = models.ManyToManyField(
+        CustomUser, null=True, blank=True
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -397,6 +419,11 @@ class Job(models.Model):
     lever_id = models.CharField(max_length=200, null=True, blank=True)
     lever_api_key = models.CharField(max_length=200, null=True, blank=True)
     is_pull_remoteio = models.BooleanField(default=False, null=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['status']),
+        ]
 
     def __str__(self):
         return self.job_title + " at " + self.parent_company.company_name

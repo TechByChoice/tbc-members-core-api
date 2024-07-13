@@ -1,19 +1,78 @@
+import json
+import logging
+import operator
 import os
+from functools import reduce
 
+import requests
+from django.core.cache import cache
+from django.core.paginator import Paginator
 from django.db.models import Q, Count
-
 from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 
 from utils.emails import send_dynamic_email
-from utils.helper import paginate_items, CustomPagination
 from utils.slack import post_message
 from .models import CompanyProfile, Department, Skill, Job
 from .serializers import JobReferralSerializer, JobSerializer
-from rest_framework.decorators import action
-
+from ..core.serializers_member import FullTalentProfileSerializer
 from ..member.models import MemberProfile
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+
+class JobPagination(PageNumberPagination):
+    page_size = 15  # Set default page display
+    page_size_query_param = 'page_size'
+    max_page_size = 15
+
+
+def filter_and_paginate_jobs(user_profile, talent_profile, page=1, page_size=15):
+    """
+    Filter jobs based on user profile and paginate the results.
+    """
+    department = talent_profile.data["department"]
+    role = talent_profile.data["role"]
+    tech_journey = talent_profile.data["tech_journey"]
+    skills = talent_profile.data["skills"]
+
+    # Check if all profile data is empty or None
+    if not any([department, role, tech_journey, skills]):
+        logger.info("User profile is empty, cannot filter by jobs")
+        return None, None, "No profile data provided"
+
+    # Build the filter conditions
+    filter_conditions = []
+
+    if department:
+        filter_conditions.append(Q(department=department[0]))
+    if role:
+        filter_conditions.append(Q(role=role[0]))
+    if tech_journey:
+        filter_conditions.append(Q(level=tech_journey))
+    if skills:
+        filter_conditions.append(Q(skills__id__in=skills) |
+                                 Q(nice_to_have_skills__id__in=skills))
+
+    # Combine all conditions with OR
+    combined_filter = reduce(operator.or_, filter_conditions) if filter_conditions else Q()
+
+    # Apply the filter to the queryset
+    filtered_jobs = Job.objects.filter(status="active").filter(combined_filter).select_related(
+        'parent_company', 'role'
+    ).distinct().only(
+        "id", "parent_company", "role", "department", "min_compensation", "max_compensation", "location"
+    )
+
+    # Paginate the results
+    paginator = Paginator(filtered_jobs.order_by('id'), page_size)
+    current_page = paginator.page(page)
+
+    return current_page, paginator
 
 
 class JobViewSet(viewsets.ViewSet):
@@ -62,8 +121,6 @@ class JobViewSet(viewsets.ViewSet):
         data["parent_company"] = company_id
         data["status"] = "draft"
         data["is_referral_job"] = True
-        data["created_by_id"] = request.user.id
-        data["created_by"] = request.user.pk
 
         # Correct on_site_remote field
         if data["on_site_remote"] == "contract":
@@ -77,6 +134,8 @@ class JobViewSet(viewsets.ViewSet):
         serializer = JobReferralSerializer(data=data)
         if serializer.is_valid():
             job = serializer.save()
+            # adding in the user who created the job
+            job.created_by.add(request.user)
 
             # Set Many-to-Many relationships
             job.department.set(Department.objects.filter(id__in=department_ids))
@@ -263,24 +322,126 @@ class JobViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="all-jobs")
     def get_all_jobs(self, request):
         """
-        Retrieve all job postings.
+        Retrieve all job postings based on user profile
         """
-        # Initialize the paginator
-        paginator = CustomPagination()
+        logger.info("Starting get_all_jobs function")
 
-        # Get and paginate all active jobs
-        all_active_jobs = Job.objects.filter(status="active")
+        url = f"{os.getenv('IT_API_URL')}api/v1/matches/jobs/"
+        header_token = request.headers.get("Authorization", None)
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 15))
 
-        paginated_active_jobs = paginate_items(all_active_jobs, request, paginator, JobSerializer)
+        try:
+            user_profile = MemberProfile.objects.get(user=request.user.id)
+            logger.info(f"Retrieved user profile for user ID: {request.user.id}")
+        except MemberProfile.DoesNotExist:
+            logger.error(f"User profile not found for user ID: {request.user.id}")
+            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Get and paginate jobs posted by the user
+        print("Pulling jobs you created")
         user_posted_jobs = Job.objects.filter(created_by=request.user)
-        paginated_posted_jobs = paginate_items(user_posted_jobs, request, paginator, JobSerializer)
+        user_posted_jobs_serializer = JobSerializer(user_posted_jobs, many=True)
+        print("DONE: Pulling jobs you created")
 
-        # Combine data from both queries
+        print("Pulling talent profile")
+        serializer = FullTalentProfileSerializer(user_profile)
+        current_page, paginator = filter_and_paginate_jobs(user_profile, serializer, page, page_size)
+        if not current_page:
+            logger.error("No jobs returned")
+            return Response(data={"status": False, "error": True,
+                                  "message": "We can't do a job match. Please update your profile to view jobs for you."},
+                            status=status.HTTP_200_OK)
+        filtered_jobs_serializer = JobSerializer(current_page, many=True)
+
+        cache_key = f"job_matches_{request.user.id}"
+        cached_data = cache.get(cache_key)
+        print(f"cached data {cache_key}")
+
+        if cached_data:
+            logger.info(f"Cache hit for user {request.user.id}. Using cached job matches.")
+            filtered_jobs_list = cached_data
+        else:
+            data_dump = {
+                "user_profile": serializer.data,
+                "department": serializer.data["department"],
+                "user_role": serializer.data["role"],
+                "user_level": serializer.data["tech_journey"],
+                "user_skills": serializer.data["skills"],
+                "header_token": header_token,
+                "filtered_jobs": filtered_jobs_serializer.data,
+                "page": page,
+                "total_pages": paginator.num_pages,
+            }
+
+            try:
+                logger.info(f"Sending POST request to {url}")
+                response = requests.post(
+                    url,
+                    data=json.dumps(data_dump),
+                    headers={'Content-Type': 'application/json'},
+                )
+                response.raise_for_status()  # Raises an HTTPError for bad responses
+
+                response_json = response.json()
+                logger.info(f"Received response with {len(response_json)} jobs")
+
+                filtered_jobs_list = response_json
+                # Cache the result
+                cache.set(cache_key, filtered_jobs_list, timeout=3600)  # Cache for 1 hour
+            except requests.exceptions.RequestException as error:
+                logger.error(f"Error in API request: {error}")
+                return Response({"message": "API request error"}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(filtered_jobs_list) > 0:
+            data = {
+                "all_jobs": filtered_jobs_list,
+                "posted_jobs": user_posted_jobs_serializer.data,
+                "current_page": page,
+                "total_pages": paginator.num_pages,
+                "has_next": current_page.has_next(),
+                "has_previous": current_page.has_previous(),
+                "status": True
+            }
+            return Response(data)
+        else:
+            data = {
+                "all_jobs": filtered_jobs_list if filtered_jobs_list else False,
+                "message": "We currently don't have any jobs that match your profile at this time",
+                "posted_jobs": user_posted_jobs_serializer.data,
+                "current_page": page,
+                "total_pages": paginator.num_pages,
+                "has_next": current_page.has_next(),
+                "has_previous": current_page.has_previous(),
+                "status": False
+            }
+
+            if not filtered_jobs_list:
+                data["message"] = "We currently don't have any jobs that match your profile at this time"
+
+            return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=["get"], url_path="next-page")
+    def get_next_page(self, request):
+        """
+        Retrieve the next page of job postings
+        """
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 15))
+
+        try:
+            user_profile = MemberProfile.objects.get(user=request.user.id)
+        except MemberProfile.DoesNotExist:
+            return Response({"error": "User profile not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        current_page, paginator = filter_and_paginate_jobs(user_profile, page, page_size)
+        filtered_jobs_serializer = JobSerializer(current_page, many=True)
+
         data = {
-            "all_jobs": paginated_active_jobs,
-            "posted_jobs": paginated_posted_jobs
+            "jobs": filtered_jobs_serializer.data,
+            "current_page": page,
+            "total_pages": paginator.num_pages,
+            "has_next": current_page.has_next(),
+            "has_previous": current_page.has_previous(),
         }
 
         return Response(data)
@@ -288,48 +449,79 @@ class JobViewSet(viewsets.ViewSet):
     @action(detail=False, methods=["get"], url_path="job-match")
     def get_top_job_match(self, request):
         """
-        Retrieve top job postings.
+        Retrieve the top job posting match for the user.
+
+        This method finds the best matching job based on the user's skills, roles, and departments.
+        It uses caching to improve performance and implements logging for monitoring.
+
+        Returns:
+            Response: A JSON response containing the status and the best matching job.
         """
-        talent_profile = MemberProfile.objects.get(user=request.user.id)
+        try:
+            user_id = request.user.id
+            cache_key = f"job_match_{user_id}"
+            cached_result = cache.get(cache_key)
 
-        # Extract skills, roles, and departments
-        talent_skills = talent_profile.skills.all()
-        talent_roles = talent_profile.role.all()
-        talent_departments = talent_profile.department.all()
+            if cached_result:
+                logger.info(f"Cache hit for user {user_id}")
+                return Response(cached_result, status=status.HTTP_200_OK)
 
-        # Create separate Q objects for each criteria
-        skills_query = Q(skills__in=talent_skills)
-        roles_query = Q(role__in=talent_roles)
-        departments_query = Q(department__in=talent_departments)
+            talent_profile = MemberProfile.objects.select_related('user').prefetch_related(
+                'skills', 'role', 'department'
+            ).get(user_id=user_id)
 
-        # Combine queries using OR logic
-        combined_query = skills_query | roles_query | departments_query
+            matching_job = self._find_best_match(talent_profile)
 
-        # Filter Job instances based on the combined query
-        matching_jobs = Job.objects.filter(combined_query).distinct()
+            if matching_job:
+                result = {
+                    "status": True,
+                    "matching_job": JobSerializer(matching_job).data
+                }
+                cache.set(cache_key, result, timeout=3600)  # Cache for 1 hour
+                logger.info(f"Job match found for user {user_id}")
+                return Response(result, status=status.HTTP_200_OK)
+            else:
+                logger.warning(f"No job match found for user {user_id}")
+                return Response(
+                    {"status": False, "message": "No matching job found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
 
-        # Annotate each job with a score based on the number of matching criteria
-        matching_jobs = matching_jobs.annotate(
-            score=Count(
-                "skills",
-                filter=Q(skills__in=talent_skills.values_list("id", flat=True)),
+        except MemberProfile.DoesNotExist:
+            logger.error(f"MemberProfile not found for user {request.user.id}")
+            return Response(
+                {"status": False, "message": "User profile not found"},
+                status=status.HTTP_404_NOT_FOUND
             )
-                  + Count(
-                "role",
-                filter=Q(role__in=talent_profile.role.values_list("id", flat=True)),
+        except Exception as e:
+            logger.exception(f"Error in get_top_job_match: {str(e)}")
+            return Response(
+                {"status": False, "message": "An error occurred"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-                  + Count(
-                "department",
-                filter=Q(
-                    department__in=talent_departments.values_list("id", flat=True)
-                ),
+
+    def _find_best_match(self, talent_profile):
+        """
+        Find the best matching job for the given talent profile.
+
+        Args:
+            talent_profile (MemberProfile): The user's talent profile.
+
+        Returns:
+            Job: The best matching job or None if no match is found.
+        """
+        talent_skills = talent_profile.skills.values_list('id', flat=True)
+        talent_roles = talent_profile.role.values_list('id', flat=True)
+        talent_departments = talent_profile.department.values_list('id', flat=True)
+
+        return Job.objects.filter(status='active').annotate(
+            score=(
+                    Count('skills', filter=Q(skills__in=talent_skills)) +
+                    Count('role', filter=Q(role__in=talent_roles)) +
+                    Count('department', filter=Q(department__in=talent_departments))
             )
-        ).order_by("-score")
-
-        matching_jobs_serialized = JobSerializer(matching_jobs, many=True).data
-
-        # Render the results in a template
-        return Response(
-            {"status": True, "matching_jobs": matching_jobs_serialized},
-            status=status.HTTP_200_OK,
-        )
+        ).filter(
+            Q(skills__in=talent_skills) |
+            Q(role__in=talent_roles) |
+            Q(department__in=talent_departments)
+        ).order_by('-score').first()

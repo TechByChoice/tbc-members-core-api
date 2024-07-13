@@ -6,7 +6,7 @@ from rest_framework.authtoken.serializers import AuthTokenSerializer
 
 from apps.company.models import CompanyProfile, Roles, Department
 from apps.company.serializers import RoleSerializer, SkillSerializer
-from apps.core.models import UserProfile, CustomUser
+from apps.core.models import UserProfile, CustomUser, CommunityNeeds
 from apps.member.models import MemberProfile
 
 
@@ -92,7 +92,15 @@ class UpdateCustomUserSerializer(serializers.ModelSerializer):
         )
 
 
+class CommunityNeedsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CommunityNeeds
+        fields = '__all__'
+
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    tbc_program_interest = CommunityNeedsSerializer(many=True, read_only=True)
+
     class Meta:
         model = UserProfile
         fields = "__all__"
@@ -103,21 +111,31 @@ class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source="user.last_name")
     email = serializers.EmailField(source="user.email")
     postal_code = serializers.CharField()
+    location = serializers.CharField()
+    state = serializers.CharField()
+    city = serializers.CharField()
 
     class Meta:
         model = MemberProfile
-        fields = ["first_name", "last_name", "email", "postal_code"]
+        fields = ["first_name", "last_name", "email", "postal_code", "location", "state", "city"]
 
     def update(self, instance, validated_data):
         # Extracting user related data
         user_data = validated_data.pop("user", {})
         instance.postal_code = validated_data.get("postal_code", instance.postal_code)
-
+        instance.location = validated_data.get("location", instance.location)
+        instance.state = validated_data.get("state", instance.state)
+        instance.city = validated_data.get("city", instance.city)
+        instance.save()
         # Updating user instance related fields
         user_instance = instance.user
+        member_profile = user_instance.userprofile
         user_instance.first_name = user_data.get("first_name", user_instance.first_name)
         user_instance.last_name = user_data.get("last_name", user_instance.last_name)
         user_instance.email = user_data.get("email", user_instance.email)
+        member_profile.location = validated_data.get("location", instance.location)
+        member_profile.state = validated_data.get("state", instance.state)
+        member_profile.city = validated_data.get("city", instance.city)
 
         user_instance.save()
         instance.save()
