@@ -1,12 +1,13 @@
 linkedin
-celery==5.3.4
+celery~=5.4.0
 tweepy==4.14.0
 django-storages==1.14
 django-cors-headers==4.2.0
+eventbrite==3.3.5
 stripe==6.4.0
 asgiref==3.7.2
 attrs==23.1.0
-boto3==1.28.45
+boto3~=1.34.75
 certifi==2023.7.22
 cffi==1.15.1
 cryptography==42.0.4
@@ -29,7 +30,7 @@ pipenv==2023.9.8
 pippip==0.0.10
 platformdirs==3.10.0
 pluggy==1.0.0
-psycopg2==2.9.7
+psycopg2~=2.9.9
 py==1.11.0
 pycparser==2.21
 pyparsing==3.1.1
@@ -40,6 +41,7 @@ pytz~=2024.1
 pyjwt
 sendgrid==6.9.7
 sqlparse==0.5.0
+slack_sdk==3.26.1
 tomli==2.0.1
 typing_extensions==4.7.1
 virtualenv==20.24.5
@@ -50,3 +52,10 @@ slack_sdk==3.26.1
 eventbrite==3.3.5
 requests~=2.31.0
 django-filter~=24.2
+django-redis==5.4.0
+redis==5.0.4
+fuzzywuzzy~=0.18.0
+
+APScheduler~=3.10.4
+botocore~=1.34.140
+geopy~=2.4.1

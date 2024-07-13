@@ -7,6 +7,7 @@ from django.contrib.auth import user_logged_out
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.shortcuts import get_current_site
+from django.core.cache import cache
 from django.core.mail import EmailMessage
 from django.db import transaction
 from django.http import JsonResponse
@@ -29,6 +30,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from api import settings
 from apps.company.models import Roles, CompanyProfile, Skill, Department
 from apps.core.models import (
     UserProfile,
@@ -54,16 +56,22 @@ from apps.core.util import (
     update_user_profile,
     create_or_update_company_connection,
 )
-from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile
+from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile, MentorProfile
 from apps.mentorship.serializer import (
     MentorRosterSerializer,
     MentorshipProgramProfileSerializer,
 )
 from apps.member.models import MemberProfile
+from utils.data_utils import get_or_create_normalized
 from utils.emails import send_dynamic_email
+from utils.helper import prepend_https_if_not_empty
+from utils.logging_helper import get_logger
+from utils.profile_utils import update_user_company_association
 from utils.slack import fetch_new_posts, send_invite
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
+
+CACHE_TIMEOUT = getattr(settings, 'ANNOUNCEMENT_CACHE_TIMEOUT', 300)
 
 
 class LoginThrottle(UserRateThrottle):
@@ -121,7 +129,7 @@ def login_api(request):
 
     # Set secure cookie
     response.set_cookie(
-        "auth_token", token, secure=False, httponly=True, domain="localhost"
+        "auth_token", token, secure=False, httponly=True, domain=os.environ["FRONTEND_URL"]
     )  # httponly=True to prevent access by JavaScript
 
     return response
@@ -145,7 +153,6 @@ def get_user_data(request):
             "last_name": user.last_name,
             "email": user.email,
             "userprofile": userprofile_json_data,
-            # "talentprofile" and "current_company" will be conditionally added
         },
         "account_info": {field: getattr(user, field) for field in [
             "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
@@ -165,15 +172,15 @@ def get_user_data(request):
 
     # Conditional data based on user's roles
     if user.is_mentor_application_submitted:
-        mentor_application = get_object_or_404(MentorshipProgramProfile, user=user)
-        mentor_data = MentorshipProgramProfileSerializer(mentor_application).data
+        mentor_application = MentorshipProgramProfile.objects.get(user=user)
+        response_data["mentor_data"] = MentorshipProgramProfileSerializer(mentor_application).data
 
     if user.is_mentee:
         mentee_profile = get_object_or_404(MenteeProfile, user=user)
         mentee_data = {"id": mentee_profile.id}
         mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profile)
         if mentorship_roster.exists():
-            mentor_roster_data = MentorRosterSerializer(mentorship_roster, many=True).data
+            response_data["mentor_roster_data"] = MentorRosterSerializer(mentorship_roster, many=True).data
 
     talent_profile = MemberProfile.objects.filter(user=user).first()
     if talent_profile:
@@ -197,7 +204,12 @@ def get_user_data(request):
             company_account_data = {"error": "Could not fetch company details"}
 
         response_data["company_account_data"] = company_account_data
-
+    current_company = CompanyProfile.objects.filter(current_employees=user).first()
+    if current_company:
+        response_data["user_info"]["current_company"] = {"id": current_company.id,
+                                                         "logo_url": current_company.logo_url,
+                                                         "company_name": current_company.company_name,
+                                                         "company_url": current_company.company_url}
     return Response(response_data)
 
 
@@ -208,18 +220,40 @@ def get_company_data(user_details):
 
 @api_view(["GET"])
 def get_announcement(request):
+    """
+    Retrieve the latest announcement from Slack.
+
+    This endpoint fetches the most recent post from a specified Slack channel,
+    caches it for improved performance, and returns it as an announcement.
+
+    Returns:
+        Response: A JSON response containing the announcement or an error message.
+    """
     try:
+        # Try to get the cached announcement
+        cached_announcement = cache.get('latest_announcement')
+        if cached_announcement:
+            logger.info("Serving cached announcement")
+            return Response({"announcement": cached_announcement}, status=status.HTTP_200_OK)
+
+        # If not in cache, fetch new posts
         slack_msg = fetch_new_posts("CELK4L5FW", 1)
         if slack_msg:
+            # Cache the new announcement
+            cache.set('latest_announcement', slack_msg, CACHE_TIMEOUT)
+            logger.info("New announcement fetched and cached")
             return Response({"announcement": slack_msg}, status=status.HTTP_200_OK)
         else:
-            print(f"Did not get a new slack message")
+            logger.warning("No new Slack messages found")
             return Response(
                 {"message": "No new messages."}, status=status.HTTP_404_NOT_FOUND
             )
     except Exception as e:
-        print(f"Error pulling slack message: {str(e)}")
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error pulling Slack message: {str(e)}", exc_info=True)
+        return Response(
+            {"error": "An unexpected error occurred."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 # @login_required
@@ -250,17 +284,35 @@ def create_new_member(request):
             )
 
             if user_data["is_mentee"] or user_data["is_mentor"]:
-                MentorshipProgramProfile.objects.create(user=user)
+                mentorship_program = MentorshipProgramProfile.objects.create(user=user)
+                request.user.is_mentee = user_data["is_mentee"]
+                request.user.is_mentor = user_data["is_mentor"]
+                if user_data["is_mentor"]:
+                    mentor_profile = MentorProfile.objects.create(user=request.user)
+                    mentorship_program.mentor_profile = mentor_profile
+                    mentorship_program.save()
+
+                template_id = "d-96a6752bd6b74888aa1450ea30f33a06"
+                dynamic_template_data = {"first_name": request.user.first_name}
+
+                email_data = {
+                    "subject": "Welcome to Our Platform",
+                    "recipient_emails": [request.user.email],
+                    "template_id": template_id,
+                    "dynamic_template_data": dynamic_template_data,
+                }
+                send_dynamic_email(email_data)
+            request.user.is_member_onboarding_complete = True
+            request.user.is_company_review_access_active = True
+            request.user.save()
             # send slack invite
             try:
                 send_invite(user.email)
                 request.user.is_slack_invite_sent = True
+                request.user.save()
             except Exception as e:
                 request.user.is_slack_invite_sent = False
                 print(e)
-
-        request.user.is_member_onboarding_complete = True
-        request.user.save()
 
         return Response(
             {
@@ -402,7 +454,9 @@ def update_profile_account_details(request):
 
 @api_view(["POST"])
 def update_profile_work_place(request):
-    # Handling existing company.
+    user = request.user
+
+    # Handling existing or new company
     company_details = request.data.get("select_company", None)
 
     if company_details:
@@ -425,13 +479,17 @@ def update_profile_work_place(request):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-    # Updating the current employee for the company.
-    user = request.user
-    company.current_employees.add(user)
-    company.save()
+    # Update user's company association
+    try:
+        old_company, updated_company = update_user_company_association(user, company)
+    except Exception as e:
+        return Response(
+            {"status": False, "detail": f"Error updating company association: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-    # Updating talent profile.
-    talent_profile = get_object_or_404(MemberProfile, user=request.user)
+    # Updating talent profile
+    talent_profile = get_object_or_404(MemberProfile, user=user)
     role_names = request.data.get("job_roles")
 
     roles_to_set = (
@@ -440,20 +498,28 @@ def update_profile_work_place(request):
     for role_name in role_names:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role, created = Roles.objects.get_or_create(name=role_name["name"])
+            # Try to get the role by name, and if it doesn't exist, create it.
+            if "name" in role_name and role_name["name"]:
+                _role_name = role_name["name"]
+            else:
+                _role_name = role_name
+            # role, created = Roles.objects.get_or_create(name=_role_name)
+
+            role, created = get_or_create_normalized(Roles, _role_name)
             roles_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
             return Response(
-                {"detail": f"Invalid role: {role_name}"},
+                {"detail": f"Invalid role: {_role_name}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
     talent_profile.role.set(roles_to_set)
     talent_profile.save()
 
-    return Response({"detail": "Account Details Updated."}, status=status.HTTP_200_OK)
+    return Response({"status": True, "detail": "Account Details Updated."}, status=status.HTTP_200_OK)
 
 
 @api_view(["POST"])
@@ -468,9 +534,19 @@ def update_profile_skills_roles(request):
     for role_name in roles:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = Department.objects.get(name=role_name["name"])
+
+            # Get the name of the role based on the different datatypes
+            # we can get in the codebase
+            if "name" in role_name and role_name["name"]:
+                dep_name = role_name["name"]
+            else:
+                dep_name = role_name
+
+            # role = Department.objects.get_or_create(name=dep_name)
+            role, create = get_or_create_normalized(Department, dep_name)
             roles_to_set.append(role)
-        except (Department.MultipleObjectsReturned, ValueError):
+        except (Department.MultipleObjectsReturned, ValueError) as e:
+            print(e)
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
@@ -485,8 +561,13 @@ def update_profile_skills_roles(request):
     for skill in skills:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            name = Skill.objects.get(name=skill["name"])
-            skills_to_set.append(name.pk)
+            if isinstance(skill, str):
+                name = skill
+            else:
+                name = skill["name"]
+
+            skill, create = get_or_create_normalized(Skill, name)
+            skills_to_set.append(skill.id)
         except (Skill.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
@@ -511,12 +592,12 @@ def update_profile_skills_roles(request):
 @api_view(["POST"])
 def update_profile_social_accounts(request):
     userprofile = request.user.userprofile
-    userprofile.linkedin = "https://" + request.data.get("linkedin")
-    userprofile.instagram = request.data.get("instagram")
-    userprofile.github = "https://" + request.data.get("github")
-    userprofile.twitter = request.data.get("twitter")
-    userprofile.youtube = "https://" + request.data.get("youtube")
-    userprofile.personal = "https://" + request.data.get("personal")
+    userprofile.linkedin = prepend_https_if_not_empty(request.data.get("linkedin"))
+    userprofile.instagram = request.data.get("instagram", None)
+    userprofile.github = prepend_https_if_not_empty(request.data.get("github"))
+    userprofile.twitter = request.data.get("twitter", None)
+    userprofile.youtube = prepend_https_if_not_empty(request.data.get("youtube"))
+    userprofile.personal = prepend_https_if_not_empty(request.data.get("personal"))
     userprofile.save()
 
     return Response(
@@ -543,8 +624,12 @@ def update_profile_identity(request):
     for role_name in identity_sexuality:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = SexualIdentities.objects.get(name=role_name)
-            sexuality_to_set.append(role)
+            if "name" in role_name and role_name["name"]:
+                id_name = role_name["name"]
+            else:
+                id_name = role_name
+            name, create = get_or_create_normalized(SexualIdentities, id_name)
+            sexuality_to_set.append(name)
         except (SexualIdentities.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
@@ -560,9 +645,15 @@ def update_profile_identity(request):
     for role_name in gender_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = GenderIdentities.objects.get(name=role_name)
-            gender_to_set.append(role)
+            if "name" in role_name and role_name["name"]:
+                id_name = role_name["name"]
+            else:
+                id_name = role_name
+            name, created = get_or_create_normalized(GenderIdentities, id_name)
+            # name, created = GenderIdentities.objects.get(name=id_name)
+            gender_to_set.append(name)
         except (Roles.MultipleObjectsReturned, ValueError):
+            logger.error(ValueError)
             # Handle the case where multiple roles are found with the same name or
             # where the name is invalid (for instance, if name is a required field
             # and it's None or an empty string).
@@ -577,7 +668,11 @@ def update_profile_identity(request):
     for role_name in ethic_identities:
         try:
             # Try to get the role by name, and if it doesn't exist, create it.
-            role = EthicIdentities.objects.get(name=role_name)
+            if "name" in role_name and role_name["name"]:
+                id_name = role_name["name"]
+            else:
+                id_name = role_name
+            role, create = get_or_create_normalized(EthicIdentities, id_name)
             ethic_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
             # Handle the case where multiple roles are found with the same name or
@@ -693,10 +788,10 @@ def create_new_user(request):
             return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
         except Exception as e:
             print("Error while saving user: ", str(e))
-            return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+            return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
     except Exception as e:
         print("Error while saving user: ", str(e))
-        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+        return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 
 @csrf_exempt
@@ -710,7 +805,12 @@ def create_new_company(request):
             {"status": False, "error": "Invalid request method"}, status=405
         )
 
-    data = json.loads(request.body)
+    try:
+        data = json.loads(request.body)
+    except json.JSONDecodeError as e:
+        logger.error("Error decoding JSON data: %s", str(e))
+        return JsonResponse({"status": False, "error": "Invalid JSON data"}, status=400)
+
     first_name, last_name, email, password, company_name = (
         data.get("first_name"),
         data.get("last_name"),
@@ -730,38 +830,46 @@ def create_new_company(request):
         )
 
     try:
-        user, token = create_user_account(first_name, last_name, email, password, is_company=True)
-        # Create company profile logic here
-        company_profile = CompanyProfile(
-            account_creator=user,
-            company_name=company_name
-        )
-        company_profile.save()
-        company_profile.account_owner.add(user)
-        company_profile.hiring_team.add(user)
-        company_profile.save()
-        current_site = get_current_site(request)
-
-        # create account_details_profile
-        try:
-            response = requests.post(
-                f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
-                data=json.dumps({"companyId": company_profile.id}),
-                headers={'Content-Type': 'application/json'},
-                verify=False)
-            response.raise_for_status()
-            talent_choice_jobs = response.json()
-        except requests.exceptions.HTTPError as http_err:
-            return Response(
-                {"status": False, "error": f"HTTP error occurred: {http_err}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        with transaction.atomic():
+            user, token = create_user_account(first_name, last_name, email, password, is_company=True)
+            company_profile = CompanyProfile(
+                account_creator=user,
+                company_name=company_name
             )
-        send_welcome_email(user.email, user.first_name, company_name, user, current_site, request)
+            company_profile.save()
+            company_profile.account_owner.add(user)
+            company_profile.hiring_team.add(user)
+            header_token = request.headers.get("Authorization", None)
 
-        return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+            try:
+                response = requests.post(
+                    f'{os.environ["TC_API_URL"]}company/new/onboarding/create-accounts/',
+                    data=json.dumps({"companyId": company_profile.id}),
+                    headers={'Content-Type': 'application/json'}, verify=True)
+                response.raise_for_status()
+            except requests.RequestException as e:
+                logger.error("Failed to create external accounts: %s", str(e))
+                transaction.set_rollback(True)
+                return JsonResponse(
+                    {"status": False, "error": "Failed to communicate with external service"},
+                    status=502  # Bad Gateway indicates issues with external service
+                )
+
+            try:
+                send_welcome_email(user.email, user.first_name, company_name, user, get_current_site(request), request)
+            except Exception as e:
+                logger.error("Failed to send welcome email: %s", str(e))
+                transaction.set_rollback(True)
+                return JsonResponse(
+                    {"status": False, "error": "Failed to send welcome email"},
+                    status=500
+                )
+
+            return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+
     except Exception as e:
-        print("Error while saving user: ", str(e))
-        return JsonResponse({"status": False, "error": "Unable to create user"}, status=500)
+        logger.error("Error while creating user: %s", str(e))
+        return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 
 class LogoutView(APIView):
@@ -811,7 +919,6 @@ def send_welcome_email(email, first_name, company_name=None, user=None, current_
             'username': first_name,
             'activation_link': activation_link,
         }
-        print(context)
 
         message = render_to_string('emails/acc_active_email.txt', context=context)
         email_msg = EmailMessage(mail_subject, message, 'notifications@app.techbychocie.org', [user.email])

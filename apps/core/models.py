@@ -66,6 +66,7 @@ class CustomUser(AbstractBaseUser):
     is_talent_choice = models.BooleanField(default=False)
     is_member_onboarding_complete = models.BooleanField(default=False)
     is_slack_invite_sent = models.BooleanField(default=False)
+    is_migrated_account = models.BooleanField(default=False)
     # Open Doors
     is_open_doors = models.BooleanField(default=False)
     is_open_doors_onboarding_complete = models.BooleanField(default=False)
@@ -140,6 +141,7 @@ class UserVerificationToken(models.Model):
 
 class SexualIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -149,6 +151,7 @@ class SexualIdentities(models.Model):
 
 class GenderIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -158,6 +161,7 @@ class GenderIdentities(models.Model):
 
 class EthicIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -167,6 +171,7 @@ class EthicIdentities(models.Model):
 
 class PronounsIdentities(models.Model):
     name = models.CharField(max_length=30, null=False, unique=True)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
 
@@ -176,6 +181,7 @@ class PronounsIdentities(models.Model):
 
 class CommunityNeeds(models.Model):
     name = models.CharField(null=False, blank=False, max_length=300)
+    normalized_name = models.CharField(null=True, blank=True, max_length=300)
     created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
 
@@ -204,7 +210,7 @@ class MembersSpotlight(models.Model):
 
 class UserProfile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    photo = models.FileField(null=True, blank=True, upload_to="users")
+    photo = models.FileField(null=True, blank=True, upload_to="users", max_length=400)
     # timezone = models.CharField(max_length=50, choices=[(tz, tz) for tz in pytz.all_timezones])
     access_token = models.CharField(max_length=255, null=True)
     # Marketing
@@ -282,8 +288,11 @@ class UserProfile(models.Model):
         ("Our Paid Open Source Program", "Our Paid Open Source Program"),
         ("Not Sure at the Moment", "Not Sure at the Moment"),
     )
-    tbc_program_interest = models.TextField(max_length=37, blank=True, null=True)
+    tbc_program_interest = models.ManyToManyField(CommunityNeeds)
     # location based info
+    location = models.CharField(blank=True, null=True, max_length=200)
+    state = models.CharField(blank=True, null=True, max_length=200)
+    city = models.CharField(blank=True, null=True, max_length=200)
     postal_code = models.CharField(max_length=10, null=True, blank=True)
     is_current_member_spotlight = models.BooleanField(default=False)
     member_spotlight = models.ManyToManyField(MembersSpotlight, blank=True)
@@ -299,7 +308,8 @@ class UserProfile(models.Model):
 
     def set_tbc_program_interest(self, interests):
         """Saves the list of interests as a JSON string."""
+        interest_obj = CommunityNeeds.objects.get(name=interests)
         if interests:
-            self.tbc_program_interest = json.dumps(interests)
+            self.tbc_program_interest.add(interest_obj)
         else:
             self.tbc_program_interest = None

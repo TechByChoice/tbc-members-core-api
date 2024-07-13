@@ -1,12 +1,16 @@
+import logging
 from datetime import datetime
 
 from django.db.models import Q, Count
+from django.core.cache import cache
+from django.utils import timezone
 from rest_framework import generics, viewsets, status, mixins
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.core.models import CustomUser
 from apps.mentorship.models import (
     ApplicationQuestion,
     ApplicationAnswers,
@@ -25,6 +29,8 @@ from apps.member.models import MemberProfile
 from utils.emails import send_dynamic_email
 from utils.google_admin import create_user
 from utils.helper import generate_random_password
+
+logger = logging.getLogger(__name__)
 
 
 class MentorListView(APIView):
@@ -158,7 +164,7 @@ def create_or_update_mentorship_profile(request):
     data = request.data
 
     # Update or create MentorshipProgramProfile
-    program_profile, created = MentorshipProgramProfile.objects.update_or_create(
+    program_profile, created = MentorshipProgramProfile.objects.update(
         user=user,
         defaults={
             "biggest_strengths": data.get("biggest_strengths"),
@@ -166,16 +172,14 @@ def create_or_update_mentorship_profile(request):
             "career_milestones": data.get("career_milestones"),
             "career_goals": data.get("career_goals"),
             "work_motivation": data.get("work_motivation"),
-            # Include other fields as necessary
         },
     )
 
     # Update or create MentorProfile
-    mentor_profile, created = MentorProfile.objects.update_or_create(
+    mentor_profile = MentorProfile.objects.update(
         user=user,
         defaults={
             "commitment_level": data.get("commitment_level"),
-            # Include other fields as necessary
         },
     )
     if created:
@@ -187,7 +191,7 @@ def create_or_update_mentorship_profile(request):
         try:
             email_data = {
                 "recipient_emails": user.email,
-                "template_id": "d-4e2837ac2bbe4127b889938e47d54f47",
+                "template_id": "d-839665b4ea6840bb93d52df85d22ecc7",
             }
             send_dynamic_email(email_data)
         except Exception as e:
@@ -195,11 +199,10 @@ def create_or_update_mentorship_profile(request):
             print(f"Did not send mentor application submitted for user id: {user.id}")
 
     # Update or create MenteeProfile
-    mentee_profile, created = MenteeProfile.objects.update_or_create(
+    mentee_profile, created = MenteeProfile.objects.update(
         user=user,
         defaults={
             "mentee_support_areas": data.get("mentee_support_areas"),
-            # Include other fields as necessary
         },
     )
 
@@ -221,11 +224,7 @@ def update_support_type(request):
     data = request.data
 
     # Retrieve or create MentorshipProgramProfile instance
-    program_profile, create = MentorshipProgramProfile.objects.get_or_create(user=user)
-    if program_profile:
-        user.is_mentor_application_submitted = True
-        user.is_mentor = True
-        user.save()
+    program_profile = MentorshipProgramProfile.objects.get(user=user)
 
     # Update CommitmentLevel - ManyToManyField
     commitment_data = data.get("commitment_level_id")
@@ -236,7 +235,7 @@ def update_support_type(request):
         program_profile.save()
 
     if user.is_mentor:
-        mentor_profile, _ = MentorProfile.objects.get_or_create(user=user)
+        mentor_profile = MentorProfile.objects.get(user=user)
         support_area_ids = data.get("mentor_support_areas_id", [])
 
         if commitment_data is not None:
@@ -248,7 +247,7 @@ def update_support_type(request):
         mentor_profile.save()
 
     if user.is_mentee:
-        mentee_profile, _ = MenteeProfile.objects.get_or_create(user=user)
+        mentee_profile = MenteeProfile.objects.get(user=user)
         if mentee_profile:
             mentee_support_area_ids = data.get("mentee_support_areas_id", [])
             if mentee_support_area_ids is not None:
@@ -274,10 +273,9 @@ def update_career_questions(request):
     user = request.user
     data = request.data
 
-    # Retrieve or create MentorshipProgramProfile instance
-    program_profile, created = MentorshipProgramProfile.objects.get_or_create(
-        user=user,
-        defaults={},  # You can set default values for other fields if required
+    # Retrieve MentorshipProgramProfile instance
+    program_profile = MentorshipProgramProfile.objects.get(
+        user=user
     )
 
     # Update fields with data from request
@@ -314,9 +312,8 @@ def update_profile_questions(request):
     data = request.data
 
     # Retrieve or create MentorshipProgramProfile instance
-    program_profile, created = MentorProfile.objects.get_or_create(
-        user=user,
-        defaults={},  # You can set default values for other fields if required
+    program_profile = MentorProfile.objects.get(
+        user=user
     )
 
     # Update fields with data from request
@@ -328,6 +325,8 @@ def update_profile_questions(request):
     )
 
     # Save the updated profile
+    user.is_mentor_application_submitted = True
+    user.save()
     program_profile.save()
 
     return Response(
@@ -355,16 +354,16 @@ def update_values_questions(request):
         )
 
     # Update the values
-    program_profile.value_power = data.get("power")
-    program_profile.value_achievement = data.get("achievement")
-    program_profile.value_hedonism = data.get("hedonism")
-    program_profile.value_stimulation = data.get("stimulation")
-    program_profile.value_self_direction = data.get("self_direction")
-    program_profile.value_universalism = data.get("universalism")
-    program_profile.value_benevolence = data.get("benevolence")
-    program_profile.value_tradition = data.get("tradition")
-    program_profile.value_conformity = data.get("conformity")
-    program_profile.value_security = data.get("security")
+    program_profile.value_power = data.get("power", 0)
+    program_profile.value_achievement = data.get("achievement", 0)
+    program_profile.value_hedonism = data.get("hedonism", 0)
+    program_profile.value_stimulation = data.get("stimulation", 0)
+    program_profile.value_self_direction = data.get("self_direction", 0)
+    program_profile.value_universalism = data.get("universalism", 0)
+    program_profile.value_benevolence = data.get("benevolence", 0)
+    program_profile.value_tradition = data.get("tradition", 0)
+    program_profile.value_conformity = data.get("conformity", 0)
+    program_profile.value_security = data.get("security", 0)
 
     # Save the updates
     program_profile.save()
@@ -422,6 +421,7 @@ def update_mentor_application_status(request, mentor_id):
     try:
         program_profile = MentorshipProgramProfile.objects.get(user=mentor_id)
         mentor_profile = MentorProfile.objects.get(user=mentor_id)
+        mentor_user_profile = CustomUser.objects.get(id=mentor_id)
     except MentorshipProgramProfile.DoesNotExist:
         return Response(
             {"status": "error", "message": "Mentorship program profile not found."},
@@ -442,37 +442,60 @@ def update_mentor_application_status(request, mentor_id):
 
     # Need to create an email for rejected mentor
     if data.get("mentor-rejection-reason"):
-        program_profile.user.is_mentor_profile_active = False
-        program_profile.user.is_mentor_profile_removed = False
+        mentor_user_profile.is_mentor_profile_active = False
+        mentor_user_profile.is_mentor_profile_removed = True
+        mentor_user_profile.is_mentor = False
         mentor_profile.removed_date = datetime.utcnow()
         mentor_profile.mentor_status = request.data.get("mentor-rejection-reason")
         try:
             mentor_profile.save()
             program_profile.save()
-            mentor_profile.user.save()
-            return Response(
-                {"status": True, "message": "Status updated successfully."},
-                status=status.HTTP_200_OK,
-            )
+            program_profile.mentor_profile.user.save()
+            mentor_profile.save()
+            mentor_user_profile.save()
+            try:
+                # # Prepare email data
+                email_data = {
+                    "recipient_emails": program_profile.user.email,
+                    "template_id": "d-8f3b5a1f0f5947cc900121832040e943",
+                    "dynamic_template_data": {
+                        "first_name": program_profile.user.first_name
+                    },
+                }
+                send_dynamic_email(email_data)
+                return Response(
+                    {"status": True, "message": "Status updated successfully."},
+                    status=status.HTTP_200_OK,
+                )
+            except Exception as e:
+                print(e)
+                print(f"did not send mentor rejetion email: {mentor_profile.id}")
+                return Response(
+                    {
+                        "status": False,
+                        "message": "We ran into sending rejection email.",
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         except Exception as e:
             print(e)
             return Response(
                 {
                     "status": False,
-                    "message": "We ran into trouble updating your account. Please contact us at "
-                    "support@techbychoice.org if the issue continues.",
+                    "message": "We ran into trouble rejecting this mentor profile"
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
     if data.get("mentor-update-status") == "paused":
-        program_profile.user.is_mentor_active = False
+        mentor_user_profile.is_mentor_active = False
         mentor_profile.mentor_status = "paused"
         mentor_profile.paused_date = datetime.utcnow()
 
         mentor_profile.save()
         program_profile.user.save()
         program_profile.save()
+        mentor_user_profile.save()
 
         try:
             email_data = {
@@ -493,7 +516,7 @@ def update_mentor_application_status(request, mentor_id):
                 {
                     "status": False,
                     "message": "We ran into trouble updating your account. Please contact us at "
-                    "support@techbychoice.org if the issue continues.",
+                               "support@techbychoice.org if the issue continues.",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -525,21 +548,22 @@ def update_mentor_application_status(request, mentor_id):
     if data.get("mentor-update-status") == "approve-mentor":
         program_profile.user.is_mentor_interviewing = False
         # approved is before the cal link is live
-        program_profile.user.is_mentor_profile_approved = True
+        mentor_user_profile.is_mentor_profile_approved = True
         mentor_profile.mentor_status = "need_cal_info"
 
         random_pas = generate_random_password()
         tbc_email = (
-            program_profile.user.first_name
-            + "."
-            + program_profile.user.last_name[0]
-            + "@techbychoice.org"
+                program_profile.user.first_name
+                + "."
+                + program_profile.user.last_name[0]
+                + "@techbychoice.org"
         )
         program_profile.tbc_email = tbc_email
 
         mentor_profile.save()
         program_profile.save()
         program_profile.user.save()
+        mentor_user_profile.save()
 
         new_user_info = {
             "name": {
@@ -585,9 +609,14 @@ def update_mentor_application_status(request, mentor_id):
             )
 
     if data.get("mentor-update-status") == "active":
-        program_profile.user.is_mentor_profile_active = True
+        mentor_user_profile.is_mentor_profile_active = True
+        mentor_user_profile.is_mentor_profile_paused = False
+        mentor_user_profile.is_mentor_profile_removed = False
+
+        mentor_profile.activated_at_date = datetime.utcnow()
         mentor_profile.mentor_status = "active"
 
+        mentor_user_profile.save()
         mentor_profile.save()
         program_profile.save()
         program_profile.user.save()
@@ -617,60 +646,110 @@ def update_mentor_application_status(request, mentor_id):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+    if data.get("mentor-update-status") == "send-invite":
+        mentor_profile.mentor_status = "interviewing"
+        mentor_user_profile.is_mentor_interviewing = True
+        mentor_user_profile.is_mentor_interviewing = True
+        mentor_profile.interview_requested_at_date = datetime.utcnow()
+
+        mentor_profile.save()
+        mentor_user_profile.save()
+        program_profile.save()
+        program_profile.user.save()
+        program_profile.mentor_profile.user.save()
+
+        try:
+            # # Prepare email data
+            email_data = {
+                "recipient_emails": program_profile.user.email,
+                "template_id": "d-97697a1cd7564f9ea58f388c573e40c4",
+                "dynamic_template_data": {
+                    "first_name": program_profile.user.first_name
+                },
+            }
+            send_dynamic_email(email_data)
+            return Response(
+                {"status": True, "message": "Values updated successfully."},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:
+            print(e)
+            print(f"did not send mentor approval email: {mentor_profile.id}")
+            return Response(
+                {
+                    "status": False,
+                    "message": "We ran into issues creating the gmail account.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def get_top_mentor_match(request):
     """
-    Retrieve top mentor profile.
+    Retrieve the top matching mentor profile for the authenticated user.
+
+    This function filters mentor profiles based on shared skills, roles, and departments
+    with the authenticated user's profile. It then scores and ranks the mentors based on
+    the number of matches in these categories.
+
+    Returns:
+        Response: A dictionary containing the status and the top matching mentor's serialized data.
     """
-    talent_profile = MemberProfile.objects.get(user=request.user.id)
+    try:
+        # Use caching to store user profile for 15 minutes
+        cache_key = f'user_profile_{request.user.id}'
+        talent_profile = cache.get(cache_key)
+        if not talent_profile:
+            talent_profile = MemberProfile.objects.select_related('user').prefetch_related(
+                'skills', 'role', 'department'
+            ).get(user=request.user.id)
+            cache.set(cache_key, talent_profile, 60 * 15)
 
-    # Extract skills, roles, and departments
-    talent_skills = talent_profile.skills.all()
-    talent_roles = talent_profile.role.all()
-    talent_departments = talent_profile.department.all()
+        # Extract skills, roles, and departments IDs
+        talent_skills_ids = list(talent_profile.skills.values_list('id', flat=True))
+        talent_roles_ids = list(talent_profile.role.values_list('id', flat=True))
+        talent_departments_ids = list(talent_profile.department.values_list('id', flat=True))
 
-    # Filter only mentor profiles (adjust this according to your model)
-    mentor_profiles = MemberProfile.objects.filter(user__is_mentor=True)
+        # Create a combined query for filtering
+        combined_query = Q(skills__id__in=talent_skills_ids) | \
+                         Q(role__id__in=talent_roles_ids) | \
+                         Q(department__id__in=talent_departments_ids)
 
-    # Create separate Q objects for each criteria
-    skills_query = Q(skills__in=talent_skills)
-    roles_query = Q(role__in=talent_roles)
-    departments_query = Q(department__in=talent_departments)
+        # Filter, annotate, and order mentor profiles
+        top_mentor = MemberProfile.objects.filter(
+            user__is_mentor=True,
+            user__is_mentor_profile_active=True
+        ).filter(combined_query).annotate(
+            score=Count('skills', filter=Q(skills__id__in=talent_skills_ids)) +
+                  Count('role', filter=Q(role__id__in=talent_roles_ids)) +
+                  Count('department', filter=Q(department__id__in=talent_departments_ids))
+        ).order_by('-score').first()
 
-    # Combine queries using OR logic
-    combined_query = skills_query | roles_query | departments_query
-
-    # Filter and annotate mentor instances
-    matching_mentor = (
-        mentor_profiles.filter(combined_query)
-        .distinct()
-        .annotate(
-            score=Count(
-                "skills",
-                filter=Q(skills__in=talent_skills.values_list("id", flat=True)),
+        if top_mentor:
+            serialized_mentor = MentorProfileSerializer(top_mentor).data
+            logger.info(f"Successfully matched mentor for user {request.user.id}")
+            return Response(
+                {"status": True, "matching_mentor": serialized_mentor},
+                status=status.HTTP_200_OK
             )
-            + Count(
-                "role", filter=Q(role__in=talent_roles.values_list("id", flat=True))
+        else:
+            logger.warning(f"No matching mentor found for user {request.user.id}")
+            return Response(
+                {"status": False, "message": "No matching mentor found"},
+                status=status.HTTP_200_OK
             )
-            + Count(
-                "department",
-                filter=Q(
-                    department__in=talent_departments.values_list("id", flat=True)
-                ),
-            )
+
+    except MemberProfile.DoesNotExist:
+        logger.error(f"User profile not found for user {request.user.id}")
+        return Response(
+            {"status": False, "message": "User profile not found"},
+            status=status.HTTP_404_NOT_FOUND
         )
-        .order_by("-score")
-    )
-
-    # Serialize the results
-    matching_mentors_serialized = MentorProfileSerializer(
-        matching_mentor, many=True
-    ).data
-
-    # Return the response
-    return Response(
-        {"status": True, "matching_mentors": matching_mentors_serialized},
-        status=status.HTTP_200_OK,
-    )
+    except Exception as e:
+        logger.exception(f"Error in get_top_mentor_match: {str(e)}")
+        return Response(
+            {"status": False, "message": "An error occurred"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

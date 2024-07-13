@@ -1,0 +1,27 @@
+name: Update Dev Branch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-dev:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v2
+        with:
+          ref: main
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Update dev branch
+        run: |
+          git checkout dev
+          git merge main --no-ff
+          git push origin dev
