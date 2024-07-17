@@ -40,7 +40,7 @@ class PasswordResetRequestView(APIView):
 
             send_password_email(user.email, user.first_name, user, reset_link)
 
-            return Response({"message": "Password reset link sent."}, status=status.HTTP_200_OK)
+            return Response({"status": True, "message": "Password reset link sent."}, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
