@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 
 import requests
@@ -56,12 +55,12 @@ from apps.core.util import (
     update_user_profile,
     create_or_update_company_connection,
 )
+from apps.member.models import MemberProfile
 from apps.mentorship.models import MentorshipProgramProfile, MentorRoster, MenteeProfile, MentorProfile
 from apps.mentorship.serializer import (
     MentorRosterSerializer,
     MentorshipProgramProfileSerializer,
 )
-from apps.member.models import MemberProfile
 from utils.data_utils import get_or_create_normalized
 from utils.emails import send_dynamic_email
 from utils.helper import prepend_https_if_not_empty
@@ -157,8 +156,8 @@ def get_user_data(request):
         "account_info": {field: getattr(user, field) for field in [
             "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
             "is_mentor", "is_mentee", "is_mentor_profile_active", "is_open_doors",
-            "is_open_doors_onboarding_complete", "is_mentor_profile_removed", "is_mentor_training_complete",
-            "is_mentor_interviewing", "is_mentor_profile_paused",
+            "is_open_doors_onboarding_complete", "is_open_doors_profile_complete", "is_mentor_profile_removed",
+            "is_mentor_training_complete", "is_mentor_interviewing", "is_mentor_profile_paused",
             "is_community_recruiter", "is_company_account", "is_email_confirmation_sent",
             "is_email_confirmed", "is_company_onboarding_complete",
             "is_mentor_profile_approved", "is_mentor_application_submitted",
@@ -316,6 +315,59 @@ def create_new_member(request):
 
         msg = (
             f":new: *New TBC Member* :new:\n\n"
+            f"*Name* {user.first_name} \n\n"
+        )
+        post_message("GL4BCC2HK", msg)
+
+        return Response(
+            {
+                "status": True,
+                "message": "User, MemberProfile, and UserProfile created successfully!",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    except Exception as e:
+        # Handle specific known exceptions
+        return Response(
+            {"status": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        # Handle unexpected exceptions
+        print(e)
+        return Response(
+            {"status": False, "error": "An unexpected error occurred."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@parser_classes([MultiPartParser])
+@api_view(["POST"])
+def create_od_user_profile(request):
+    if request.user.is_open_doors_profile_complete:
+        return Response(
+            {
+                "status": False,
+                "message": "Profile has already been created for this user.",
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        data = request.data
+        user_data = extract_user_data(data)
+        profile_data = extract_profile_data(data, request.FILES)
+        talent_data = extract_talent_data(data, request.FILES)
+
+        with transaction.atomic():
+            user = update_user(request.user, user_data)
+            user_profile = update_user_profile(user, profile_data, True)
+
+            request.user.is_open_doors_profile_complete = True
+            request.user.save()
+
+
+        msg = (
+            f":new: *New OD Member Profile created* :new:\n\n"
             f"*Name* {user.first_name} \n\n"
         )
         post_message("GL4BCC2HK", msg)

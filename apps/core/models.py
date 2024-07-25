@@ -70,6 +70,7 @@ class CustomUser(AbstractBaseUser):
     # Open Doors
     is_open_doors = models.BooleanField(default=False)
     is_open_doors_onboarding_complete = models.BooleanField(default=False)
+    is_open_doors_profile_complete = models.BooleanField(default=False)
     # mentorship program
     is_mentor = models.BooleanField(default=False)
     is_mentee = models.BooleanField(default=False)

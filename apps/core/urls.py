@@ -11,6 +11,7 @@ urlpatterns = [
     path("details/", views.get_user_data),
     path("details/announcement", views.get_announcement),
     path("new-member/profile/create", views.create_new_member),
+    path("od/profile/create", views.create_od_user_profile),
     path("details/new-company", views.get_new_company_data),
     path("profile/update/account-details", views.update_profile_account_details),
     path("profile/update/skills-roles", views.update_profile_skills_roles),

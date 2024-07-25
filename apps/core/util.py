@@ -123,7 +123,7 @@ def update_talent_profile(user, talent_data):
         raise
 
 
-def update_user_profile(user, profile_data):
+def update_user_profile(user, profile_data, od_account=False):
     """
     Update a user profile.
 
@@ -168,11 +168,11 @@ def update_user_profile(user, profile_data):
             for field, value in profile_data.items():
                 if field not in identity_fields and field != "tbc_program_interest":
                     setattr(user_profile, field, value)
-
-            if "tbc_program_interest" in profile_data:
-                user_profile.tbc_program_interest.clear()
-                for interest in profile_data["tbc_program_interest"]:
-                    user_profile.set_tbc_program_interest(interest)
+            if not od_account:
+                if "tbc_program_interest" in profile_data:
+                    user_profile.tbc_program_interest.clear()
+                    for interest in profile_data["tbc_program_interest"]:
+                        user_profile.set_tbc_program_interest(interest)
 
             user_profile.save()
 

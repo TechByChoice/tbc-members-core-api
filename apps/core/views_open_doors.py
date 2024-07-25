@@ -145,7 +145,7 @@ class UserManagementView(ViewSet):
     @action(detail=True, methods=['get'], url_path='get-report')
     def get_review_submission(self, request, pk=None):
         """
-        Submits the the review
+        Submits the review
 
         :param request: The request object containing form data.
         :param pk: Primary key of the item to be processed, taken from the URL.
