@@ -17,6 +17,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
 
 from utils.helper import prepend_https_if_not_empty
+from utils.slack import post_message
 from .models import CustomUser
 from ..company.models import CompanyProfile
 
@@ -56,6 +57,12 @@ class CompanyViewSet(ViewSet):
             # Update user data to indicate onboarding completion
             user_data.is_company_onboarding_complete = True
             user_data.save()
+            msg = (
+                f":new: *New Talent Choice Onboarding Complete* :new:\n\n"
+                f"*Company Name* {company_profile.company_name}\n\n"
+                f"*Contact* {user_data.first_name}\n\n"
+            )
+            post_message("GL4BCC2HK", msg)
     
             return Response({
                 "status": True,

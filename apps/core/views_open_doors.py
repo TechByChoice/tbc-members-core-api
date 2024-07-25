@@ -14,6 +14,7 @@ import uuid
 from rest_framework.viewsets import ViewSet
 
 from utils.data_utils import get_user_demo, update_review_token_total
+from utils.slack import post_message
 from .models import UserVerificationToken
 from .serializers import UserProfileSerializer
 from django.contrib.auth import get_user_model
@@ -73,7 +74,10 @@ class UserManagementView(ViewSet):
             user.is_open_doors_onboarding_complete = True
             user.is_company_review_access_active = True
             user.save()
-
+            msg = (
+                f":new: *New Open Doors Account* :new:\n\n"
+            )
+            post_message("GL4BCC2HK", msg)
             return Response({
                 "status": True,
                 "message": "Welcome to Open Doors."

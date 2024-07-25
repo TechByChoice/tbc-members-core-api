@@ -67,7 +67,7 @@ from utils.emails import send_dynamic_email
 from utils.helper import prepend_https_if_not_empty
 from utils.logging_helper import get_logger
 from utils.profile_utils import update_user_company_association
-from utils.slack import fetch_new_posts, send_invite
+from utils.slack import fetch_new_posts, send_invite, post_message
 
 logger = get_logger(__name__)
 
@@ -313,6 +313,12 @@ def create_new_member(request):
             except Exception as e:
                 request.user.is_slack_invite_sent = False
                 print(e)
+
+        msg = (
+            f":new: *New TBC Member* :new:\n\n"
+            f"*Name* {user.first_name} \n\n"
+        )
+        post_message("GL4BCC2HK", msg)
 
         return Response(
             {
@@ -785,6 +791,11 @@ def create_new_user(request):
             send_welcome_email(user.email, user.first_name)
             user.is_email_confirmation_sent = True
             user.save()
+            msg = (
+                f":new: *New Member Signup* :new:\n\n"
+                f"*Name* {first_name}\n\n"
+            )
+            post_message("GL4BCC2HK", msg)
             return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
         except Exception as e:
             print("Error while saving user: ", str(e))
