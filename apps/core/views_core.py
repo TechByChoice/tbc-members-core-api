@@ -9,7 +9,7 @@ from apps.company.models import (
     Department,
     Industries,
     CompanyTypes,
-    SalaryRange, COMPANY_SIZE, ON_SITE_REMOTE,
+    SalaryRange, COMPANY_SIZE, ON_SITE_REMOTE, Certs,
 )
 from apps.core.models import (
     PronounsIdentities,
@@ -50,6 +50,9 @@ def get_dropdown_data(request):
 
     if not requested_fields or "job_skills" in requested_fields:
         data["job_skills"] = list(Skill.objects.order_by("name").values("name", "id"))
+
+    if not requested_fields or "certs" in requested_fields:
+        data["certs"] = list(Certs.objects.order_by("name").values("name", "id"))
 
     if not requested_fields or "job_departments" in requested_fields:
         data["job_departments"] = list(
