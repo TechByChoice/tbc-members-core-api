@@ -295,6 +295,7 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'core-api'
 
+
 # Celery Schedule
 CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
     # "run-my-task-every-day-at-9am": {
