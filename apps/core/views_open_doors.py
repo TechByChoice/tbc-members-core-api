@@ -136,6 +136,10 @@ class UserManagementView(ViewSet):
             # Process the response from the 3rd party API
             result_data = response.json()
             print("Successfully submitted data to OD: submit-report")
+            msg = (
+                f":new: *New Open Doors Report* :new:\n\n"
+            )
+            post_message("C07ET3J3Z7S", msg)
             update_review_token_total(request.user, False)
             return Response(result_data, status=status.HTTP_200_OK)
         except requests.RequestException as e:
