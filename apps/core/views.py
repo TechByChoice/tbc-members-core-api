@@ -66,6 +66,7 @@ from utils.emails import send_dynamic_email
 from utils.helper import prepend_https_if_not_empty
 from utils.logging_helper import get_logger
 from utils.profile_utils import update_user_company_association
+from utils.sendgrid_helper import add_user_to_portal_form
 from utils.slack import fetch_new_posts, send_invite, post_message
 
 logger = get_logger(__name__)
@@ -308,10 +309,22 @@ def create_new_member(request):
             try:
                 send_invite(user.email)
                 request.user.is_slack_invite_sent = True
-                request.user.save()
             except Exception as e:
                 request.user.is_slack_invite_sent = False
                 print(e)
+            try:
+                # add to mailing list
+                convert_kit_details = {
+                    'email': request.user.email,
+                    'first_name': request.user.first_name,
+                }
+                add_user_to_portal_form(convert_kit_details)
+                request.user.is_sendgrid_invite_sent = True
+            except Exception as e:
+                request.user.is_sendgrid_invite_sent = False
+                print(e)
+
+        request.user.save()
 
         msg = (
             f":new: *New TBC Member* :new:\n\n"

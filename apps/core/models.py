@@ -104,6 +104,7 @@ class CustomUser(AbstractBaseUser):
     is_superuser = models.BooleanField(default=False)
     joined_at = models.DateTimeField(auto_now_add=True)
     email_confirmed = models.BooleanField(default=False)
+    is_sendgrid_invite_sent = models.BooleanField(default=False)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
