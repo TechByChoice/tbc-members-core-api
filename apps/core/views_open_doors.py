@@ -141,10 +141,10 @@ class UserManagementView(ViewSet):
             )
             post_message("C07ET3J3Z7S", msg)
             update_review_token_total(request.user, False)
-            return Response(data={"status": True, "message": "Review saved"}, status=status.HTTP_200_OK)
+            return Response(data={"status": True, "message": "Review saved", "review_id": result_data["review_id"]}, status=status.HTTP_200_OK)
         except requests.RequestException as e:
             print(f"Exception occurred will calling OD: submit-report: {e}")
-            return Response({"status": False, "message": "No data saved"})
+            return Response({"status": False, "message": "No data saved"}, status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['get'], url_path='get-report')
     def get_review_submission(self, request, pk=None):
