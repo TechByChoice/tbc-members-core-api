@@ -135,13 +135,13 @@ class UserManagementView(ViewSet):
             response.raise_for_status()
             # Process the response from the 3rd party API
             result_data = response.json()
-            print("Successfully submitted data to OD: submit-report")
+            print(f"Successfully submitted data to OD: submit-report: {result_data}")
             msg = (
                 f":new: *New Open Doors Report* :new:\n\n"
             )
             post_message("C07ET3J3Z7S", msg)
             update_review_token_total(request.user, False)
-            return Response(result_data, status=status.HTTP_200_OK)
+            return Response(data={"status": True, "message": "Review saved"}, status=status.HTTP_200_OK)
         except requests.RequestException as e:
             print(f"Exception occurred will calling OD: submit-report: {e}")
             return Response({"status": False, "message": "No data saved"})
