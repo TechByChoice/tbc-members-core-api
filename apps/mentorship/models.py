@@ -141,6 +141,8 @@ class MentorProfile(models.Model):
     )
     mentor_how_to_help = models.CharField(max_length=3000, blank=True, null=True)
     mentorship_goals = models.CharField(max_length=3000, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class MenteeProfile(models.Model):
@@ -156,6 +158,8 @@ class MenteeProfile(models.Model):
     interview_reminder_date = models.DateTimeField(blank=True, null=True)
     commitment_level = models.ManyToManyField(CommitmentLevel, blank=True)
     mentee_support_areas = models.ManyToManyField(MentorSupportAreas, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class MentorReview(models.Model):
@@ -166,6 +170,8 @@ class MentorReview(models.Model):
     rating = models.IntegerField(blank=False, null=False)
     review_author = models.CharField(max_length=6, choices=REVIEW_AUTHOR_CHOICES)
     review_content = models.TextField(max_length=1000, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 class MentorRoster(models.Model):
@@ -255,6 +261,8 @@ class MentorshipProgramProfile(models.Model):
     value_tradition = models.IntegerField(blank=True, null=True)
     value_conformity = models.IntegerField(blank=True, null=True)
     value_security = models.IntegerField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def save(self, *args, **kwargs):
         is_new = self._state.adding  # Check if this is a new instance

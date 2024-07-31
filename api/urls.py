@@ -28,4 +28,5 @@ urlpatterns = [
     path("company-profile/", include("apps.company.urls_company")),
     path("event/", include("apps.event.urls")),
     path("auth/", include("apps.core.urls_auth")),
+    path("staff/", include("apps.core.urls_stats")),
 ]
