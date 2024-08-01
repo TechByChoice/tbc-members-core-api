@@ -15,15 +15,15 @@ class ConvertKitService:
 
     def update_subscriber_tags(self, email, add_tags=None, remove_tags=None):
         print("Updating subscriber tags")
-        print(add_tags, remove_tags, email)
+        # print(add_tags, remove_tags, email)
         if add_tags:
             print("Adding ...")
             self._add_tags_to_subscriber(email, add_tags)
             print("Added subscriber tags")
-        # if remove_tags:
-        #     print("Removing ...")
-        #     self._remove_tags_from_subscriber(email, remove_tags)
-        #     print("Removed subscriber tags")
+        if remove_tags:
+            print("Removing ...")
+            self._remove_tags_from_subscriber(email, remove_tags)
+            print("Removed subscriber tags")
 
     def _add_tags_to_subscriber(self, email, tags):
         print("Adding subscriber tags: {}".format(tags))
