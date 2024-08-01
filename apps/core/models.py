@@ -1,8 +1,6 @@
 import datetime
 import json
-from datetime import date
 
-import pytz
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import User, Permission
 from django.contrib.contenttypes.models import ContentType
@@ -117,9 +115,9 @@ class CustomUser(AbstractBaseUser):
         """
         # User has the named permission from the app label.
         return (
-            self.is_staff
-            or self.user_permissions.filter(content_type__app_label=app_label).exists()
-            or self.is_superuser
+                self.is_staff
+                or self.user_permissions.filter(content_type__app_label=app_label).exists()
+                or self.is_superuser
         )
 
     def has_perm(self, perm, obj=None):
@@ -127,7 +125,7 @@ class CustomUser(AbstractBaseUser):
         Returns True if the user has the specified permission.
         """
         return self.is_active and (
-            self.is_superuser or self.user_permissions.filter(codename=perm).exists()
+                self.is_superuser or self.user_permissions.filter(codename=perm).exists()
         )
 
 
@@ -240,13 +238,15 @@ class UserProfile(models.Model):
     personal = models.URLField(null=True, blank=True, max_length=200)
 
     # DEI Stuff
-    identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True, related_name='userprofile_identity_sexuality')
+    identity_sexuality = models.ManyToManyField(SexualIdentities, blank=True,
+                                                related_name='userprofile_identity_sexuality')
     is_identity_sexuality_displayed = models.BooleanField(default=False)
     identity_gender = models.ManyToManyField(GenderIdentities, blank=True, related_name='userprofile_identity_gender')
     is_identity_gender_displayed = models.BooleanField(default=False)
     identity_ethic = models.ManyToManyField(EthicIdentities, blank=True, related_name='userprofile_identity_ethic')
     is_identity_ethic_displayed = models.BooleanField(default=False)
-    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=True, related_name='userprofile_identity_pronouns')
+    identity_pronouns = models.ManyToManyField(PronounsIdentities, blank=True,
+                                               related_name='userprofile_identity_pronouns')
     is_pronouns_displayed = models.BooleanField(default=False)
     disability = models.BooleanField(blank=True, null=True, choices=CHOICES)
     is_disability_displayed = models.BooleanField(default=False)
@@ -315,3 +315,15 @@ class UserProfile(models.Model):
             self.tbc_program_interest.add(interest_obj)
         else:
             self.tbc_program_interest = None
+
+
+class EmailTags(models.Model):
+    name = models.CharField(null=False, blank=False, max_length=300)
+    type = models.CharField(null=True, blank=True, max_length=300)
+    convert_tag_kit_id = models.IntegerField(null=False, blank=False)
+    description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True, blank=True)
+
+    def __str__(self):
+        return self.name

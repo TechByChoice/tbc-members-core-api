@@ -1,11 +1,3 @@
-from datetime import date
-
-import pytz
-from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
-from django.contrib.auth.models import User, Permission
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
-from django.core.validators import validate_email
 from django.db import models
 from django_quill.fields import QuillField
 
