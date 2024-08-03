@@ -154,7 +154,7 @@ def send_batch_onboarding_email_reminder_task():
                 with transaction.atomic():
                     email_data = {
                         "recipient_emails": [user.email],
-                        "template_id": "d-839665b4ea6840bb93d52df85d22ecc7",
+                        "template_id": "d-29993bdb5366406780c77f33de7e0f04",
                         "dynamic_template_data": {
                             "onboarding_url": os.getenv("FRONTEND_URL") + '/member/new/2',
                             "first_name": user.first_name,
