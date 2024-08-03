@@ -63,6 +63,8 @@ class CustomUser(AbstractBaseUser):
     is_member = models.BooleanField(default=False)
     is_talent_choice = models.BooleanField(default=False)
     is_member_onboarding_complete = models.BooleanField(default=False)
+    is_onboarding_reminder_sent = models.BooleanField(default=False)
+    onboarding_reminder_sent_date = models.DateTimeField(blank=True, null=True)
     is_slack_invite_sent = models.BooleanField(default=False)
     is_migrated_account = models.BooleanField(default=False)
     # Open Doors

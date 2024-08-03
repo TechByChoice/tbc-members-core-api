@@ -307,6 +307,10 @@ CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
         # "schedule": crontab(minute='*/1'),
     },
+    "send-reminder-email": {
+        "task": "apps.core.tasks.send_batch_onboarding_email_reminder_task",
+        "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),
+    },
 }
 
 # Redis
@@ -345,6 +349,8 @@ DISABLE_COLLECTSTATIC = 1
 # Email setting
 
 EMAIL_BACKEND = 'apps.core.email_backends.SendGridPasswordResetEmailBackend'
+REMINDER_DELAY_BETWEEN_BATCHES = 60
+REMINDER_BATCH_SIZE = 10
 
 CORS_EXPOSE_HEADERS = [
     'access-control-allow-origin',
