@@ -2,11 +2,14 @@ import logging
 import os
 
 import requests
+from django.db import transaction
+from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework.filters import SearchFilter
-from rest_framework.pagination import PageNumberPagination
-from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAdminUser
+from rest_framework.response import Response
 from rest_framework.viewsets import ViewSet
 
 from apps.company.filters import CompanyProfileFilter
@@ -51,23 +54,30 @@ class CompanyView(ViewSet):
         header_token = request.headers.get("Authorization", None)
         try:
             response = requests.get(f'{os.getenv("OD_API_URL")}api/reviews/company/{pk}/',
-                                    headers={'Authorization': header_token}, verify=True)
+                                    headers={'Authorization': header_token}, verify=False)
+            print(f"Status Code: {response.status_code}")
+            print(f"Response Content: {response.content}")
             response.raise_for_status()
             reviews = response.json()
         except requests.exceptions.HTTPError as http_err:
-            return Response(
-                {"status": False, "error": f"HTTP error occurred: {http_err}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            reviews = []
+            print("HTTP error occurred", http_err)
+            # return Response(
+            #     {"status": False, "error": f"Could not pull company info for company ID: {pk}"},
+            #     status=status.HTTP_400_BAD_REQUEST
+            # )
         except Exception as e:
-            return Response(
-                {"status": False, "error": f"An unexpected error occurred: {e}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            reviews = []
+            print(f"Exception occurred: {e}")
+            # return Response(
+            #     {"status": False, "error": f"An unexpected error occurred: {e}"},
+            #     status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            # )
         # Make an external request to get talent choice data
         if company_data.talent_choice_account:
             try:
-                response = requests.get(f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={pk}', verify=False)
+                response = requests.get(f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={pk}',
+                                        verify=False)
                 response.raise_for_status()
                 talent_choice_jobs = response.json()
             except requests.exceptions.HTTPError as http_err:
@@ -93,7 +103,6 @@ class CompanyView(ViewSet):
             status=status.HTTP_200_OK
         )
 
-
     def list(self, request):
         """
         This view returns a paginated and filterable list of all company profiles.
@@ -103,7 +112,7 @@ class CompanyView(ViewSet):
         paginator.page_size_query_param = 'page_size'
 
         try:
-            company_data = CompanyProfile.objects.all()
+            company_data = CompanyProfile.active_objects.all()
             filter_backends = (DjangoFilterBackend,)
             filterset_class = CompanyProfileFilter
 
@@ -124,3 +133,58 @@ class CompanyView(ViewSet):
             logger.error(f"An unexpected error occurred: {e}")
             return Response({"status": False, "error": str(e)},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def soft_delete_company(self, request, pk=None):
+        """
+        Soft delete a company profile and all its dependencies.
+        Only accessible by admin users.
+        """
+        try:
+            with transaction.atomic():
+                company = CompanyProfile.objects.get(id=pk)
+
+                if company.is_deleted:
+                    return Response({"status": False, "message": "Company is already deleted"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+                # Soft delete related Job objects
+                Job.objects.filter(parent_company=company).update(is_deleted=True, deleted_at=timezone.now())
+
+                # Soft delete the company profile
+                company.soft_delete()
+
+            return Response({"status": True, "message": "Company and related data soft deleted successfully"},
+                            status=status.HTTP_200_OK)
+        except CompanyProfile.DoesNotExist:
+            return Response({"status": False, "error": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
+    def restore_company(self, request, pk=None):
+        """
+        Restore a soft-deleted company profile and all its dependencies.
+        Only accessible by admin users.
+        """
+        try:
+            with transaction.atomic():
+                company = CompanyProfile.objects.get(id=pk)
+
+                if not company.is_deleted:
+                    return Response({"status": False, "message": "Company is not deleted"},
+                                    status=status.HTTP_400_BAD_REQUEST)
+
+                # Restore related Job objects
+                Job.objects.filter(parent_company=company).update(is_deleted=False, deleted_at=None)
+
+                # Restore the company profile
+                company.is_deleted = False
+                company.deleted_at = None
+                company.save()
+
+            return Response({"status": True, "message": "Company and related data restored successfully"},
+                            status=status.HTTP_200_OK)
+        except CompanyProfile.DoesNotExist:
+            return Response({"status": False, "error": "Company not found"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({"status": False, "error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

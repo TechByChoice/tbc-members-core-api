@@ -8,5 +8,7 @@ router.register(r"info", CompanyView, basename="company")
 
 # Your project's URL patterns
 urlpatterns = [
-    path("", include(router.urls))
+    path("", include(router.urls)),
+    path("<int:pk>/soft-delete/", CompanyView.as_view({'post': 'soft_delete_company'}), name="soft-delete-company"),
+    path("<int:pk>/restore/", CompanyView.as_view({'post': 'restore_company'}), name="restore-company"),
 ]

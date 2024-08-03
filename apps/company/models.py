@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django_quill.fields import QuillField
 
 from apps.core.models import CustomUser
@@ -271,9 +272,20 @@ class CompanyProfile(models.Model):
     city = models.CharField(blank=True, null=True, max_length=200)
     postal_code = models.CharField(blank=True, null=True, max_length=200)
     coresignal_id = models.CharField(blank=True, null=True, max_length=60)
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now_add=True)
+
+    # Add a custom manager to filter out soft-deleted companies by default
+    objects = models.Manager()
+    active_objects = models.Manager()
+
+    def soft_delete(self):
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
 
     def __str__(self):
         return self.company_name
@@ -419,6 +431,12 @@ class Job(models.Model):
     lever_id = models.CharField(max_length=200, null=True, blank=True)
     lever_api_key = models.CharField(max_length=200, null=True, blank=True)
     is_pull_remoteio = models.BooleanField(default=False, null=False)
+
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+
+    objects = models.Manager()
+    active_objects = models.Manager()
 
     class Meta:
         indexes = [
