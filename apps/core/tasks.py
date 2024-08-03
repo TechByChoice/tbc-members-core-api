@@ -113,6 +113,7 @@ def process_user(user, convertkit_service, all_tags):
         logger.info(f"No tag updates needed for user {user.id}")
 
 
+@shared_task
 def send_batch_onboarding_email_reminder_task():
     """
     Send reminder emails to members who haven't completed onboarding after 2 days.
