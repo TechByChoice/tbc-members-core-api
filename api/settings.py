@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "apps.company",
     "apps.member",
     "apps.mentorship",
+    "apps.event",
     "corsheaders",
     "storages",
     "django_filters"
