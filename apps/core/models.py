@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import User, Permission
@@ -7,16 +8,40 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import models
+from django.utils import timezone
 from django_quill.fields import QuillField
+
+from utils.sendgrid_helper import remove_user_from_convertkit
+from utils.slack import deactivate_slack_user, send_invite
 
 # Create your models here.
 CHOICES = ((None, "Prefer not to answer"), (True, "Yes"), (False, "No"))
+logger = logging.getLogger(__name__)
 
 
 class CustomUserManager(BaseUserManager):
+    """
+    Custom user model manager where email is the unique identifiers
+    for authentication instead of usernames.
+    """
     use_in_migrations = True
 
+    def get_queryset(self):
+        """
+        Return a queryset of active (non-deleted) users.
+        """
+        return super().get_queryset().filter(is_deleted=False)
+
+    def all_with_deleted(self):
+        """
+        Return a queryset of all users, including deleted ones.
+        """
+        return super().get_queryset()
+
     def _create_user(self, email, password, **extra_fields):
+        """
+        Create and save a User with the given email and password.
+        """
         if not email:
             raise ValueError("Users require an email field")
         email = self.normalize_email(email)
@@ -40,6 +65,9 @@ class CustomUserManager(BaseUserManager):
         return user
 
     def create_superuser(self, email, password=None, **extra_fields):
+        """
+        Create and save a SuperUser with the given email and password.
+        """
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
@@ -52,6 +80,9 @@ class CustomUserManager(BaseUserManager):
 
 
 class CustomUser(AbstractBaseUser):
+    """
+    Custom User model with email as the unique identifier and additional fields for soft deletion.
+    """
     username = None
     email = models.EmailField(unique=True, validators=[validate_email])
     first_name = models.CharField(max_length=50)
@@ -105,11 +136,97 @@ class CustomUser(AbstractBaseUser):
     joined_at = models.DateTimeField(auto_now_add=True)
     email_confirmed = models.BooleanField(default=False)
     is_sendgrid_invite_sent = models.BooleanField(default=False)
+    # slack
+    slack_user_id = models.CharField(max_length=20, blank=True, null=True)
+    # delete users
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deletion_reason = models.CharField(max_length=50, null=True, blank=True)
+
+
+    DELETION_REASONS = [
+        ('test_account', 'Test Account'),
+        ('user_requested', 'User Requested'),
+        ('broke_coc', 'Broke Code of Conduct'),
+        ('spam', 'Spam'),
+    ]
+
+    objects = CustomUserManager()
+    active_objects = CustomUserManager()
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
-    objects = CustomUserManager()
+    def soft_delete(self, reason):
+        """
+        Soft delete the user account.
+
+        Args:
+            reason (str): The reason for deletion, must be one of DELETION_REASONS.
+
+        Raises:
+            ValueError: If an invalid reason is provided.
+        """
+        self.is_deleted = True
+        self.is_active = False
+        self.deleted_at = timezone.now()
+        self.deletion_reason = reason
+
+        # Remove services
+        try:
+            self.remove_from_external_services()
+        except ValidationError:
+            raise ValueError("Enter a valid email address")
+
+        # self.save()
+
+        logger.info(f"User {self.email} soft deleted and Slack account deactivated. Reason: {reason}")
+
+    def restore(self):
+        """
+        Restore a soft-deleted user account.
+        """
+        self.is_deleted = False
+        self.is_active = True
+        self.deleted_at = None
+        self.deletion_reason = None
+
+        # Reactivate Slack account
+        if self.slack_user_id:
+            send_invite(self.email)
+
+        logger.info(f"User {self.email} restored and Slack account reactivated")
+
+        self.save()
+
+    def remove_from_external_services(self):
+        """
+        Remove the user from external services like Slack and ConvertKit.
+        """
+        try:
+            # Implement Slack removal
+            # Deactivate Slack account
+            if self.slack_user_id:
+                slack_user_id = deactivate_slack_user(self.email, self.slack_user_id)
+            else:
+                slack_user_id = deactivate_slack_user(self.email)
+
+            if slack_user_id:
+                self.slack_user_id = slack_user_id
+
+            self.save()
+            logger.info(f"User {self.email} removed from Slack")
+        except Exception as e:
+            logger.error(f"Failed to remove user {self.email} from Slack: {str(e)}")
+
+        # Implement ConvertKit removal
+        removed_email = remove_user_from_convertkit(self.email)
+        if removed_email:
+            logger.info(f"User {self.email} removed from ConvertKit")
+            return True
+        else:
+            logger.error(f"Failed to remove user {self.email} from ConvertKit: {str(e)}")
+            return False
 
     def has_module_perms(self, app_label):
         """

@@ -1,6 +1,10 @@
 import os
+import logging
+
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+
+logger = logging.getLogger(__name__)
 
 # Initialize a Web client
 slack_client = WebClient(token=os.environ["SLACK_API_TOKEN"])
@@ -56,4 +60,36 @@ def send_invite(email, channels=[]):
         return response
     except SlackApiError as e:
         print(f"Error sending invite: {e}")
+        return None
+
+
+def deactivate_slack_user(email, slack_user_id=None):
+    """
+    Deactivate a Slack user.
+
+    Args:
+        email (str): The email of the user to deactivate.
+        slack_user_id (str, optional): The Slack user ID, if known.
+
+    Returns:
+        str: The Slack user ID of the deactivated user, or None if deactivation failed.
+    """
+    try:
+        if not slack_user_id:
+            # Look up the user by email
+            response = slack_client.users_lookupByEmail(email=email)
+            slack_user_id = response["user"]["id"]
+
+        # Deactivate the user
+        response = slack_admin_client.admin_users_remove(user_id=slack_user_id, team_id="TEM0JJSBX")
+
+        if response["ok"]:
+            logger.info(f"Successfully deactivated Slack user: {email}")
+            return slack_user_id
+        else:
+            logger.error(f"Failed to deactivate Slack user: {email}")
+            return None
+
+    except SlackApiError as e:
+        logger.error(f"Slack API error: {e.response['error']}")
         return None

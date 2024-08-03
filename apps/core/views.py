@@ -22,9 +22,10 @@ from rest_framework.decorators import (
     parser_classes,
     permission_classes,
 )
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
@@ -377,7 +378,6 @@ def create_od_user_profile(request):
 
             request.user.is_open_doors_profile_complete = True
             request.user.save()
-
 
         msg = (
             f":new: *New OD Member Profile created* :new:\n\n"
@@ -1020,3 +1020,94 @@ def send_welcome_email(email, first_name, company_name=None, user=None, current_
         }
 
         send_dynamic_email(email_data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def soft_delete_user(request, user_id):
+    """
+    Soft delete a user account by setting is_active to False.
+
+    This view is only accessible by admin users. It deactivates a user account,
+    logs the action, and removes the user from external services like Slack and ConvertKit.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        user_id (int): The ID of the user to be soft-deleted.
+
+    Returns:
+        Response: A DRF Response object with the result of the operation.
+
+    Raises:
+        CustomUser.DoesNotExist: If no user is found with the given ID.
+        ValidationError: If an invalid deletion reason is provided.
+    """
+    reason = request.data.get('reason')
+
+    try:
+        with transaction.atomic():
+            user = CustomUser.objects.get(id=user_id)
+
+            if not user.is_active:
+                logger.warning(f"Attempted to delete already soft-deleted user: {user.email}")
+                return Response({"status": False, "message": "User is already deleted"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            try:
+                user.soft_delete(reason)
+                return Response({"status": True, "message": "User soft-deleted successfully"},)
+            except Exception as e:
+                logger.error("Error while soft-deleting user: %s", str(e))
+                return Response({"status": False, "message": str(e)},)
+
+        logger.info(f"User {user.email} soft deleted successfully. Reason: {reason}")
+        return Response({"status": True, "message": f"User soft deleted successfully. Reason: {reason}"},
+                        status=status.HTTP_200_OK)
+    except CustomUser.DoesNotExist:
+        logger.error(f"Attempted to delete non-existent user with ID: {user_id}")
+        return Response({"status": False, "error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    except ValidationError as e:
+        logger.error(f"Invalid deletion reason for user {user_id}: {str(e)}")
+        return Response({"status": False, "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.exception(f"Unexpected error when soft-deleting user {user_id}: {str(e)}")
+        return Response({"status": False, "error": "An unexpected error occurred"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def restore_user(request, user_id):
+    """
+    Restore a soft-deleted user account by setting is_active to True.
+
+    This view is only accessible by admin users. It reactivates a previously soft-deleted user account.
+
+    Args:
+        request (HttpRequest): The HTTP request object.
+        user_id (int): The ID of the user to be restored.
+
+    Returns:
+        Response: A DRF Response object with the result of the operation.
+
+    Raises:
+        CustomUser.DoesNotExist: If no user is found with the given ID.
+    """
+    try:
+        with transaction.atomic():
+            user = CustomUser.objects.get(id=user_id)
+
+            if user.is_active:
+                logger.warning(f"Attempted to restore non-deleted user: {user.email}")
+                return Response({"status": False, "message": "User is not deleted"}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.restore()
+
+        logger.info(f"User {user.email} restored successfully")
+        return Response({"status": True, "message": "User restored successfully"}, status=status.HTTP_200_OK)
+    except CustomUser.DoesNotExist:
+        logger.error(f"Attempted to restore non-existent user with ID: {user_id}")
+        return Response({"status": False, "error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.exception(f"Unexpected error when restoring user {user_id}: {str(e)}")
+        return Response({"status": False, "error": "An unexpected error occurred"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)

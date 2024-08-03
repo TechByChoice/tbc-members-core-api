@@ -19,4 +19,6 @@ urlpatterns = [
     path("profile/update/social-accounts", views.update_profile_social_accounts),
     path("profile/update/idenity", views.update_profile_identity),
     path("profile/update/notifications", views.update_profile_notifications),
+    path("<int:user_id>/soft-delete/", views.soft_delete_user, name="soft-delete-user"),
+    path("<int:user_id>/restore/", views.restore_user, name="restore-user"),
 ]

@@ -1,16 +1,13 @@
-import datetime
+import json
+import logging
 import os
 
 import requests
-import json
-import logging
-
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
 base_url = "https://api.convertkit.com/v3/"
-
 
 headers = {
     "Content-Type": "application/json",
@@ -18,7 +15,7 @@ headers = {
 }
 
 
-# this adds people to the newsletter sequaces
+# this adds people to the newsletter sequences
 def add_user_to_newsletter(details):
     # Set the data for the request
     welcome_sequences_id = os.getenv("CONVERTKIT_WELCOME_SEQUENCE_ID")
@@ -76,3 +73,37 @@ def add_user_to_portal_form(details):
             print(f"Error adding user to tbc portal form: {response.json()}")
     except requests.exceptions.RequestException as e:
         print(f"Error adding user to tbc portal form: {e}")
+
+
+def remove_user_from_convertkit(email):
+    """
+    Remove a user from ConvertKit.
+
+    Args:
+        email (str): The email of the user to be removed.
+
+    Returns:
+        bool: True if the user was successfully removed, False otherwise.
+    """
+    api_secret = os.getenv("CONVERTKIT_API_SECRET_KEY")
+    url = f'{base_url}unsubscribe'
+
+    trimmed_email = email.strip()
+
+    data = {
+        "api_secret": api_secret,
+        "email": trimmed_email
+    }
+
+    try:
+        response = requests.put(url, headers=headers, data=json.dumps(data))
+
+        if response.status_code == 200:
+            logger.info(f"User {email} successfully removed from ConvertKit.")
+            return True
+        else:
+            logger.error(f"Error removing user {email} from ConvertKit: {response.json()}")
+            return False
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error removing user {email} from ConvertKit: {str(e)}")
+        return False
