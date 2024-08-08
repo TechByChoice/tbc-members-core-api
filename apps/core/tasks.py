@@ -29,6 +29,7 @@ def update_convertkit_tags_task(user_id):
     try:
         with transaction.atomic():
             user = CustomUser.objects.get(id=user_id)
+            print(f'found user with id {user}')
             convertkit_service = ConvertKitService()
             all_tags = set(EmailTags.objects.filter(
                 type__in=MANAGED_TAG_CATEGORIES
@@ -42,6 +43,7 @@ def update_convertkit_tags_task(user_id):
 
 
 def process_user(user, convertkit_service, all_tags):
+    print(f'processing user {user}')
     try:
         user_profile = UserProfile.objects.get(user=user)
         member_profile = MemberProfile.objects.get(user=user)
@@ -51,6 +53,9 @@ def process_user(user, convertkit_service, all_tags):
 
     add_tags = set()
     remove_tags = set()
+
+    # Get the user's current tags from ConvertKit
+    current_tags = set(convertkit_service.get_subscriber_tags(user.email))
 
     # Skills
     skills = member_profile.skills.values_list('name', flat=True)
@@ -99,8 +104,21 @@ def process_user(user, convertkit_service, all_tags):
         else:
             remove_tags.add(field)
 
-    # Remove tags that are in all_tags but not in add_tags
-    remove_tags.update(all_tags - add_tags)
+    # Filter remove_tags to only include tags of the managed categories
+    managed_current_tags = set(EmailTags.objects.filter(
+        name__in=current_tags,
+        type__in=MANAGED_TAG_CATEGORIES
+    ).values_list('name', flat=True))
+
+    # Remove tags that are in current_tags but not in add_tags and are managed
+    remove_tags.update(managed_current_tags - add_tags)
+    # Reduce the number of tags added by removing current tags from add_tags
+    add_tags.difference_update(current_tags)
+
+    print("current_tags: ", current_tags)
+    print("add_tags simple: ", add_tags)
+    print("managed_current_tags: ", managed_current_tags)
+    print("remove_tags: ", remove_tags)
 
     # Update tags in ConvertKit
     if add_tags or remove_tags:
