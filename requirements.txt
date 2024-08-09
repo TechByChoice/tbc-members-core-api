@@ -50,7 +50,7 @@ whitenoise==6.5.0
 zipp==3.16.2
 slack_sdk==3.26.1
 eventbrite==3.3.5
-requests~=2.31.0
+requests~=2.32.0
 django-filter~=24.2
 django-redis==5.4.0
 redis==5.0.4
