@@ -8,5 +8,4 @@ from .models import MemberProfile
 
 @receiver(post_save, sender=MemberProfile)
 def queue_update_convertkit_tags_member_profile(sender, instance, created, **kwargs):
-    print('hey')
     transaction.on_commit(lambda: update_convertkit_tags_task.delay(instance.user.id))
