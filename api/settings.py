@@ -367,3 +367,5 @@ class LoggingCorsMiddleware(CorsMiddleware):
         logger.info(f"CORS request to {request.path} with origin {request.META.get('HTTP_ORIGIN')}")
         return response
 
+
+KNOX_TOKEN_TTL = timedelta(hours=10)
