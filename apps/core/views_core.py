@@ -157,7 +157,7 @@ class VerifyAdminView(APIView):
         """
         auth_header = request.headers.get('Authorization')
         if not auth_header:
-            logger.warning("Missing Authorization header in verify-admin request")
+            print("Missing Authorization header in verify-admin request")
             return Response({"is_admin": False, "error": "Missing Authorization header"},
                             status=status.HTTP_401_UNAUTHORIZED)
 
@@ -166,14 +166,15 @@ class VerifyAdminView(APIView):
             token = auth_header.split()[1]
 
             # Check cache first
-            # cache_key = f"admin_status_{token}"
-            # cached_result = cache.get(cache_key)
-            # if cached_result is not None:
-            #     return Response({"is_admin": cached_result}, status=status.HTTP_200_OK)
+            cache_key = f"admin_status_{token.replace(' ', '_')}"
+            cached_result = cache.get(cache_key)
+            if cached_result is not None:
+                return Response({"is_admin": cached_result}, status=status.HTTP_200_OK)
 
             # Verify the Knox token
             token_obj = AuthToken.objects.get(token_key=token[:8])
             if not token_obj.user.is_authenticated:
+                print("Invalid token")
                 raise AuthToken.DoesNotExist
 
             # Get the user and check if they are an admin
@@ -181,21 +182,22 @@ class VerifyAdminView(APIView):
             is_admin = user.is_staff and user.is_active
 
             # Cache the result
-            # cache_timeout = getattr(settings, 'KNOX_TOKEN_TTL', 60 * 10).total_seconds()
-            # cache.set(cache_key, is_admin, int(cache_timeout))
+            print("Cache the results")
+            cache_timeout = getattr(settings, 'KNOX_TOKEN_TTL', 60 * 10).total_seconds()
+            cache.set(cache_key, is_admin, int(cache_timeout))
 
-            logger.info(f"User {user.id} admin status verified: {is_admin}")
+            print(f"User {user.id} admin status verified: {is_admin}")
             return Response({"is_admin": is_admin}, status=status.HTTP_200_OK)
 
         except AuthToken.DoesNotExist:
-            logger.warning(f"Invalid or expired token in verify-admin request")
+            print(f"Invalid or expired token in verify-admin request")
             return Response({"is_admin": False, "error": "Invalid or expired token"},
                             status=status.HTTP_401_UNAUTHORIZED)
         except User.DoesNotExist:
-            logger.warning(f"User not found for token in verify-admin request")
+            print(f"User not found for token in verify-admin request")
             return Response({"is_admin": False, "error": "User not found"},
                             status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"Unexpected error in verify-admin request: {str(e)}")
+            print(f"Unexpected error in verify-admin request: {str(e)}")
             return Response({"is_admin": False, "error": "An unexpected error occurred"},
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
