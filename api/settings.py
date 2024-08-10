@@ -297,7 +297,7 @@ CELERY_TASK_DEFAULT_QUEUE = 'core-api'
 
 
 # Celery Schedule
-CELERY_BEAT_SCHEDULECELERY_BEAT_SCHEDULE = {
+CELERY_BEAT_SCHEDULE = {
     # "run-my-task-every-day-at-9am": {
     #     "task": "job.tasks.daily_talent_choice_new_company_account_request_reminder",
     #     "schedule": crontab(hour=9, minute=0, day_of_week="mon-fri"),

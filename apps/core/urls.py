@@ -1,7 +1,7 @@
 from django.urls import path
 from knox import views as knox_views
 from . import views
-
+from .views_core import VerifyAdminView
 
 urlpatterns = [
     path("login/", views.login_api),
@@ -21,4 +21,5 @@ urlpatterns = [
     path("profile/update/notifications", views.update_profile_notifications),
     path("<int:user_id>/soft-delete/", views.soft_delete_user, name="soft-delete-user"),
     path("<int:user_id>/restore/", views.restore_user, name="restore-user"),
+    path('verify-admin/', VerifyAdminView.as_view(), name='verify_admin'),
 ]
