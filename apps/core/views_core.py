@@ -138,7 +138,7 @@ def get_all_members(request):
 class VerifyAdminView(APIView):
     permission_classes = [AllowAny]
 
-    def post(self, request):
+    def get(self, request):
         """
         Verify if the user associated with the provided Knox token is authorized and an admin.
 
@@ -156,6 +156,7 @@ class VerifyAdminView(APIView):
             AuthToken.DoesNotExist: If the provided token is invalid or expired.
         """
         auth_header = request.headers.get('Authorization')
+        print(auth_header)
         if not auth_header:
             print("Missing Authorization header in verify-admin request")
             return Response({"is_admin": False, "error": "Missing Authorization header"},
@@ -164,30 +165,39 @@ class VerifyAdminView(APIView):
         try:
             # Extract the token from the Authorization header
             token = auth_header.split()[1]
+            print(token)
 
             # Check cache first
             cache_key = f"admin_status_{token.replace(' ', '_')}"
+            print(cache_key)
             cached_result = cache.get(cache_key)
+            print(cached_result)
             if cached_result is not None:
+                print("cached_result is set")
                 return Response({"is_admin": cached_result}, status=status.HTTP_200_OK)
 
             # Verify the Knox token
+            print("Verifying user")
             token_obj = AuthToken.objects.get(token_key=token[:8])
+            print(token_obj)
             if not token_obj.user.is_authenticated:
                 print("Invalid token")
                 raise AuthToken.DoesNotExist
-
+            try:
             # Get the user and check if they are an admin
-            user = token_obj.user
-            is_admin = user.is_staff and user.is_active
+                user = token_obj.user
+                is_admin = user.is_staff and user.is_active
 
-            # Cache the result
-            print("Cache the results")
-            cache_timeout = getattr(settings, 'KNOX_TOKEN_TTL', 60 * 10).total_seconds()
-            cache.set(cache_key, is_admin, int(cache_timeout))
+                # Cache the result
+                print("Cache the results")
+                cache_timeout = getattr(settings, 'KNOX_TOKEN_TTL', 60 * 10).total_seconds()
+                cache.set(cache_key, is_admin, int(cache_timeout))
 
-            print(f"User {user.id} admin status verified: {is_admin}")
-            return Response({"is_admin": is_admin}, status=status.HTTP_200_OK)
+                print(f"User {user.id} admin status verified: {is_admin}")
+                return Response({"is_admin": is_admin}, status=status.HTTP_200_OK)
+            except Exception as e:
+                print(e)
+                return Response({"is_admin": False}, status=status.HTTP_401_UNAUTHORIZED)
 
         except AuthToken.DoesNotExist:
             print(f"Invalid or expired token in verify-admin request")

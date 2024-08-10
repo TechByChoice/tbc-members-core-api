@@ -51,12 +51,13 @@ else:
         "beta-api.techbychoice.org",
         "beta-api-dev.techbychoice.org"
     ]
-# CSRF_TRUSTED_ORIGINS = [
-#     "https://www.beta.techbychoice.org",
-#     "https://beta.techbychoice.org",
-#     "https://www.opendoors.api.techbychoice.org",
-#     "https://opendoors.api.techbychoice.org",
-# ]
+    CSRF_TRUSTED_ORIGINS = [
+        "https://www.beta.techbychoice.org",
+        "https://beta.techbychoice.org",
+        "https:///internal-api.techbychoice.org",
+        "https://www.opendoors.api.techbychoice.org",
+        "https://opendoors.api.techbychoice.org",
+    ]
 # Application definition
 
 INSTALLED_APPS = [
@@ -383,3 +384,9 @@ class LoggingCorsMiddleware(CorsMiddleware):
 
 
 KNOX_TOKEN_TTL = timedelta(hours=10)
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    # ... other JWT settings ...
+}
