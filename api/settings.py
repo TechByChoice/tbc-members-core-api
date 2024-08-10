@@ -261,6 +261,20 @@ else:
         "https://www.internal-api.techbychoice.org",
         "https://internal-api.techbychoice.org",
     ]
+    CSRF_TRUSTED_ORIGINS = [
+        "https://www.beta.techbychoice.org",
+        "https://beta.techbychoice.org",
+        "https://www.dev.techbychoice.org",
+        "https://dev.techbychoice.org",
+        "https://www.opendoors-api-dev.techbychoice.org",
+        "https://opendoors-api-dev.techbychoice.org",
+        "https://www.opendoors-api.techbychoice.org",
+        "https://opendoors-api.techbychoice.org",
+        "https://www.internal-dev-api.techbychoice.org",
+        "https://internal-dev-api.techbychoice.org",
+        "https://www.internal-api.techbychoice.org",
+        "https://internal-api.techbychoice.org",
+    ]
 
 # Allow cookies
 SESSION_COOKIE_SAMESITE = None
