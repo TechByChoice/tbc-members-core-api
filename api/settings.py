@@ -54,7 +54,7 @@ else:
     CSRF_TRUSTED_ORIGINS = [
         "https://www.beta.techbychoice.org",
         "https://beta.techbychoice.org",
-        "https:///internal-api.techbychoice.org",
+        "https://internal-api.techbychoice.org",
         "https://www.opendoors.api.techbychoice.org",
         "https://opendoors.api.techbychoice.org",
     ]
