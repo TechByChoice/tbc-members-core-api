@@ -136,82 +136,131 @@ def login_api(request):
     return response
 
 
-@api_view(["GET"])
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def get_user_data(request):
-    user = request.user
-    userprofile = get_object_or_404(UserProfile, user=user)
-    userprofile_json_data = UserProfileSerializer(userprofile).data
+    """
+    Retrieve comprehensive user data including profile, account info, and role-specific details.
 
-    # Initialize empty data structures for optional response data
-    mentor_data, mentee_data, mentor_roster_data = {}, {}, {}
-    talentprofile_json_data = None
+    This endpoint fetches and returns detailed information about the authenticated user,
+    including their profile, account status, and any role-specific data (e.g., mentor, mentee).
+
+    Returns:
+        Response: A JSON response containing user data, account info, and role-specific details.
+
+    Raises:
+        Http404: If required user profiles are not found.
+    """
+    print('getting users details for app')
+    user = request.user
+    cache_key = f'user_data_{user.id}'
+    cached_data = cache.get(cache_key)
+
+    if cached_data:
+        print('returning cached data')
+        return Response(cached_data)
+
+    try:
+        print('getting users profiles for app')
+        user_data = _fetch_user_data(user)
+        cache.set(cache_key, user_data, timeout=settings.USER_DATA_CACHE_TIMEOUT)
+        print('saving users profiles for app as cache')
+        return Response(user_data)
+    except Exception as e:
+        print(f"Error fetching user data for user {user.id}: {str(e)}", exc_info=True)
+        return Response({"error": "An error occurred while fetching user data"},
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+def _fetch_user_data(user):
+    user_profile = UserProfile.objects.select_related('user').get(user=user)
 
     response_data = {
         "status": True,
-        "user_info": {
-            "id": user.id,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
-            "email": user.email,
-            "userprofile": userprofile_json_data,
-        },
-        "account_info": {field: getattr(user, field) for field in [
-            "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
-            "is_mentor", "is_mentee", "is_mentor_profile_active", "is_open_doors",
-            "is_open_doors_onboarding_complete", "is_open_doors_profile_complete", "is_mentor_profile_removed",
-            "is_mentor_training_complete", "is_mentor_interviewing", "is_mentor_profile_paused",
-            "is_community_recruiter", "is_company_account", "is_email_confirmation_sent",
-            "is_email_confirmed", "is_company_onboarding_complete",
-            "is_mentor_profile_approved", "is_mentor_application_submitted",
-            "is_speaker", "is_volunteer", "is_team", "is_community_recruiter",
-            "is_company_account", "is_partnership", "is_company_review_access_active"
-        ]},
-        "mentor_details": mentor_data,
-        "mentee_details": mentee_data,
-        "mentor_roster_data": mentor_roster_data,
+        "user_info": _get_user_info(user, user_profile),
+        "account_info": _get_account_info(user),
+        "mentor_details": {},
+        "mentee_details": {},
+        "mentor_roster_data": {},
     }
 
-    # Conditional data based on user's roles
+    _add_conditional_data(user, response_data)
+    _add_company_account_data(user, response_data)
+
+    return response_data
+
+
+def _get_user_info(user, user_profile):
+    user_info = {
+        "id": user.id,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "email": user.email,
+        "userprofile": UserProfileSerializer(user_profile).data,
+    }
+
+    talent_profile = MemberProfile.objects.filter(user=user).first()
+    if talent_profile:
+        user_info["talentprofile"] = TalentProfileSerializer(talent_profile).data
+
+    current_company = CompanyProfile.objects.filter(current_employees=user).first()
+    if current_company:
+        user_info["current_company"] = {
+            "id": current_company.id,
+            "logo_url": current_company.logo_url,
+            "company_name": current_company.company_name,
+            "company_url": current_company.company_url
+        }
+
+    return user_info
+
+
+def _get_account_info(user):
+    account_fields = [
+        "is_staff", "is_recruiter", "is_member", "is_member_onboarding_complete",
+        "is_mentor", "is_mentee", "is_mentor_profile_active", "is_open_doors",
+        "is_open_doors_onboarding_complete", "is_open_doors_profile_complete", "is_mentor_profile_removed",
+        "is_mentor_training_complete", "is_mentor_interviewing", "is_mentor_profile_paused",
+        "is_community_recruiter", "is_company_account", "is_email_confirmation_sent",
+        "is_email_confirmed", "is_company_onboarding_complete",
+        "is_mentor_profile_approved", "is_mentor_application_submitted",
+        "is_speaker", "is_volunteer", "is_team", "is_community_recruiter",
+        "is_company_account", "is_partnership", "is_company_review_access_active"
+    ]
+    return {field: getattr(user, field) for field in account_fields}
+
+
+def _add_conditional_data(user, response_data):
     if user.is_mentor_application_submitted:
         mentor_application = MentorshipProgramProfile.objects.get(user=user)
         response_data["mentor_data"] = MentorshipProgramProfileSerializer(mentor_application).data
 
     if user.is_mentee:
-        mentee_profile = get_object_or_404(MenteeProfile, user=user)
-        mentee_data = {"id": mentee_profile.id}
+        mentee_profile = MenteeProfile.objects.get(user=user)
+        response_data["mentee_details"] = {"id": mentee_profile.id}
         mentorship_roster = MentorRoster.objects.filter(mentee=mentee_profile)
         if mentorship_roster.exists():
             response_data["mentor_roster_data"] = MentorRosterSerializer(mentorship_roster, many=True).data
 
-    talent_profile = MemberProfile.objects.filter(user=user).first()
-    if talent_profile:
-        talentprofile_json_data = TalentProfileSerializer(talent_profile).data
-        response_data["user_info"]["talentprofile"] = talentprofile_json_data
 
-    # Handle company account logic
+def _add_company_account_data(user, response_data):
     if user.is_company_account:
-        company_account_details = get_object_or_404(CompanyProfile, account_owner=user)
+        company_account_details = CompanyProfile.objects.get(account_owner=user)
         local_company_data = CompanyProfileSerializer(company_account_details).data
 
-        # Make an external request for additional company details
         company_id = company_account_details.id
-        full_company_details_url = f'{os.environ["TC_API_URL"]}core/api/company/details/?company_id={company_id}'
-        response = requests.get(full_company_details_url)
-        if response.status_code == 200:
+        full_company_details_url = f'{os.getenv("TC_API_URL")}core/api/company/details/?company_id={company_id}'
+
+        try:
+            response = requests.get(full_company_details_url, timeout=os.getenv("API_TIMEOUT"))
+            response.raise_for_status()
             company_account_data = response.json()
-            # Append local company data to the fetched company data
             company_account_data["company_profile"] = local_company_data
-        else:
+        except requests.RequestException as e:
+            print(f"Error fetching company details for company {company_id}: {str(e)}")
             company_account_data = {"error": "Could not fetch company details"}
 
         response_data["company_account_data"] = company_account_data
-    current_company = CompanyProfile.objects.filter(current_employees=user).first()
-    if current_company:
-        response_data["user_info"]["current_company"] = {"id": current_company.id,
-                                                         "logo_url": current_company.logo_url,
-                                                         "company_name": current_company.company_name,
-                                                         "company_url": current_company.company_url}
-    return Response(response_data)
 
 
 def get_company_data(user_details):

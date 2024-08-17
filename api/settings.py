@@ -281,7 +281,6 @@ else:
 SESSION_COOKIE_SAMESITE = None
 SESSION_COOKIE_SECURE = True
 
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
@@ -309,7 +308,7 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_DEFAULT_QUEUE = 'core-api'
-
+USER_DATA_CACHE_TIMEOUT = 3600  # 1 hour
 
 # Celery Schedule
 CELERY_BEAT_SCHEDULE = {
