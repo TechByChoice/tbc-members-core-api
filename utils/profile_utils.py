@@ -229,14 +229,14 @@ def update_user_company_association(user, new_company):
 
     This function removes the user from their old company's current employees,
     adds them to the old company's past employees, and then adds them to the
-    new company's current employees.
+    new company's current employees (if a new company is provided).
 
     Args:
         user (User): The user whose company association is being updated.
-        new_company (CompanyProfile): The new company the user is joining.
+        new_company (CompanyProfile or None): The new company the user is joining, or None if removing association.
 
     Returns:
-        tuple: A tuple containing the old company (or None) and the new company.
+        tuple: A tuple containing the old company (or None) and the new company (or None).
     """
     old_company = None
 
@@ -258,14 +258,17 @@ def update_user_company_association(user, new_company):
             logger.error(f"Error updating old company association for user {user.id}: {str(e)}", exc_info=True)
             raise
 
-    try:
-        new_company.current_employees.add(user)
-        new_company.save()
-        logger.info(f"User {user.id} added to current employees of company {new_company.id}")
-    except Exception as e:
-        logger.error(f"Error adding user {user.id} to new company {new_company.id}: {str(e)}", exc_info=True)
-        raise
+    if new_company:
+        try:
+            new_company.current_employees.add(user)
+            new_company.save()
+            logger.info(f"User {user.id} added to current employees of company {new_company.id}")
+        except Exception as e:
+            logger.error(f"Error adding user {user.id} to new company {new_company.id}: {str(e)}", exc_info=True)
+            raise
+    else:
+        logger.info(f"User {user.id} has removed their company association")
 
-    logger.info(f"Company association updated for user {user.id}. Old company: {old_company.id if old_company else 'None'}, New company: {new_company.id}")
+    logger.info(f"Company association updated for user {user.id}. Old company: {old_company.id if old_company else 'None'}, New company: {new_company.id if new_company else 'None'}")
 
     return old_company, new_company

@@ -576,28 +576,31 @@ def update_profile_account_details(request):
 def update_profile_work_place(request):
     user = request.user
 
-    # Handling existing or new company
-    company_details = request.data.get("select_company", None)
+    # Handling existing, new, or removal of company
+    company_details = request.data.get("select_company")
+    given_company = request.data.get("company")
+    company = None
 
-    if company_details:
-        try:
-            company = CompanyProfile.objects.get(id=company_details["id"])
-        except CompanyProfile.DoesNotExist:
-            return Response(
-                {"status": False, "detail": "Company does not exist."},
-                status=status.HTTP_400_BAD_REQUEST,
+    if company_details or given_company:
+        if company_details:
+            try:
+                company = CompanyProfile.objects.get(id=company_details["id"])
+            except CompanyProfile.DoesNotExist:
+                return Response(
+                    {"status": False, "detail": "Company does not exist."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+        elif request.data.get("company_name"):  # Handling new company
+            company_serializer = CompanyProfileSerializer(
+                data=request.data, context={"request": request}
             )
-    else:  # Handling new company.
-        company_serializer = CompanyProfileSerializer(
-            data=request.data, context={"request": request}
-        )
-        if company_serializer.is_valid():
-            company = company_serializer.save()
-        else:
-            return Response(
-                {"status": False, "message": company_serializer.errors},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            if company_serializer.is_valid():
+                company = company_serializer.save()
+            else:
+                return Response(
+                    {"status": False, "message": company_serializer.errors},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
     # Update user's company association
     try:
@@ -610,27 +613,19 @@ def update_profile_work_place(request):
 
     # Updating talent profile
     talent_profile = get_object_or_404(MemberProfile, user=user)
-    role_names = request.data.get("job_roles")
+    role_names = request.data.get("job_roles", [])
 
-    roles_to_set = (
-        []
-    )  # This list will hold the role objects to be set to the MemberProfile
+    roles_to_set = []
     for role_name in role_names:
         try:
-            # Try to get the role by name, and if it doesn't exist, create it.
-            # Try to get the role by name, and if it doesn't exist, create it.
-            if "name" in role_name and role_name["name"]:
+            if isinstance(role_name, dict) and "name" in role_name:
                 _role_name = role_name["name"]
             else:
                 _role_name = role_name
-            # role, created = Roles.objects.get_or_create(name=_role_name)
 
             role, created = get_or_create_normalized(Roles, _role_name)
             roles_to_set.append(role)
         except (Roles.MultipleObjectsReturned, ValueError):
-            # Handle the case where multiple roles are found with the same name or
-            # where the name is invalid (for instance, if name is a required field
-            # and it's None or an empty string).
             return Response(
                 {"detail": f"Invalid role: {_role_name}"},
                 status=status.HTTP_400_BAD_REQUEST,
@@ -640,6 +635,7 @@ def update_profile_work_place(request):
     talent_profile.save()
 
     return Response({"status": True, "detail": "Account Details Updated."}, status=status.HTTP_200_OK)
+
 
 
 @api_view(["POST"])
