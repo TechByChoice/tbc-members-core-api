@@ -96,7 +96,6 @@ class CustomUser(AbstractBaseUser):
     is_member_onboarding_complete = models.BooleanField(default=False)
     is_onboarding_reminder_sent = models.BooleanField(default=False)
     onboarding_reminder_sent_date = models.DateTimeField(blank=True, null=True)
-    is_slack_invite_sent = models.BooleanField(default=False)
     is_migrated_account = models.BooleanField(default=False)
     # Open Doors
     is_open_doors = models.BooleanField(default=False)
@@ -138,6 +137,9 @@ class CustomUser(AbstractBaseUser):
     is_sendgrid_invite_sent = models.BooleanField(default=False)
     # slack
     slack_user_id = models.CharField(max_length=20, blank=True, null=True)
+    is_slack_active = models.BooleanField(default=False)
+    is_slack_invite_sent = models.BooleanField(default=False)
+    is_slack_found_with_user_email = models.BooleanField(default=False)
     # delete users
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
