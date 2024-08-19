@@ -139,7 +139,8 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             return response.json()
         except requests.exceptions.RequestException as e:
             # Handle exceptions or log them
-            return {"error": str(e)}
+            print(f"error {str(e)}")
+            return []
 
 
 class SalaryRangeSerializer(serializers.ModelSerializer):

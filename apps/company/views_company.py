@@ -103,6 +103,33 @@ class CompanyView(ViewSet):
             status=status.HTTP_200_OK
         )
 
+    def get_name(self, request, pk=None):
+        """
+        This view returns a single company profile
+        identified by the `company_id` passed in the URL.
+        """
+        try:
+            company_data = CompanyProfile.objects.get(id=pk)
+
+        except CompanyProfile.DoesNotExist:
+            return Response(
+                {"status": False, "error": "Company not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer_data = CompanyProfileSerializer(company_data).data
+
+        # Return response with company profile data and reviews
+        return Response(
+            {
+                "status": True,
+                "company": {
+                    "company_name": serializer_data.get("company_name")
+                },
+            },
+            status=status.HTTP_200_OK
+        )
+
     def list(self, request):
         """
         This view returns a paginated and filterable list of all company profiles.
