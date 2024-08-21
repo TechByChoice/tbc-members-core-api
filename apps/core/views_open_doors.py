@@ -1,24 +1,20 @@
 import os
+import uuid
 
 import requests
+from django.contrib.auth import get_user_model
 from django.http import JsonResponse
 from knox.models import AuthToken
+from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework import status, viewsets
-from django.core.mail import send_mail
-from django.urls import reverse
-import uuid
-
 from rest_framework.viewsets import ViewSet
 
 from utils.data_utils import get_user_demo, update_review_token_total
 from utils.slack import post_message
 from .models import UserVerificationToken
 from .serializers import UserProfileSerializer
-from django.contrib.auth import get_user_model
-
 from .serializers_open_doors import UserRegistrationSerializer
 from .views import send_welcome_email
 from ..company.models import CompanyProfile
@@ -118,10 +114,15 @@ class UserManagementView(ViewSet):
         # create new company
         if mutable_data.get('company_name') and mutable_data['company_url']:
             print(f"Creating a new company for reviews {mutable_data.get('company_name')}")
-            new_company = CompanyProfile.objects.create(company_name=mutable_data.get('company_name'), company_url=mutable_data.get('company_url'))
+            new_company = CompanyProfile.objects.create(company_name=mutable_data.get('company_name'),
+                                                        company_url=mutable_data.get('company_url'))
             mutable_data['company_id'] = new_company.id
             print(f'Created a new company: {new_company.company_name} ID: {new_company.id}')
-
+        else:
+            company_details = CompanyProfile.objects.get(id=mutable_data.get('company_id'))
+            mutable_data["company_name"] = company_details.company_name
+            mutable_data["company_url"] = company_details.company_url
+            mutable_data["company_logo"] = company_details.logo_url
         third_party_url = f'{os.getenv("OD_API_URL")}reports/submit-report/'
 
         # Make the 3rd party API request
@@ -141,7 +142,8 @@ class UserManagementView(ViewSet):
             )
             post_message("C07ET3J3Z7S", msg)
             update_review_token_total(request.user, False)
-            return Response(data={"status": True, "message": "Review saved", "review_id": result_data["review_id"]}, status=status.HTTP_200_OK)
+            return Response(data={"status": True, "message": "Review saved", "review_id": result_data["review_id"]},
+                            status=status.HTTP_200_OK)
         except requests.RequestException as e:
             print(f"Exception occurred will calling OD: submit-report: {e}")
             return Response({"status": False, "message": "No data saved"}, status.HTTP_400_BAD_REQUEST)
