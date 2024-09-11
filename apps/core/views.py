@@ -14,6 +14,7 @@ from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from knox.auth import AuthToken, TokenAuthentication
 from rest_framework import status
 from rest_framework.decorators import (
@@ -868,50 +869,54 @@ def update_profile_notifications(request):
 
 
 @csrf_exempt
+@require_http_methods(["POST"])
 def create_new_user(request):
     """
     Create a new user. This view handles the POST request to register a new user.
     It performs input validation, user creation, and sending a welcome email.
     """
-    if request.method != "POST":
-        return JsonResponse(
-            {"status": False, "error": "Invalid request method"}, status=405
-        )
-
-    data = json.loads(request.body)
-    first_name, last_name, email, password = (
-        data.get("first_name"),
-        data.get("last_name"),
-        data.get("email", "").lower(),
-        data.get("password"),
-    )
-
-    if not all([first_name, last_name, email, password]):
-        return JsonResponse(
-            {"status": False, "error": "Missing required parameters"}, status=400
-        )
-
-    if CustomUser.objects.filter(email=email).exists():
-        return JsonResponse(
-            {"status": False, "message": "Email already in use"}, status=400
-        )
     try:
-        user, token = create_user_account(first_name, last_name, email, password)
-        try:
-            send_welcome_email(user.email, user.first_name)
-            user.is_email_confirmation_sent = True
-            user.save()
-            msg = (
-                f":new: *New Member Signup* :new:\n\n"
-                f"*Name* {first_name}\n\n"
+        data = json.loads(request.body)
+        first_name = data.get("first_name")
+        last_name = data.get("last_name")
+        email = data.get("email", "").lower()
+        password = data.get("password")
+
+        if not all([first_name, last_name, email, password]):
+            return JsonResponse(
+                {"status": False, "error": "Missing required parameters"}, status=400
             )
-            post_message("GL4BCC2HK", msg)
-            return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
-        except Exception as e:
-            print("Error while saving user: ", str(e))
-            return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
+
+        if CustomUser.objects.filter(email=email).exists():
+            return JsonResponse(
+                {"status": False, "message": "Email already in use"}, status=400
+            )
+
+        with transaction.atomic():
+            user, token = create_user_account(first_name, last_name, email, password)
+
+            try:
+                send_welcome_email(user.email, user.first_name)
+                user.is_email_confirmation_sent = True
+            except Exception as e:
+                logger.warning(f"Failed to send welcome email to {email}: {str(e)}")
+                # We're not raising an exception here, allowing the user creation to proceed
+
+            user.save()
+
+            try:
+                msg = f":new: *New Member Signup* :new:\n\n*Name* {first_name}\n\n"
+                post_message("GL4BCC2HK", msg)
+            except Exception as e:
+                logger.warning(f"Failed to post Slack message: {str(e)}")
+                # We're not raising an exception here, as it's not critical for user creation
+
+        return JsonResponse({"status": True, "message": "User created successfully", "token": token}, status=201)
+
+    except json.JSONDecodeError:
+        return JsonResponse({"status": False, "error": "Invalid JSON in request body"}, status=400)
     except Exception as e:
-        print("Error while saving user: ", str(e))
+        logger.error(f"Error creating user: {str(e)}", exc_info=True)
         return JsonResponse({"status": False, "message": "Unable to create user"}, status=500)
 
 

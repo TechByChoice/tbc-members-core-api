@@ -225,6 +225,14 @@ class CompanyProfile(models.Model):
     referral_employees = models.ManyToManyField(
         CustomUser, related_name="company_employees", blank=True, default=[]
     )
+    CONNECTION_TYPE = (
+        ("came_across_job", "Came Across Job"),
+        ("network_request", "Someone in my network asked me to share this"),
+        ("other", "other")
+    )
+    referral_connection_type = models.CharField(
+        max_length=15, choices=CONNECTION_TYPE, blank=True, null=True
+    )
     company_types = models.ManyToManyField(
         CompanyTypes, related_name="company_types", blank=True
     )
