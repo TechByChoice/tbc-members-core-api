@@ -1018,6 +1018,7 @@ def create_user_account(first_name, last_name, email, password, is_company=False
         first_name=first_name,
         last_name=last_name,
         email=email,
+        is_slack_active=False,
         password=make_password(password),
         is_company_account=is_company
     )
