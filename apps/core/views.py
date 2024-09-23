@@ -154,18 +154,18 @@ def get_user_data(request):
     """
     print('getting users details for app')
     user = request.user
-    cache_key = f'user_data_{user.id}'
-    cached_data = cache.get(cache_key)
-
-    if cached_data:
-        print('returning cached data')
-        return Response(cached_data)
+    # cache_key = f'user_data_{user.id}'
+    # cached_data = cache.get(cache_key)
+    #
+    # if cached_data:
+    #     print('returning cached data')
+    #     return Response(cached_data)
 
     try:
         print('getting users profiles for app')
         user_data = _fetch_user_data(user)
-        cache.set(cache_key, user_data, timeout=settings.USER_DATA_CACHE_TIMEOUT)
-        print('saving users profiles for app as cache')
+        # cache.set(cache_key, user_data, timeout=settings.USER_DATA_CACHE_TIMEOUT)
+        # print('saving users profiles for app as cache')
         return Response(user_data)
     except Exception as e:
         print(f"Error fetching user data for user {user.id}: {str(e)}", exc_info=True)
