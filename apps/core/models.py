@@ -137,9 +137,9 @@ class CustomUser(AbstractBaseUser):
     is_sendgrid_invite_sent = models.BooleanField(default=False)
     # slack
     slack_user_id = models.CharField(max_length=20, blank=True, null=True)
-    is_slack_active = models.BooleanField(default=False)
-    is_slack_invite_sent = models.BooleanField(default=False)
-    is_slack_found_with_user_email = models.BooleanField(default=False)
+    is_slack_active = models.BooleanField(default=False, blank=True, null=True)
+    is_slack_invite_sent = models.BooleanField(default=False, blank=True, null=True)
+    is_slack_found_with_user_email = models.BooleanField(default=False, blank=True, null=True)
     # delete users
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
