@@ -11,6 +11,7 @@ from django.core.mail import EmailMessage
 from django.db import transaction
 from django.http import JsonResponse
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.csrf import csrf_exempt
@@ -174,7 +175,11 @@ def get_user_data(request):
 
 
 def _fetch_user_data(user):
-    user_profile = UserProfile.objects.select_related('user').get(user=user)
+    cache_key = f"user_data_{user.id}"
+    cached_data = cache.get(cache_key)    
+
+    if cached_data is None:
+        user_profile = UserProfile.objects.select_related('user').get(user=user)    
 
     response_data = {
         "status": True,
@@ -187,6 +192,10 @@ def _fetch_user_data(user):
 
     _add_conditional_data(user, response_data)
     _add_company_account_data(user, response_data)
+
+    # Cache the data for 1 hour (3600 seconds)
+    cache.set(cache_key, response_data, 3600)
+    return response_data
 
     return response_data
 
@@ -354,7 +363,8 @@ def create_new_member(request):
                 }
                 send_dynamic_email(email_data)
             request.user.is_member_onboarding_complete = True
-            request.user.is_company_review_access_active = True
+            request.user.is_company_review_access_active = True 
+            request.user.last_modified = timezone.now()
             request.user.save()
             # send slack invite
             try:
@@ -382,6 +392,10 @@ def create_new_member(request):
             f"*Name* {user.first_name} \n\n"
         )
         post_message("GL4BCC2HK", msg)
+        
+        # Invalidate the cache for this user
+        cache_key = f"user_data_{user.id}"
+        cache.delete(cache_key)        
 
         return Response(
             {

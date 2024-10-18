@@ -144,6 +144,7 @@ class CustomUser(AbstractBaseUser):
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     deletion_reason = models.CharField(max_length=50, null=True, blank=True)
+    last_modified = models.DateTimeField(auto_now=True)
 
 
     DELETION_REASONS = [
