@@ -184,6 +184,13 @@ class JobViewSet(viewsets.ViewSet):
                     },
                 }
                 send_dynamic_email(email_data)
+                msg = (
+                    f":rotating_light: *New Referral Posted* :rotating_light:\n\n"
+                    f"You have 3 business days to approve or reject {job.parent_company.company_name} post.\n\n"
+                    f'Use this link to view the job post: [Job Link]({os.environ["FRONTEND_URL"] + "job/" + str(job.id)})'
+                )
+
+                post_message("C06BPP4BXFW", msg)
                 return Response(serializer.data, status=status.HTTP_200_CREATED)
             except BaseException as e:
                 print(str(e))
