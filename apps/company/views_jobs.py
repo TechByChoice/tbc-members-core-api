@@ -98,7 +98,27 @@ class JobViewSet(viewsets.ViewSet):
 
         # Extract IDs for Many-to-Many relationships
         department_ids = [dept["id"] for dept in data.pop("department", [])]
-        skill_ids = [skill["id"] for skill in data.pop("skills", [])]
+
+        # Handle both existing and new skills
+        skill_ids = []
+        for skill in data.pop("skills", []):
+            if "id" in skill:
+                skill_ids.append(skill["id"])
+            else:
+                # Create a new skill
+                new_skill = Skill.objects.create(name=skill.get("inputValue") or skill.get("name"))
+                skill_ids.append(new_skill.id)
+
+        # Handle nice_to_have_skills similarly
+        nice_to_have_skill_ids = []
+        for skill in data.pop("nice_to_have_skills", []):
+            if "id" in skill:
+                nice_to_have_skill_ids.append(skill["id"])
+            else:
+                # Create a new skill
+                new_skill = Skill.objects.create(name=skill.get("inputValue") or skill.get("name"))
+                nice_to_have_skill_ids.append(new_skill.id)
+
         role_id = data.pop("role", [{}])[0].get("id")  # Assuming single role
 
         # Extract IDs for Foreign Key relationships
@@ -118,9 +138,13 @@ class JobViewSet(viewsets.ViewSet):
         data["role"] = role_id
         data["department"] = department_ids
         data["skills"] = skill_ids
+        data["nice_to_have_skills"] = nice_to_have_skill_ids
         data["parent_company"] = company_id
         data["status"] = "draft"
         data["is_referral_job"] = True
+
+        # Handle referral_note
+        data['referral_note'] = data.get('referral_note', None)        
 
         # Correct on_site_remote field
         if data["on_site_remote"] == "contract":
