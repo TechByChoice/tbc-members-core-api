@@ -169,7 +169,7 @@ def get_user_data(request):
         # print('saving users profiles for app as cache')
         return Response(user_data)
     except Exception as e:
-        print(f"Error fetching user data for user {user.id}: {str(e)}", exc_info=True)
+        print(f"Error fetching user data for user {user.id}: {str(e)}")
         return Response({"error": "An error occurred while fetching user data"},
                         status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
