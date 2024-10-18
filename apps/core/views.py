@@ -176,7 +176,8 @@ def get_user_data(request):
 
 def _fetch_user_data(user):
     cache_key = f"user_data_{user.id}"
-    cached_data = cache.get(cache_key)    
+    cached_data = cache.get(cache_key)
+    user_profile = UserProfile.objects.select_related('user').get(user=user)
 
     if cached_data is None:
         user_profile = UserProfile.objects.select_related('user').get(user=user)    
