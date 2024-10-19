@@ -28,7 +28,9 @@ class CompanyViewSet(ViewSet):
 
     @action(detail=True, methods=['post'], url_path='complete-onboarding')
     def complete_onboarding(self, request):
-            company_profile = CompanyProfile.objects.get(account_creator=request.user)
+            company_profile = CompanyProfile.objects.filter(account_creator=request.user).first()
+            if not company_profile:
+                return Response({"status": False, "error": "No company profile found"}, status=status.HTTP_404_NOT_FOUND)            
             company_id = company_profile.id
         
             user_data = request.user
@@ -74,7 +76,7 @@ class CompanyViewSet(ViewSet):
     def service_agreement(self, request):
         if request.data.get('confirm_service_agreement'):
             user = request.user
-            company_profile = CompanyProfile.objects.get(account_creator=user)
+            company_profile = CompanyProfile.objects.filter(account_creator=user).first()
             token = request.headers.get('Authorization', None)
             if token:
                 clean_token = token.split()[1]
@@ -107,9 +109,12 @@ class CompanyViewSet(ViewSet):
 
     @action(detail=False, methods=['post'], url_path='create-onboarding')
     def create_onboarding(self, request):
-        if request.data:
+        if request.data:    
             user = request.user
-            company_profile = CompanyProfile.objects.get(account_creator=user)
+            company_profile = CompanyProfile.objects.filter(account_creator=user).first()
+                   
+            if not company_profile:
+                return Response({"status": False, "error": "No company profile found"}, status=status.HTTP_404_NOT_FOUND)
 
             # Access form fields
             company_url = prepend_https_if_not_empty(request.data.get('website', ''))

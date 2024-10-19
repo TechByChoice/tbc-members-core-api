@@ -264,7 +264,6 @@ def create_or_update_company_connection(user, company_data):
                 unclaimed_account_creator=user,
                 is_unclaimed_account=True,
                 company_name=company_name,
-                # logo=company_logo,
                 company_url=company_url,
             )
             company_profile.current_employees.add(user)

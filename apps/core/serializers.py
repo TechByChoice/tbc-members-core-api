@@ -144,6 +144,9 @@ class UpdateProfileAccountDetailsSerializer(serializers.ModelSerializer):
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):
+    account_creator = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), required=False
+    )
     current_employees = serializers.PrimaryKeyRelatedField(
         queryset=CustomUser.objects.all(), many=True, required=False
     )
@@ -152,7 +155,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CompanyProfile
-        fields = ["id", "company_name", "company_url", "current_employees"]
+        fields = ["id", "company_name", "company_url", "current_employees", "account_creator"]
 
     def create(self, validated_data):
         user = self.context["request"].user  # get the user from the request context
@@ -165,7 +168,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
                 "Both company_name and company_url must be provided for new companies."
             )
 
-        company = CompanyProfile.objects.create(**validated_data)
+        company = CompanyProfile.objects.create(account_creator=user, **validated_data)
         company.current_employees.add(user)
         company.save()
 

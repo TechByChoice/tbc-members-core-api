@@ -256,7 +256,7 @@ def _add_conditional_data(user, response_data):
 
 def _add_company_account_data(user, response_data):
     if user.is_company_account:
-        company_account_details = CompanyProfile.objects.get(account_owner=user)
+        company_account_details = CompanyProfile.objects.filter(account_owner=user).first()
         local_company_data = CompanyProfileSerializer(company_account_details).data
 
         company_id = company_account_details.id
@@ -272,12 +272,17 @@ def _add_company_account_data(user, response_data):
             company_account_data = {"error": "Could not fetch company details"}
 
         response_data["company_account_data"] = company_account_data
+    else:
+        response_data["company_account_data"] = {"error": "No company profile found"}        
 
 
 def get_company_data(user_details):
-    company = get_object_or_404(CompanyProfile, account_owner=user_details)
-    return CompanyProfileSerializer(company).data
-
+    company = CompanyProfile.objects.filter(account_owner=user_details).first()
+    if company:
+        return CompanyProfileSerializer(company).data
+    else:
+        return {"error": "No company profile found"}
+    
 
 @api_view(["GET"])
 def get_announcement(request):
@@ -973,11 +978,10 @@ def create_new_company(request):
     try:
         with transaction.atomic():
             user, token = create_user_account(first_name, last_name, email, password, is_company=True)
-            company_profile = CompanyProfile(
+            company_profile = CompanyProfile.objects.create(
                 account_creator=user,
                 company_name=company_name
             )
-            company_profile.save()
             company_profile.account_owner.add(user)
             company_profile.hiring_team.add(user)
             header_token = request.headers.get("Authorization", None)

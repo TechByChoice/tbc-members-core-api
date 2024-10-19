@@ -183,7 +183,7 @@ class CompanyProfile(models.Model):
     # DIFFERENT USER GROUPS RELATION
     # person who made the account: full access
     talent_choice_account = models.BooleanField(default=False)
-    account_creator = models.OneToOneField(
+    account_creator = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         blank=True,
@@ -191,7 +191,7 @@ class CompanyProfile(models.Model):
         related_name="profile_as_account_creator",
     )
     # if the company was added from a referral or someone adding it to their profile
-    unclaimed_account_creator = models.OneToOneField(
+    unclaimed_account_creator = models.ForeignKey(
         CustomUser,
         on_delete=models.CASCADE,
         blank=True,
