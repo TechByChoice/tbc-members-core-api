@@ -38,12 +38,7 @@ class EventbriteManager:
         try:
             # Get organization's events, ordered by start date
             events = self.eventbrite.get(
-                f"/organizations/291073217076/events",
-                params={
-                    'status': 'live',
-                    'order_by': 'start_asc',
-                    'time_filter': 'current_future'
-                }
+                f"/organizations/291073217076/events?status=live&order_by=start_asc&time_filter=current_future"
             )
             
             # Return the first event (next upcoming) if any exists
