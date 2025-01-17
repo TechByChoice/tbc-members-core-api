@@ -57,7 +57,8 @@ else:
         "https://internal-api.techbychoice.org",
         "https://techbychoice.org",
         "https://www.techbychoice.org",
-        "https://tbc-update.webflow.io/",
+        "https://tbc-update.webflow.io",
+        "https://www.tbc-update.webflow.io",
         "https://www.opendoors.api.techbychoice.org",
         "https://opendoors.api.techbychoice.org",
     ]
@@ -263,6 +264,8 @@ else:
         "https://www.internal-dev-api.techbychoice.org",
         "https://internal-dev-api.techbychoice.org",
         "https://www.internal-api.techbychoice.org",
+        "https://tbc-update.webflow.io",
+        "https://www.tbc-update.webflow.io",
         "https://internal-api.techbychoice.org",
     ]
     CSRF_TRUSTED_ORIGINS = [
@@ -277,6 +280,8 @@ else:
         "https://www.internal-dev-api.techbychoice.org",
         "https://internal-dev-api.techbychoice.org",
         "https://www.internal-api.techbychoice.org",
+        "https://tbc-update.webflow.io",
+        "https://www.tbc-update.webflow.io",        
         "https://internal-api.techbychoice.org",
     ]
 
