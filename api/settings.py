@@ -57,6 +57,7 @@ else:
         "https://internal-api.techbychoice.org",
         "https://techbychoice.org",
         "https://www.techbychoice.org",
+        "https://tbc-update.webflow.io/",
         "https://www.opendoors.api.techbychoice.org",
         "https://opendoors.api.techbychoice.org",
     ]

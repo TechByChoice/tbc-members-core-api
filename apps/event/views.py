@@ -5,12 +5,17 @@ from django.views import View
 import logging
 from django.core.cache import cache
 from django.conf import settings
+from rest_framework.permissions import AllowAny
+from rest_framework.decorators import permission_classes
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 
 from utils.eventbrite import EventbriteManager
 
 logger = logging.getLogger(__name__)
 
-
+@method_decorator(csrf_exempt, name='dispatch')
+@permission_classes([AllowAny])
 class EventView(View):
     def get(self, request, *args, **kwargs):
         event_id = kwargs.get("event_id")
