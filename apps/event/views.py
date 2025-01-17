@@ -44,15 +44,42 @@ class EventView(View):
                 event_data = {
                     'id': event.get('id'),
                     'name': event.get('name', {}).get('text'),
+                    'speaker': None,
                     'description': event.get('description', {}).get('text'),
                     'url': event.get('url'),
                     'start': event.get('start', {}).get('local'),
                     'end': event.get('end', {}).get('local'),
-                    'venue': event.get('venue_id'),
                     'capacity': event.get('capacity'),
                     'status': event.get('status'),
-                    'image_url': event.get('logo', {}).get('url') if event.get('logo') else None
+                    'image_url': event.get('logo', {}).get('url') if event.get('logo') else None,
+                    'online_event': event.get('online_event', False),
+                    'type': 'online' if event.get('online_event', False) else 'in_person',
                 }
+
+                # Handle venue information
+                if event.get('online_event'):
+                    event_data['venue'] = 'Zoom'
+                else:
+                    venue_id = event.get('venue_id')
+                    if venue_id:
+                        try:
+                            venue = manager.eventbrite.get_venue(venue_id)
+                            event_data['venue'] = {
+                                'name': venue.get('name'),
+                                'address': {
+                                    'address_1': venue.get('address', {}).get('address_1'),
+                                    'address_2': venue.get('address', {}).get('address_2'),
+                                    'city': venue.get('address', {}).get('city'),
+                                    'region': venue.get('address', {}).get('region'),
+                                    'postal_code': venue.get('address', {}).get('postal_code'),
+                                    'country': venue.get('address', {}).get('country'),
+                                }
+                            }
+                        except Exception as e:
+                            logger.error(f"Error fetching venue details: {str(e)}")
+                            event_data['venue'] = None
+                    else:
+                        event_data['venue'] = None
                 
                 # Cache the event data for 1 hour
                 cache.set(cache_key, event_data, 3600)
