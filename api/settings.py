@@ -55,6 +55,8 @@ else:
         "https://www.beta.techbychoice.org",
         "https://beta.techbychoice.org",
         "https://internal-api.techbychoice.org",
+        "https://techbychoice.org",
+        "https://www.techbychoice.org",
         "https://www.opendoors.api.techbychoice.org",
         "https://opendoors.api.techbychoice.org",
     ]
