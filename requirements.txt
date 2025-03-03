@@ -8,14 +8,14 @@ stripe==6.4.0
 asgiref==3.7.2
 attrs==23.1.0
 boto3~=1.34.75
-certifi==2023.7.22
+certifi==2024.7.4
 cffi==1.15.1
-cryptography==42.0.6
+cryptography==43.0.1
 distlib==0.3.7
-Django~=4.2.11
+Django~=4.2.16
 django-rest-knox==4.2.0
 django-quill-editor==0.1.40
-djangorestframework~=3.15.1
+djangorestframework~=3.15.2
 filelock
 google-api-python-client==2.111.0
 google-auth==2.25.2
@@ -47,10 +47,10 @@ typing_extensions==4.7.1
 virtualenv==20.24.5
 virtualenv-clone==0.5.7
 whitenoise==6.5.0
-zipp==3.16.2
+zipp==3.19.1
 slack_sdk==3.26.1
 eventbrite==3.3.5
-requests~=2.31.0
+requests~=2.32.2
 django-filter~=24.2
 django-redis==5.4.0
 redis==5.0.4
@@ -59,3 +59,5 @@ fuzzywuzzy~=0.18.0
 APScheduler~=3.10.4
 botocore~=1.34.140
 geopy~=2.4.1
+setuptools>=70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
+urllib3>=2.2.2 # not directly required, pinned by Snyk to avoid a vulnerability
